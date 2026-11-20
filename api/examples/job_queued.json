@@ -1,0 +1,13 @@
+{
+  "id": "9f6a6dc4-f529-4ec5-b68d-f6fe8ddd0e68",
+  "type": "generate_lesson",
+  "status": "queued",
+  "is_final": false,
+  "progress": { "step": "queued" },
+  "result": null,
+  "error_code": null,
+  "error_message": null,
+  "lesson_version_id": null,
+  "created_at": "2026-11-21T08:15:02.420+00:00",
+  "finished_at": null
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "file_invalid",
+    "message": "File tidak didukung. Pakai JPG, PNG, atau WebP ≤10 MB."
+  }
+}

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import get_settings
 from core.errors import register_error_handlers
 from core.logging_setup import setup_logging
-from routes import health, jobs, lessons, sessions
+from routes import artworks, health, jobs, lessons, sessions
 
 settings = get_settings()
 setup_logging()
@@ -23,6 +23,7 @@ app.add_middleware(
 register_error_handlers(app)
 
 app.include_router(health.router)
+app.include_router(artworks.router)
 app.include_router(sessions.router)
 app.include_router(jobs.router)
 app.include_router(lessons.router)

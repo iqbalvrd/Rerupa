@@ -1,25 +1,29 @@
 # PRD — AI Mentor Melukis Seni Nusantara
 
-Versi: 1.1  
+Versi: 1.2  
 Tanggal: 20 November 2026  
 Status: rancangan produk untuk hackathon; belum merupakan hasil implementasi atau validasi pengguna.  
-Perubahan dari v1.0: AI kini membuat tahapan visual (storyline) dari foto apa pun, menuntun pengguna melukis ulang foto tersebut, dan menyusun konteks budaya di baliknya. Koleksi terkurasi tetap ada sebagai materi unggulan dan cadangan demo.  
+Perubahan v1.2: tambah **storyline cerita visual** — AI mengenali kisah di balik karya lalu membuat 4–6 panel ilustrasi cerita dengan image generation (Gemini), dihubungkan ke tahapan melukis.  
+Perubahan v1.1: AI kini membuat tahapan visual dari foto apa pun, menuntun pengguna melukis ulang foto tersebut, dan menyusun konteks budaya di baliknya. Koleksi terkurasi tetap ada sebagai materi unggulan dan cadangan demo.  
 Nama produk: belum ditentukan.  
 Bahasa utama: Indonesia.
 
 ## 1. Ringkasan produk
 
-Aplikasi membantu pemula mempelajari seni Nusantara dengan mengubah foto karya apa pun menjadi latihan melukis bertahap. Pengguna memotret atau memilih karya; AI menganalisis foto, menyusun storyline visual 6–8 tahap, menuntun cara melukis ulang, dan menjelaskan budaya di baliknya. Pengguna mengunggah progres untuk mendapat arahan berikutnya.
+Aplikasi membantu pemula mempelajari seni Nusantara dengan mengubah foto karya apa pun menjadi latihan melukis bertahap. Pengguna memotret atau memilih karya; AI menganalisis foto, menyusun tahapan visual 6–8 langkah, menuntun cara melukis ulang, dan menjelaskan budaya di baliknya. Pengguna mengunggah progres untuk mendapat arahan berikutnya.
 
 Nilai utama: pembelajaran visual yang menghubungkan keterampilan melukis, alat yang tersedia, dan pengetahuan budaya.
 
 Pernyataan produk:
 > Mentor melukis berbasis AI yang membantu pengguna mempelajari seni Nusantara melalui panduan visual, pencampuran warna, dan feedback progres.
 
-Tiga peran AI:
-1. **Pembuat storyline visual** — dari foto, AI memecah gambar menjadi garis, objek, dan bidang warna, lalu menyusun 6–8 tahap visual yang semuanya diturunkan dari satu referensi dan koordinat yang sama.
+Empat peran AI:
+1. **Pembuat tahapan visual** — dari foto, AI memecah gambar menjadi garis, objek, dan bidang warna, lalu menyusun 6–8 tahap visual yang semuanya diturunkan dari satu referensi dan koordinat yang sama.
 2. **Pemandu melukis ulang** — AI menulis instruksi per tahap (tindakan, alat, warna, patokan selesai, kesalahan umum) dan memberi feedback pada foto progres.
 3. **Penjelas budaya** — AI menjelaskan gaya, motif, dan tradisi yang mungkin terkait. Fakta dari sumber terkurasi dibedakan dari dugaan AI.
+4. **Pencerita visual** — AI mengenali kisah yang digambarkan karya (misalnya adegan Ramayana pada lukisan Kamasan), menulis storyboard 4–6 adegan, lalu membuat panel ilustrasinya dengan image generation memakai karya asli sebagai referensi gaya dan tokoh. Tokoh di cerita dihubungkan ke bagian yang akan dilukis.
+
+Pembagian teknologi: gambar **tahapan melukis** dirakit dari lapisan hasil olahan foto (bukan image generation) agar bentuk sama persis di setiap tahap; **panel cerita** dibuat dengan image generation karena tujuannya pemahaman kisah, bukan acuan bentuk.
 
 Panduan hasil AI adalah jalur latihan yang disarankan, bukan rekonstruksi proses asli seniman; proses asli hanya disebut jika terdokumentasi.
 
@@ -90,12 +94,13 @@ P0 = wajib untuk demo yang utuh. P1 = ditambahkan setelah P0 stabil. P2 = pengem
 | F02 | Foto/unggah, cek kualitas, dan pencocokan dengan koleksi (opsional) | P0 |
 | F03 | Pengaturan alat, ukuran bidang, dan cakupan/potongan latihan | P0 |
 | F04 | AI: pecahan visual otomatis dari foto (garis, objek, bidang warna) | P0 |
-| F05 | AI: storyline 6–8 tahap + instruksi melukis ulang, slider progres | P0 |
+| F05 | AI: tahapan visual 6–8 tahap + instruksi melukis ulang, slider progres | P0 |
 | F06 | Palet: resep teruji + perkiraan campuran AI berlabel | P0 |
 | F07 | Foto progres pada dua checkpoint dan feedback AI | P0 |
 | F08 | AI: konteks budaya (fakta bersumber vs dugaan AI) dan atribusi | P0 |
 | F09 | Simpan progres sementara, lanjutkan, dan hapus sesi | P0 |
 | F10 | Satu pertanyaan refleksi budaya saat selesai | P0 |
+| F15 | AI: storyline cerita visual 4–6 panel (Gemini image generation) | P0 |
 | F11 | Pertanyaan bantuan kontekstual per langkah | P1 |
 | F12 | Pilihan durasi dan tingkat menengah | P1 |
 | F13 | Pemindaian swatch dan koreksi warna otomatis | P2 |
@@ -108,8 +113,9 @@ Alur utama:
 2. Pengguna memilih galeri atau memotret referensi.
 3. Sistem memeriksa kualitas foto dan mencari kecocokan di koleksi. Jika cocok, pengguna mengonfirmasi dan materi terkurasi dipakai. Jika tidak, foto diproses AI.
 4. AI menampilkan konteks budaya singkat dan mengusulkan cakupan latihan (seluruh karya atau potongan).
+4a. Pengguna dapat membuka storyline cerita: panel-panel kisah di balik karya, dengan tokoh yang ditautkan ke tahap melukisnya. Panel dimuat bertahap dan bisa dilewati.
 5. Pengguna memilih alat/palet serta ukuran bidang.
-6. AI membuat pecahan visual dan storyline tahap; sistem memvalidasi lalu menampilkan persiapan dan tutorial.
+6. AI membuat pecahan visual dan rencana tahap; sistem memvalidasi lalu menampilkan persiapan dan tutorial.
 7. Pengguna mengikuti tahap, membuka resep warna, dan menandai progres.
 8. Pada dua checkpoint, pengguna bisa memotret hasil dan menerima feedback.
 9. Pengguna menyelesaikan latihan, membaca rangkuman keterampilan, dan menjawab refleksi budaya.
@@ -120,6 +126,8 @@ Kondisi alternatif:
 - Tidak ada kecocokan: AI tetap membuat tutorial; identitas karya/seniman tidak ditebak dan konteks budaya ditandai sebagai dugaan.
 - Gambar terlalu rumit: AI menyarankan potongan atau versi sederhana.
 - Pembuatan tutorial gagal atau tidak lolos validasi: tawarkan coba lagi atau materi koleksi.
+- Kisah karya tidak diketahui: storyline cerita tidak dibuat sebagai fakta; AI menyatakan kisahnya tidak diketahui dan hanya menawarkan cerita visual tentang tokoh/suasana berlabel "interpretasi AI", atau melewati fitur ini.
+- Image generation gagal atau ditolak: tampilkan storyboard teks saja; latihan melukis tetap berjalan.
 - Beberapa kandidat mirip: tampilkan pilihan dan minta konfirmasi.
 - Alat di luar palet: tampilkan kebutuhan minimum; rasio yang belum diuji tidak ditawarkan.
 - AI gagal: tutorial yang sudah dibuat dan materi koleksi tetap bisa digunakan; tampilkan kegagalan dan tombol coba lagi.
@@ -134,7 +142,7 @@ Kondisi alternatif:
 | FR02 | Kamera dan unggah | JPEG/PNG/WebP sampai 10 MB diterima setelah validasi isi file; file lain ditolak dengan pesan yang membantu. Akses kamera membutuhkan tindakan pengguna. |
 | FR03 | Pengenalan koleksi | Kecocokan koleksi memakai ambang yang dikalibrasi pada foto uji dan dikonfirmasi pengguna. Foto tanpa kecocokan diteruskan ke pembuatan tutorial AI. |
 | FR04 | Ketidakpastian identitas | Foto di luar koleksi tidak diberi judul, seniman, atau asal pasti hasil tebakan. Dugaan gaya/tradisi diberi label "perkiraan AI". Skor tidak ditampilkan sebagai probabilitas kebenaran. |
-| FR04a | Pembuatan storyline AI | Dari satu foto ternormalisasi, AI menghasilkan 6–8 tahap dalam skema terstruktur; semua lapisan diturunkan dari referensi dan koordinat yang sama. Tutorial yang gagal validasi tidak ditampilkan. |
+| FR04a | Pembuatan tahapan AI | Dari satu foto ternormalisasi, AI menghasilkan 6–8 tahap dalam skema terstruktur; semua lapisan diturunkan dari referensi dan koordinat yang sama. Tutorial yang gagal validasi tidak ditampilkan. |
 | FR05 | Pengaturan latihan | Pengguna dapat memilih ukuran, cakupan, dan palet dari opsi yang didukung; pilihan tersimpan per sesi. MVP selalu memakai level pemula dan medium akrilik. |
 | FR06 | Pecahan visual | Pengguna bisa mengaktifkan garis bantu, objek utama, dan kelompok warna; seluruh lapisan memakai koordinat referensi yang sama. |
 | FR07 | Tahap tutorial | Tiap tahap mempunyai visual target, area fokus, tindakan, alat, warna bila relevan, patokan selesai, dan bantuan kesalahan umum. |
@@ -145,6 +153,7 @@ Kondisi alternatif:
 | FR12 | Informasi budaya | AI menyusun penjelasan budaya untuk setiap foto. Fakta yang ditampilkan sebagai fakta wajib menunjuk source_id dari basis pengetahuan terkurasi; selebihnya berlabel "perkiraan AI". Identitas, fakta, adaptasi, dan interpretasi dibedakan. Ketidaktersediaan informasi dinyatakan. |
 | FR13 | Progres dan penghapusan | Reload pada browser yang sama memulihkan sesi aktif. Foto yang telah kedaluwarsa diganti penanda, sementara teks feedback tetap tersedia sampai sesi berakhir. Hapus sesi menghilangkan akses segera dan menjadwalkan pembersihan sesuai kebijakan retensi. |
 | FR14 | Penutup latihan | Pengguna mendapat rangkuman langkah dan satu pertanyaan refleksi; hasil tidak disebut sertifikasi kemampuan. |
+| FR16 | Storyline cerita | Identifikasi kisah mengikuti aturan fakta bersumber vs perkiraan. Storyboard 4–6 panel dengan narasi ≤40 kata per panel dan deskripsi tokoh yang dikunci. Setiap panel berlabel "Ilustrasi AI", tidak disajikan sebagai karya asli. Tokoh/adegan dalam daftar terbatas narasumber tidak digenerate. Panel untuk materi koleksi di-cache dan ditinjau sebelum terbit. |
 | FR15 | Status dan kegagalan | Unggah, antrean, pemrosesan, berhasil, kualitas tidak cukup, dan gagal dibedakan. Retry tidak membuat pekerjaan atau biaya ganda. |
 
 ## 8. Desain materi dan tutorial
@@ -176,7 +185,7 @@ persiapan → sketsa bentuk besar → warna dasar → pengembangan bentuk/warna 
 
 Urutan ini bukan aturan semua tradisi. Materi yang menekankan garis dan bidang datar mengikuti tekniknya; shading volumetrik tidak ditambahkan secara otomatis.
 
-Cara AI membuat storyline visual:
+Cara AI membuat tahapan visual:
 1. Normalisasi foto (luruskan, potong, sisi panjang 1600 px).
 2. Pengolahan gambar: deteksi tepi/garis, segmentasi objek utama, dan kuantisasi warna menjadi 6–12 bidang warna.
 3. Model vision/bahasa memilih urutan tahap sesuai teknik karya (misalnya karya garis dan bidang datar tidak diberi shading volumetrik), mengelompokkan bidang per tahap, dan menulis instruksi.
@@ -229,6 +238,12 @@ Tidak ada skor keindahan atau kewajiban menyerupai referensi secara mutlak. Jika
 
 Konteks budaya untuk foto pengguna disusun AI dari basis pengetahuan terkurasi (entri tradisi, motif, teknik, dan sumbernya). AI boleh menyebut "gaya ini mirip lukisan Kamasan" sebagai perkiraan, tetapi tidak menebak judul, seniman, atau makna spesifik karya. Unggahan pengguna tidak pernah otomatis masuk koleksi terbit.
 
+Aturan storyline cerita:
+- Kisah hanya disebut sebagai fakta jika tercatat di basis pengetahuan dengan sumber; selebihnya "perkiraan AI" atau "tidak diketahui".
+- Ilustrasi meniru gaya tradisi, bukan gaya seniman hidup tertentu tanpa izin.
+- Tokoh suci, upacara, atau simbol dengan ketentuan budaya mengikuti arahan narasumber; ada daftar tokoh/adegan yang tidak digenerate.
+- Panel tidak boleh menambahkan detail budaya (pakaian, senjata, atribut) yang bertentangan dengan sumber; panel koleksi ditinjau sebelum terbit.
+
 Setiap materi koleksi menyimpan judul, seniman jika diketahui, tradisi/daerah jika bersumber, sumber, kredit, izin gambar, cakupan adaptasi, peninjau, dan tanggal tinjauan.
 
 Alur konten: draf → ditinjau → terbit → diarsipkan.
@@ -253,6 +268,7 @@ Satu pertanyaan akhir menguji informasi yang memang diajarkan, bukan meminta pen
 | Pencocokan | Pratinjau foto, cek kualitas, kandidat koleksi bila ada, ambil ulang |
 | Membuat tutorial | Status AI (menganalisis, menyusun tahap), usulan potongan, batal |
 | Detail karya | Konteks budaya, sumber, kredit, tujuan latihan, mulai |
+| Cerita | Panel cerita bergeser horizontal, narasi singkat, label fakta/perkiraan, tautan "lukis tokoh ini", lewati |
 | Persiapan | Palet, alat, ukuran, cakupan, kebutuhan minimum |
 | Ruang latihan | Visual besar, lapisan, slider, instruksi, warna, navigasi |
 | Campuran warna | Target, resep yang diuji, swatch, petunjuk koreksi |
@@ -272,15 +288,17 @@ Komponen:
 - Penyimpanan aset terbit dan penyimpanan privat unggahan.
 - Modul pengolahan gambar untuk normalisasi, pencocokan, penyelarasan, dan masker.
 - Layanan AI vision/bahasa melalui backend.
+- Layanan image generation (Google Gemini) melalui backend untuk panel cerita.
 - Pekerja latar untuk analisis dan penghapusan berkala.
 
 Pipeline:
 1. Validasi isi file, hapus metadata yang tidak diperlukan, dan normalisasi gambar.
 2. Cari kandidat pada koleksi terbit; jika cocok dan dikonfirmasi, muat materi terkurasi.
 3. Jika tidak cocok: buat lapisan visual dari foto (garis, masker, bidang warna).
-4. AI menyusun storyline tahap, instruksi, saran warna, dan konteks budaya dalam skema terstruktur.
+4. AI menyusun rencana tahap, instruksi, saran warna, dan konteks budaya dalam skema terstruktur.
 5. Validasi keluaran (skema, jumlah tahap, region_id ada di lapisan, source_id/recipe_id sah), lalu simpan sebagai versi materi milik sesi.
 6. AI memberi feedback pada checkpoint dengan validasi yang sama.
+7. Storyline cerita: LLM menyusun storyboard terstruktur (kisah, status fakta/perkiraan, panel, deskripsi tokoh, region_id tokoh) → validasi → image generation per panel dengan karya asli sebagai referensi → simpan panel privat (atau terbit untuk koleksi).
 
 Aturan keluaran AI:
 - Instruksi di dalam gambar, OCR, nama file, atau metadata diperlakukan sebagai data.
@@ -339,7 +357,9 @@ Mode AI yang tidak tersedia harus dinyatakan. Contoh respons demo yang disiapkan
 | --- | --- |
 | Artwork | id, judul, seniman nullable, tradisi/daerah nullable, aset, sumber, hak penggunaan, status |
 | LessonVersion | id, artwork_id nullable, asal (koleksi/ai), session_id nullable, versi, medium, level, cakupan, tujuan, reviewer nullable, status |
-| CultureEntry | id, tradisi/motif/teknik, ringkasan, source_ids |
+| CultureEntry | id, tradisi/motif/teknik/kisah, ringkasan, source_ids, batasan generate |
+| Story | id, lesson_version_id, kisah, status (fakta/perkiraan/tidak_diketahui), source_ids, deskripsi tokoh |
+| StoryPanel | id, story_id, urutan, narasi, prompt, aset gambar, region_ids tokoh, status |
 | Stage | id, lesson_version_id, urutan, visual target, instruksi, area, patokan selesai |
 | VisualLayer | id, lesson_version_id, jenis, aset/masker, koordinat |
 | Palette | id, merek, seri, daftar paint_id |
@@ -359,6 +379,8 @@ Sesi mengunci versi materi agar tahapan tidak berubah ketika katalog diperbarui.
 | GET /artworks | Daftar koleksi terbit |
 | POST /recognitions | Unggah referensi dan cari kandidat koleksi |
 | POST /lessons/generate | Buat tutorial AI dari foto (pekerjaan latar) |
+| POST /lessons/:id/story | Buat storyline cerita dan panel (pekerjaan latar) |
+| GET /stories/:id | Storyboard dan status tiap panel |
 | GET /lessons/:id | Materi versi terbit dan lapisan |
 | POST /sessions | Mulai sesi dan simpan pilihan |
 | GET /sessions/:id | Pulihkan sesi yang berhak diakses |
@@ -384,6 +406,7 @@ Angka berikut adalah target penerimaan awal, belum hasil pengujian.
 | Navigasi tahap yang dimuat | Respons dalam 300 ms |
 | Pencocokan koleksi | P95 sampai 10 detik, dihitung setelah unggah selesai |
 | Pembuatan tutorial AI | P95 sampai 40 detik setelah unggah selesai; status per langkah ditampilkan |
+| Storyline cerita | Storyboard teks P95 ≤15 detik; panel pertama ≤20 detik; seluruh panel ≤60 detik (dimuat bertahap) |
 | Feedback | P95 sampai 30 detik setelah unggah selesai |
 | Batas tunggu analisis | 45 detik (feedback) / 60 detik (pembuatan tutorial); setelah itu beri status gagal/coba lagi |
 | Pembaruan status | Tampil maksimal 1 detik setelah pekerjaan tercatat |
@@ -393,6 +416,7 @@ Angka berikut adalah target penerimaan awal, belum hasil pengujian.
 | Kontras teks utama | Target minimum 4,5:1 |
 | Penggunaan AI | Maksimal dua checkpoint per sesi dan satu retry per checkpoint |
 | Pembatasan penyalahgunaan | Maksimal tiga pencocokan dan tiga pembuatan tutorial AI per sesi; batas tambahan pada backend |
+| Image generation | Maksimal satu storyline (≤6 panel) per tutorial dan satu regenerasi per panel; panel koleksi di-cache |
 
 Ukur P95 dengan setidaknya 20 eksekusi per alur dan laporkan ukuran sampelnya. Waktu unggah dilaporkan terpisah karena dipengaruhi koneksi. Sistem memakai cache hasil identik, pembatasan request, dan batas pengeluaran harian yang harus ditetapkan sebelum demo.
 
@@ -410,6 +434,8 @@ Tutorial dasar tetap bisa digunakan ketika layanan AI gagal. Versi awal tidak me
 - Metadata lokasi dihapus; log tidak menyimpan foto, isi prompt, atau token rahasia.
 - Sebelum foto dikirim ke penyedia AI, pengguna mendapat penjelasan singkat dan pilihan untuk melanjutkan tutorial tanpa mengirim foto.
 - Retensi di penyedia AI harus diverifikasi terhadap konfigurasi/ketentuannya sebelum membuat janji penghapusan menyeluruh.
+- Foto pengguna yang dipakai sebagai referensi image generation dikirim ke Google (Gemini); penjelasan persetujuan menyebut kedua penyedia AI. Gunakan tier berbayar Gemini API, karena data tier gratis dapat dipakai penyedia untuk peningkatan layanan; verifikasi ketentuan terbaru sebelum demo.
+- Panel cerita dari foto pengguna mengikuti retensi unggahan (≤24 jam) kecuali pengguna menyimpan sesi; panel koleksi dikelola sebagai aset terbit.
 - Unggahan pengguna tidak dipakai tim sebagai dataset pelatihan tanpa persetujuan terpisah.
 - MVP tidak membuat galeri publik otomatis atau mencadangkan unggahan pengguna tanpa kebijakan yang jelas.
 
@@ -431,6 +457,8 @@ Semua nilai adalah target pilot, bukan klaim dampak yang sudah tercapai.
 | Penolakan di luar koleksi | Foto negatif tidak diberi identitas karya yang salah | 0 false acceptance pada set demo negatif |
 | Kelayakan tutorial AI | Tutorial AI dinilai pengajar dapat diikuti pemula dan bentuknya konsisten antar tahap | ≥70% dari set foto uji |
 | Label budaya | Klaim tanpa sumber berlabel "perkiraan AI" | 100% |
+| Konsistensi panel cerita | Tokoh utama dikenali sama di semua panel oleh peninjau | ≥80% storyline uji |
+| Cerita membantu belajar | Peserta dapat menceritakan ulang kisah dan menunjuk tokoh yang dilukis | ≥70% |
 
 Laporkan pembilang, penyebut, dan kegagalan; penolakan pada sampel kecil tidak berarti akurasi universal.
 
@@ -446,6 +474,10 @@ Pisahkan pengujian demo singkat dari pengujian belajar nyata yang memberi waktu 
 | Foto karya lain di luar koleksi | Tutorial AI dibuat; tidak ada judul/seniman tebakan; budaya berlabel perkiraan |
 | Foto benda bukan karya seni atau bidang kosong | Diminta foto ulang atau ditawari galeri |
 | Karya sangat rumit | AI menyarankan potongan/versi sederhana |
+| Storyline cerita pada karya berkisah dikenal | Kisah bersumber, tokoh konsisten, label "Ilustrasi AI" tampil |
+| Storyline pada karya tanpa kisah diketahui | Tidak mengarang kisah sebagai fakta |
+| Tokoh/adegan dalam daftar terbatas | Tidak digenerate; tampil penjelasan |
+| Gemini gagal/timeout/menolak | Storyboard teks tampil; latihan tetap jalan |
 | Tutorial AI pada berbagai gaya | 6–8 tahap, bentuk konsisten, teknik sesuai gaya (tanpa shading otomatis pada karya datar) |
 | Kamera ditolak atau format tidak didukung | Ada jalur alternatif/pesan yang jelas |
 | File terlalu besar atau file menyamar sebagai gambar | Ditolak sebelum analisis |
@@ -472,8 +504,8 @@ Uji resep memakai cat fisik yang dicantumkan. Kualitas feedback ditinjau manusia
 | --- | --- |
 | Jam 0–4 | Sepakati materi, palet, cakupan, sumber/izin, dan alur demo |
 | Jam 4–12 | Selesaikan satu tutorial penuh, aset tahap, resep uji, dan layar utama |
-| Jam 12–24 | Pipeline foto → lapisan visual → storyline AI; hubungkan galeri, sesi, navigasi |
-| Jam 24–34 | Konteks budaya AI, saran warna, checkpoint, AI feedback, dan validasi keluaran |
+| Jam 12–24 | Pipeline foto → lapisan visual → tahapan AI; hubungkan galeri, sesi, navigasi |
+| Jam 24–34 | Konteks budaya AI, storyline cerita (Gemini), saran warna, checkpoint, AI feedback, dan validasi keluaran |
 | Jam 34–42 | Uji pengguna, privasi, kegagalan, serta perluas sampai 3–5 materi |
 | Jam 42–48 | Perbaiki masalah utama, ukur demo, dan siapkan presentasi |
 
@@ -488,8 +520,9 @@ Jika waktu menipis, tunda P1 dan kurangi variasi latihan. Pertahankan satu alur 
 Target durasi presentasi fitur: sekitar tiga menit, menyesuaikan aturan lomba.
 
 1. Tunjukkan karya dan konteks budaya singkat.
-2. Foto sebuah karya Nusantara; tunjukkan AI menyusun storyline tahap dan konteks budayanya (fakta vs perkiraan).
-3. Pilih alat dan buka pecahan visual.
+2. Foto sebuah karya Nusantara; tunjukkan AI menyusun rencana tahap dan konteks budayanya (fakta vs perkiraan).
+3. Geser storyline cerita: kisah di balik karya dalam panel ilustrasi AI, lalu ketuk tokoh untuk melompat ke tahap melukisnya.
+4. Pilih alat dan buka pecahan visual.
 4. Geser tahap untuk memperlihatkan proses dari sketsa sampai detail.
 5. Buka satu resep campuran dari palet demo.
 6. Unggah foto progres yang disiapkan dari latihan fisik.
@@ -504,6 +537,8 @@ Siapkan hasil latihan fisik pada beberapa tahap untuk memperlihatkan hubungan pa
 | --- | --- |
 | Karya salah dikenali | Batasi koleksi, kalibrasi ambang, konfirmasi pengguna, uji foto negatif |
 | Tutorial AI tidak layak diikuti | Lapisan dari foto (bukan generatif), validasi skema, saran potongan, uji pengajar, materi koleksi sebagai cadangan |
+| Panel cerita tidak konsisten atau keliru secara budaya | Karya asli sebagai referensi, deskripsi tokoh dikunci, tinjauan panel koleksi, daftar terbatas narasumber, fallback storyboard teks |
+| Kunci/kuota Gemini belum tersedia | Kerjakan alur dengan panel placeholder berlabel; integrasi saat kunci tersedia |
 | AI mengarang fakta budaya | Basis pengetahuan bersumber, label "perkiraan AI", larangan menebak judul/seniman |
 | Tahap visual berubah bentuk | Satu referensi/koordinat, lapisan konsisten, tinjauan manual |
 | Resep warna tidak cocok | Satu palet uji, swatch kering, hindari rasio hasil tebakan |
@@ -527,7 +562,7 @@ Keputusan yang perlu ditutup sebelum implementasi terkait:
 - Nama produk, aturan hackathon, durasi, dan anggota tim.
 - Materi awal, hak gambar, peninjau, serta isi adaptasi.
 - Set cat, alat ukur resep, dan hasil uji fisik.
-- Penyedia AI, kebijakan datanya, batas biaya, dan lingkungan deployment.
+- Penyedia AI, kebijakan datanya, batas biaya, dan lingkungan deployment. Sudah diputuskan: Claude untuk teks/vision, Gemini untuk image generation; API key Gemini menyusul.
 - Kemampuan feedback yang benar-benar lolos evaluasi.
 
 Dokumen ini cukup untuk memulai desain dan penyusunan backlog sambil menutup keputusan tersebut.
@@ -540,6 +575,7 @@ MVP dinyatakan siap jika:
 - Pengenalan diuji pada foto positif dan negatif yang dipisahkan dari kalibrasi.
 - Feedback aktual lolos tinjauan pada cakupan yang dijanjikan.
 - Tutorial AI diuji pada set foto beragam dan memenuhi target kelayakan; klaim budaya tanpa sumber selalu berlabel.
+- Storyline cerita berjalan untuk minimal satu materi koleksi dengan panel yang sudah ditinjau, dan fallback teks teruji.
 - Tidak ada masalah kritis akses data, penghapusan, atau klaim budaya.
 - Jalur gagal, kamera ditolak, dan layanan AI tidak tersedia telah dicoba.
 - Target serta hasil pengukuran dicatat terpisah; perubahan scope diungkapkan.

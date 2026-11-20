@@ -66,11 +66,27 @@ def canny(img: np.ndarray) -> np.ndarray:
     return (cv2.Canny(gray, lo, hi) > 0).astype(np.float32)
 
 
-def clean_lines(edges: np.ndarray, threshold: float = 0.35, min_length_px: int | None = None) -> np.ndarray:
-    """Ambang lalu buang komponen garis kecil (bintik tekstur). Return biner uint8 0/255."""
+TARGET_DENSITY_PCT = 4.0  # % piksel garis yang dituju; dikalibrasi dari evaluasi foto nyata
+MIN_THRESHOLD = 0.08
+
+
+def adaptive_threshold(edges: np.ndarray, target_density_pct: float = TARGET_DENSITY_PCT) -> float:
+    """Ambang yang membuat ±target_density_pct piksel menjadi garis.
+
+    Ambang tetap tidak bisa dipakai lintas metode/foto: di uji foto nyata XDoG hampir kosong
+    dan TEED menutupi >50% gambar dengan ambang yang sama. Batas bawah mencegah noise
+    dianggap garis pada gambar yang hampir polos.
+    """
+    return max(MIN_THRESHOLD, float(np.percentile(edges, 100 - target_density_pct)))
+
+
+def clean_lines(edges: np.ndarray, threshold: float | None = None, min_length_px: int | None = None) -> np.ndarray:
+    """Ambang (adaptif bila None) lalu buang komponen garis kecil (bintik tekstur). Return biner uint8 0/255."""
     h, w = edges.shape
     if min_length_px is None:
         min_length_px = max(12, round(max(h, w) * 0.012))  # ±20 px pada 1600 px
+    if threshold is None:
+        threshold = adaptive_threshold(edges)
     binary = (edges >= threshold).astype(np.uint8)
     count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
     keep = np.zeros(count, dtype=bool)

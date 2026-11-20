@@ -19,6 +19,9 @@ from cv.types import CvResult
 
 log = logging.getLogger("rerupa.cv")
 
+# Dari evaluasi foto nyata: Raden Saleh 0,89; lukisan Bali gaya Kamasan 0,51–0,54; bidang datar <0,2.
+SHADING_HINT_THRESHOLD = 0.7
+
 
 @contextmanager
 def _timer(timings: dict, key: str):
@@ -79,7 +82,7 @@ def run(
 
     with _timer(t, "value"):
         hint = value.shading_hint(seg)
-        shading = use_shading if use_shading is not None else hint >= 0.5
+        shading = use_shading if use_shading is not None else hint >= SHADING_HINT_THRESHOLD
         value_body = None
         if shading:
             quant = value.value_levels(seg, value_levels)

@@ -191,18 +191,50 @@ def _merge_small(labels: np.ndarray, lab: np.ndarray, min_area: int) -> np.ndarr
 
 
 def _cap_regions(labels: np.ndarray, lab: np.ndarray, max_regions: int) -> np.ndarray:
-    """Jamin jumlah region ≤ max_regions: naikkan luas minimum tepat setinggi region ke-(n−max)
-    terkecil, gabungkan, ulangi sampai cukup."""
-    for _ in range(30):
-        _, areas = np.unique(labels, return_counts=True)
-        excess = len(areas) - max_regions
+    """Jamin jumlah region ≤ max_regions dengan menggabungkan pasangan tetangga yang
+    WARNANYA paling mirip (bukan sekadar yang terkecil), supaya bidang yang warnanya
+    beda nyata — rok merah, kulit, latar — tetap terpisah.
+
+    Biaya gabung = ΔE76 antar warna rata-rata × faktor ukuran kecil (region kecil lebih murah
+    digabung). Tiap putaran menggabungkan pasangan termurah yang tidak saling tumpang tindih.
+    """
+    labels = _relabel(labels)
+    for _ in range(200):
+        n = int(labels.max()) + 1
+        excess = n - max_regions
         if excess <= 0:
             break
-        threshold = int(np.sort(areas)[excess - 1]) + 1
-        merged = _merge_small(labels, lab, threshold)
-        if len(np.unique(merged)) == len(areas):
-            break  # tidak bisa digabung lagi (mis. tidak ada tetangga)
-        labels = merged
+        pairs, lengths = _border_pairs(labels)
+        if len(pairs) == 0:
+            break
+        areas = np.bincount(labels.ravel(), minlength=n).astype(np.float64)
+        sums = np.zeros((n, 3))
+        np.add.at(sums, labels.ravel(), lab.reshape(-1, 3))
+        mean_lab = sums / np.maximum(areas, 1)[:, None]
+
+        p, q = pairs[:, 0], pairs[:, 1]
+        delta_e = np.linalg.norm(mean_lab[p] - mean_lab[q], axis=1)
+        smaller = np.minimum(areas[p], areas[q]) / areas.sum()
+        cost = delta_e * (0.5 + np.sqrt(smaller * 100))  # region kecil sedikit lebih murah
+
+        lut = np.arange(n)
+        used: set[int] = set()
+        merged = 0
+        # Gabung paling banyak setengah kelebihan per putaran agar warna rata-rata diperbarui.
+        budget = max(1, (excess + 1) // 2)
+        for idx in np.argsort(cost):
+            a, b = int(p[idx]), int(q[idx])
+            if a in used or b in used:
+                continue
+            keep, drop = (a, b) if areas[a] >= areas[b] else (b, a)
+            lut[drop] = keep
+            used.update((a, b))
+            merged += 1
+            if merged >= budget:
+                break
+        if merged == 0:
+            break
+        labels = _relabel(lut[labels])
     return labels
 
 

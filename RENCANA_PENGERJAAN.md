@@ -1,31 +1,33 @@
-# Rencana Pengerjaan — Rerupa (AI Mentor Melukis Seni Nusantara)
+# Rencana Pengerjaan — Rerupa
 
-Versi: 1.1 · 20 November 2026 · Mengacu ke [PRD v1.2](PRD_AI_Mentor_Melukis_Seni_Nusantara_v1.2.md)
+Versi: 1.2 · 20 November 2026 · Mengacu ke [PRD v1.3](PRD_Rerupa_v1.3.md) · Pelengkap: [SOLUSI_RISIKO.md](SOLUSI_RISIKO.md), [ERD.md](ERD.md), [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)
 
-Dokumen ini menjawab lima hal: **framework apa**, **model AI apa**, **bagaimana LLM diubah menjadi tahapan visual melukis**, **bagaimana storyline cerita dibuat dengan image generation**, dan **bagaimana aplikasi mengajarkan melukis**. Setelah itu ada fase pengerjaan yang detail.
+Perubahan v1.2 (revisi Xavier): OpenAI satu-satunya penyedia AI; pembagian region per tahap oleh kode (`stage_planner`); model lineart + layer terang-gelap + toggle foto asli; 1 checkpoint di versi awal; storyline cerita P1; jadwal 48 jam diganti fase pengerjaan Xavier dan Iqbal; definisi selesai dipisah (versi awal vs showcase).
+
+Dokumen ini menjawab: **framework apa**, **model AI apa**, **bagaimana foto diubah menjadi tahapan visual melukis**, **bagaimana storyline cerita dibuat (P1)**, dan **bagaimana aplikasi mengajarkan melukis**, lalu fase pengerjaan.
 
 Dua jenis visual yang berbeda:
-- **Tahapan melukis** (tutorial 6–8 tahap): dirakit dari lapisan hasil olahan foto, **tanpa** image generation, agar bentuk sama persis di setiap tahap.
-- **Storyline cerita** (4–6 panel kisah di balik karya): dibuat dengan **Gemini image generation**, memakai karya asli sebagai referensi gaya dan tokoh.
+- **Tahapan melukis** (6–8 tahap): dirakit dari lapisan hasil olahan foto, **tanpa** image generation, agar bentuk sama persis di setiap tahap.
+- **Storyline cerita** (P1, 4–6 panel kisah di balik karya): dibuat dengan **OpenAI image generation**, memakai karya asli sebagai referensi.
 
 ---
 
-## 1. Prinsip arsitektur (paling penting)
+## 1. Prinsip arsitektur
 
-> **LLM tidak menggambar. LLM merencanakan dan menjelaskan; gambar dibuat oleh pengolahan citra yang deterministik.**
-
-Kalau tiap tahap dibuat dengan model gambar generatif, bentuk figur akan bergeser antar tahap dan panduan jadi tidak bisa diikuti. Jadi pembagian kerjanya:
+> **AI tidak menggambar tahapan dan tidak mengatur urutan tahap. CV memecah gambar, kode membagi tahap, AI menulis teks.**
 
 | Pekerjaan | Dikerjakan oleh | Alasan |
 | --- | --- | --- |
-| Memecah foto jadi garis, objek, bidang warna | Computer vision (OpenCV, rembg) | Hasil konsisten, koordinat sama untuk semua tahap |
-| Memilih urutan tahap, mengelompokkan bidang, menulis instruksi | Claude (vision + structured output) | Butuh pemahaman gaya, teknik, dan bahasa pengajaran |
+| Memecah foto jadi garis, objek, bidang warna, terang-gelap | CV (model lineart, rembg, k-means, posterize) | Hasil konsisten, koordinat sama untuk semua tahap |
+| Membagi region ke tahap (urutan, checkpoint) | **Kode** (`stage_planner`) | Stabil, tidak gagal validasi, cepat, murah |
+| Menulis instruksi, kesalahan umum, patokan selesai, nama bagian | OpenAI (model teks/vision) | Butuh pemahaman gaya dan bahasa pengajaran |
 | Merender gambar tiap tahap | Renderer SVG di frontend | Tahap N = tumpukan lapisan sampai tahap N |
-| Menghitung campuran cat | Algoritma pencampuran pigmen + data swatch | Rasio tidak boleh ditebak LLM |
-| Mengukur selisih foto progres vs target | Computer vision (warp + perbandingan per region) | Angka terukur, bukan tebakan |
-| Menulis feedback dan konteks budaya | Claude | Bahasa yang jelas, dibatasi data terukur dan sumber |
-| Mengenali kisah dan menulis storyboard cerita | Claude | Butuh pemahaman budaya + aturan sumber |
-| Menggambar panel cerita | Gemini image generation | Ilustrasi kisah tidak harus sama persis bentuknya dengan karya |
+| Menghitung campuran cat | Mixbox + ΔE2000 + data swatch | Rasio tidak boleh ditebak AI |
+| Mengukur selisih foto progres vs target | CV (warp + ECC + metrik per region) | Angka terukur, bukan tebakan |
+| Menulis feedback dari kandidat masalah | OpenAI | Bahasa jelas, dibatasi data terukur |
+| Menulis konteks budaya | OpenAI + basis pengetahuan bersumber | Fakta vs perkiraan |
+| (P1) Mengenali kisah dan menulis storyboard | OpenAI | Butuh pemahaman budaya + aturan sumber |
+| (P1) Menggambar panel cerita | OpenAI image generation | Ilustrasi kisah tidak harus sama persis bentuknya |
 
 ---
 
@@ -35,426 +37,298 @@ Kalau tiap tahap dibuat dengan model gambar generatif, bentuk figur akan bergese
 
 | Lapisan | Pilihan | Catatan |
 | --- | --- | --- |
-| Frontend | **Next.js 15 (App Router) + TypeScript + Tailwind CSS** | Mobile-first, deploy mudah di Vercel |
-| Komponen UI | shadcn/ui (Radix) | Aksesibel (keyboard, screen reader) sesuai PRD §12 |
-| Render tahap & lapisan | **SVG** (React) + `react-zoom-pan-pinch` | Vektor, tajam di semua ukuran, mudah ditumpuk/diwarnai |
+| Frontend | **Next.js 15 (App Router) + TypeScript + Tailwind CSS** | Mobile-first. Alternatif React + Vite bila lebih cepat untuk Xavier — diputuskan bersama |
+| Komponen UI | shadcn/ui (Radix) | Aksesibel |
+| Render tahap & lapisan | **SVG** (React) + `react-zoom-pan-pinch` | Vektor, mudah ditumpuk dan di-zoom |
 | State klien | Zustand + TanStack Query | Polling status job tiap 1 detik |
 | Kamera | `getUserMedia` + fallback `<input type="file" accept="image/*" capture>` | Akses kamera hanya setelah tap pengguna |
-| Backend API + worker | **Python 3.12 + FastAPI** | Satu bahasa untuk CV dan pemanggilan Claude |
-| Computer vision | OpenCV, scikit-image, scikit-learn, **rembg** (U²-Net), Pillow | Semua model pretrained, tanpa training |
-| Pencampuran warna | **Mixbox** (model pigmen Kubelka–Munk) + `colour-science` (ΔE2000) | Mixbox berlisensi CC BY-NC: aman untuk hackathon, perlu lisensi untuk komersial |
-| LLM | **Anthropic Python SDK** (`anthropic`) → `claude-opus-5-5` | Lihat §3 |
-| Image generation | **Google Gen AI Python SDK** (`google-genai`) → Gemini image model | Lihat §3.2; API key menyusul |
-| Validasi | Pydantic v2 (backend), Zod (frontend) | Skema yang sama dipakai untuk structured output |
-| Database + storage | **Supabase** (Postgres + Storage bucket privat + signed URL) | `pg_cron` untuk hapus foto ≤24 jam |
-| Antrean job | Tabel `jobs` di Postgres + worker FastAPI (`asyncio`) | Cukup untuk skala hackathon; idempotency key di tabel |
-| Deploy | Vercel (frontend), Railway/Fly.io (FastAPI, butuh OpenCV) | Region Singapura untuk latensi Indonesia |
-| Observasi | Log terstruktur tanpa foto/prompt (PRD §17), event analitik ke tabel `events` | |
+| Backend API + worker | **Python 3.12 + FastAPI** | Library CV dan SDK OpenAI paling matang di Python; bottleneck ada di latensi API, bukan olah gambar — Rust tidak dipakai |
+| Computer vision | OpenCV, scikit-image, scikit-learn, **rembg**, Pillow | Pretrained, tanpa training |
+| Garis sketsa | **Model lineart** (API atau open-source) sebagai utama; XDoG/Canny cadangan | Diuji di 5 foto dulu |
+| Region → SVG | Implementasi sendiri, boleh mencontek **`paintbynumbersgenerator`** (drake7707, MIT, JavaScript, output SVG) untuk gabung region kecil dan path rapi | Hemat waktu |
+| Pencampuran warna | **Mixbox** + `colour-science` (ΔE2000) | Mixbox CC BY-NC: aman untuk lomba |
+| AI teks/vision | **OpenAI Python SDK** (`openai`), model lewat env `OPENAI_TEXT_MODEL` dan `OPENAI_VISION_MODEL` | Model final dipilih lewat uji (§3.1) |
+| Image generation (P1) | OpenAI Images, env `OPENAI_IMAGE_MODEL` (`gpt-image-2.6-flare` / `gpt-image-2.6-sunburst`) | §3.2 |
+| Validasi | Pydantic v2 (backend), Zod (frontend) | Skema Pydantic juga jadi JSON schema untuk structured output |
+| Database + storage | **Supabase** (Postgres + Storage bucket privat + signed URL) | `pg_cron` untuk retensi |
+| Antrean job | Tabel `jobs` di Postgres + worker FastAPI | Cukup untuk skala lomba |
+| Deploy | Vercel (frontend), Railway/Fly.io (FastAPI) | Region Singapura |
 
-### 2.2 Kenapa bukan "semua di Next.js"?
-
-OpenCV, rembg, dan Mixbox paling matang di Python. Memaksakan semuanya di Node (opencv.js, onnxruntime-node) memakan waktu debug yang tidak sepadan dalam 48 jam. Next.js hanya jadi frontend dan memanggil FastAPI.
-
-### 2.3 Struktur repo
+### 2.2 Struktur repo
 
 ```
 rerupa/
-├─ web/                    # Next.js
-│  ├─ app/                 # beranda, galeri, latihan/[sessionId], checkpoint, selesai
-│  ├─ components/stage/    # StageCanvas (SVG), LayerToggle, StageSlider, ColorRecipeCard
-│  └─ lib/schemas.ts       # Zod, disinkronkan dari skema Pydantic
-├─ api/                    # FastAPI
-│  ├─ routes/              # artworks, recognitions, lessons, sessions, checkpoints, jobs
-│  ├─ cv/                  # normalize, recognize, layers, regions, align, compare
-│  ├─ ai/                  # claude_client, prompts/, schemas.py, validators.py
-│  ├─ story/               # storyboard (Claude), gemini_client, panel_store, placeholder
-│  ├─ color/               # palette, mixer (Mixbox), deltaE
-│  └─ worker.py            # pemroses job + pembersih retensi
+├─ web/                     # Next.js (Xavier)
+│  ├─ app/                  # beranda, galeri, unggah, latihan/[sessionId], checkpoint, selesai, (P1) cerita
+│  ├─ components/stage/     # StageCanvas (SVG), LayerToggle, OriginalPhotoToggle, StageSlider, ColorRecipeCard
+│  └─ lib/schemas.ts        # Zod, disinkronkan dari skema Pydantic
+├─ api/                     # FastAPI
+│  ├─ routes/               # artworks, lessons, sessions, checkpoints, jobs, recipes, (P1) recognitions, stories
+│  ├─ cv/
+│  │  ├─ normalize.py
+│  │  ├─ lineart.py         # model lineart + cadangan XDoG/Canny
+│  │  ├─ regions.py         # k-means LAB, gabung region kecil, path SVG
+│  │  ├─ value.py           # layer terang-gelap (posterize 3–5 tingkat)
+│  │  ├─ stage_planner.py   # pembagian region per tahap oleh kode
+│  │  ├─ align.py           # 4 sudut, warp, ECC
+│  │  ├─ compare.py         # metrik per region
+│  │  └─ recognize.py       # (P1) pencocokan koleksi
+│  ├─ ai/                   # openai_client.py, prompts/, schemas.py, validators.py
+│  ├─ color/                # palette, mixer (Mixbox), deltaE
+│  ├─ story/                # (P1) storyboard.py, image_client.py (OpenAI), placeholder.py (fallback)
+│  └─ worker.py             # pemroses job + pembersih retensi
 ├─ content/
-│  ├─ artworks/            # 3–5 materi koleksi (gambar, lapisan, tahap, sumber)
-│  ├─ culture_kb.json      # basis pengetahuan budaya + sumber
-│  └─ palette_demo.json    # cat demo + hex swatch terukur
-└─ eval/                   # foto uji positif/negatif, pasangan progres-target, skrip evaluasi
+│  ├─ artworks/             # materi koleksi (gambar, lisensi, tahap)
+│  ├─ culture_kb.json       # basis pengetahuan budaya + sumber
+│  └─ palette_demo.json     # cat demo + hex swatch
+└─ eval/                    # foto uji, pasangan progres-target, hasil uji model
 ```
 
 ---
 
-## 3. Model AI yang dipakai
+## 3. Model AI dan CV
 
-### 3.1 LLM: Claude Opus 5.5 (`claude-opus-5-5`)
+### 3.1 AI teks/vision: OpenAI
 
-Satu model untuk semua tugas bahasa + vision. Konfigurasi per tugas:
+Model **belum dikunci**. Langkah pertama: uji 2–3 model OpenAI (besar vs kecil) pada 5–10 foto yang sama untuk tugas A dan B; pilih berdasarkan kualitas dan biaya, simpan di `OPENAI_TEXT_MODEL` / `OPENAI_VISION_MODEL`.
 
-| Tugas | Input | Output | `effort` | Perkiraan biaya/panggilan* |
-| --- | --- | --- | --- | --- |
-| **A. Rencana tahapan** | Foto ternormalisasi + gambar region berlabel nomor + tabel region (JSON) + palet + basis budaya | `StoryPlan` (JSON terstruktur) | `high` | ± Rp3.000–4.000 |
-| **B. Feedback checkpoint** | Foto progres yang sudah diluruskan + target tahap + metrik selisih per region | `Feedback` (maks 2 saran) | `medium` | ± Rp1.000–1.500 |
-| **D. Storyboard cerita** | Karya + region graph + basis budaya | `Storyboard` (kisah, tokoh terkunci, 4–6 panel) | `medium` | ± Rp1.000–2.000 |
-| **C. Tanya per langkah (P1)** | Tahap aktif + pertanyaan | Jawaban singkat | `low` | ± Rp300 |
+| Tugas | Input | Output |
+| --- | --- | --- |
+| **A. Teks tahapan** | Region graph + gambar region bernomor + pembagian tahap dari `stage_planner` + palet + basis budaya | `StageTexts` (judul, tindakan, alat, patokan selesai, kesalahan umum, label region, klaim budaya per tahap) |
+| **B. Feedback checkpoint** | Foto progres yang sudah diluruskan + target tahap + daftar kandidat masalah dari CV | `Feedback` (maks 2 saran dari kandidat) |
+| **C. Tanya per langkah (P1)** | Tahap aktif + pertanyaan | Jawaban singkat |
+| **D. Storyboard cerita (P1)** | Karya + region graph + basis budaya | `Storyboard` (kisah, tokoh terkunci, 4–6 panel) |
 
-\*Kasar, dengan harga Opus 5.5 $4/$20 per juta token dan kurs ±Rp16.000. Basis budaya dan instruksi sistem diberi **prompt caching** sehingga hanya dibayar penuh sekali.
+Pengaturan:
+- **Structured output** dengan JSON schema yang dibangkitkan dari model Pydantic; respons tetap divalidasi ulang di backend.
+- **Retry 1×** bila gagal validasi (dengan daftar error), **timeout** per panggilan, cek `finish_reason` (terpotong) dan **refusal** dari respons OpenAI sebelum memakai hasil.
+- Gagal setelah retry → teks templat per jenis tahap (tutorial tetap tampil).
+- `safety_identifier` = hash ID sesi.
+- Kunci API hanya di FastAPI. **Batas pengeluaran harian** di dashboard OpenAI sebelum uji pengguna.
+- Perkiraan biaya per panggilan dihitung ulang dari harga OpenAI terbaru setelah model dipilih.
 
-Pengaturan wajib:
-- **Structured outputs** (`client.messages.parse(...)` dengan model Pydantic) supaya keluaran pasti sesuai skema.
-- **Adaptive thinking** (bawaan Opus 5.5; tidak bisa dimatikan) — kedalamannya diatur lewat `output_config.effort`.
-- **Streaming** untuk tugas A (keluaran panjang) dengan `.get_final_message()`.
-- **Server-side fallback** (`fallbacks: "default"` + beta `server-side-fallback-2026-07-01`) agar penolakan model tidak memutus alur.
-- Cek `stop_reason` (`refusal`, `max_tokens`) sebelum membaca hasil.
-- Kunci API hanya di FastAPI.
-
-Kalau biaya ternyata terlalu besar saat uji, kandidat penggantinya Claude Sonnet 5.5 untuk tugas B dan C — tapi keputusan itu diambil setelah mengukur kualitas, bukan di awal.
-
-### 3.2 Image generation: Google Gemini
+### 3.2 Image generation (P1): OpenAI
 
 | Hal | Keputusan |
 | --- | --- |
-| Model | Model image Gemini terbaru yang mendukung **gambar referensi + edit + konsistensi tokoh** (keluarga "Gemini Flash Image"). Nama model persis dan harganya dicek saat API key tersedia, lalu disimpan di env `GEMINI_IMAGE_MODEL` agar mudah diganti |
-| SDK | `google-genai` (Python), dipanggil hanya dari FastAPI |
-| Kunci | `GEMINI_API_KEY` di secret manager; **menyusul** — sampai tersedia, `story/placeholder.py` mengembalikan panel placeholder berlabel "contoh" agar UI dan alur bisa dikerjakan |
-| Tier | Tier berbayar (data tier gratis dapat dipakai Google untuk peningkatan layanan) |
-| Referensi | Karya asli (ternormalisasi, EXIF dihapus) + panel sebelumnya sebagai referensi tambahan untuk konsistensi tokoh |
-| Resolusi | Panel 1024×768 (landscape) atau 768×1024 sesuai orientasi karya |
-| Biaya | Maks 6 panel + 1 regenerasi per panel per tutorial; panel materi koleksi di-cache selamanya |
+| Model | `gpt-image-2.6-flare` (draf, cepat) dan `gpt-image-2.6-sunburst` (aset final, edit lebih konsisten); biaya per token sama |
+| Referensi | Karya asli + potongan tokoh + panel sebelumnya |
+| Kunci | Sudah ada (akun OpenAI Xavier). Cek dulu di Playground tab Images bahwa model bisa dipakai — kemungkinan perlu verifikasi organisasi |
+| Placeholder | `story/placeholder.py` hanya fallback, bukan jalur utama |
+| Moderasi | `moderation_blocked` → kartu narasi teks |
+| Biaya | Maks 1 storyline per tutorial, 1 regenerasi per panel; panel koleksi di-cache |
 
-### 3.3 Model computer vision (semua pretrained, tanpa training)
+### 3.3 Computer vision
 
-| Kebutuhan | Model / algoritma |
+| Kebutuhan | Pendekatan |
 | --- | --- |
-| Objek utama | **rembg** (U²-Net) untuk saliency mask; cadangan: GrabCut |
-| Garis bantu (line art) | XDoG / Canny + penghalusan, lalu `findContours` + `approxPolyDP` → path SVG |
-| Bidang warna | Bilateral/mean-shift filter → **k-means di ruang CIELAB** (6–12 warna) → connected components → gabung region kecil → path SVG |
-| Pencocokan koleksi | ORB/AKAZE + homografi RANSAC (jumlah inlier sebagai skor) + perceptual hash sebagai saringan awal |
-| Kualitas foto | Varians Laplacian (buram), histogram (gelap/silau), rasio area bidang |
-| Pelurusan foto progres | Deteksi kuadrilateral terbesar → `warpPerspective`; cadangan: pengguna tap 4 sudut |
-| Penyelarasan halus | ECC (`findTransformECC`) terhadap garis target |
-| Selisih per region | IoU siluet, persentase region yang sudah terisi, selisih luminans L* rata-rata per region |
+| Garis bantu | **Model lineart** sebagai utama; XDoG/Canny cadangan. Uji di 5 foto: pilih yang paling sedikit menangkap tekstur kanvas/serat kain/pantulan |
+| Objek utama | rembg (U²-Net); cadangan GrabCut |
+| Bidang warna | Filter penjaga tepi → k-means CIELAB (≤8 warna) → connected components → gabung region kecil ke tetangga dengan batas terpanjang → haluskan → path SVG |
+| Terang-gelap | Grayscale (L* dari CIELAB) → posterize 3–5 tingkat → layer SVG/raster dengan koordinat sama; hanya bila `use_shading` |
+| Kualitas foto | Varians Laplacian (buram), histogram (gelap/silau) |
+| Pelurusan foto progres | **Tap 4 sudut (default)** → `warpPerspective`; deteksi kuadrilateral otomatis sebagai upgrade |
+| Penyelarasan halus | ECC (`findTransformECC`) pada peta tepi |
+| Selisih per region | IoU siluet, persentase region terisi, selisih L* per region |
+| Pencocokan koleksi (P1) | ORB/AKAZE + homografi RANSAC + kalibrasi ambang |
 
 ---
 
-## 4. Integrasi LLM → tahapan visual melukis
+## 4. Pipeline tahapan melukis
 
-### 4.1 Alur pipeline
+### 4.1 Alur
+
+```
+Foto → validasi, hapus EXIF, normalisasi 1600px
+→ CV: mask objek utama (rembg), garis (lineart / XDoG), region (k-means LAB), layer terang-gelap
+→ stage_planner (kode): bagi region per tahap
+→ AI (OpenAI): tulis instruksi, kesalahan umum, patokan selesai, konteks budaya per tahap
+→ validator → simpan LessonVersion → frontend render SVG
+```
 
 ```mermaid
 flowchart TD
-    A[Foto pengguna] --> B[Validasi file, hapus EXIF, normalisasi 1600px]
-    B --> C{Cocok koleksi?}
-    C -- ya, dikonfirmasi --> K[Muat materi terkurasi]
-    C -- tidak --> D[CV: mask objek utama, garis, k-means region]
-    D --> E[Region graph JSON + gambar region bernomor]
-    E --> F[Claude tugas A: StoryPlan terstruktur]
-    F --> G{Validator}
-    G -- gagal --> F2[Retry 1x dengan pesan error] --> G
-    G -- lolos --> H[Simpan LessonVersion asal=ai]
-    H --> I[Frontend merender tahap dari lapisan SVG]
-    K --> I
+    A[Foto / materi galeri] --> B[Validasi, hapus EXIF, normalisasi]
+    B --> C[CV: lineart, mask, region, terang-gelap]
+    C --> D[stage_planner: region per tahap]
+    D --> R[Tahapan visual sudah bisa ditampilkan]
+    D --> E[OpenAI: teks tiap tahap + budaya]
+    E --> F{Validator teks}
+    F -- gagal --> E2[Retry 1x] --> F
+    F -- gagal lagi --> T[Teks templat]
+    F -- lolos --> G[Simpan LessonVersion]
+    T --> G
+    G --> H[Frontend: StageCanvas SVG]
 ```
 
-### 4.2 Apa yang dihasilkan CV (masukan ke Claude)
+### 4.2 Data dari CV (masukan ke AI)
 
 ```json
 {
   "image": { "width": 1200, "height": 1600 },
+  "use_shading": false,
   "regions": [
     { "id": "r07", "hex": "#B5532E", "lab": [48, 38, 40], "area_pct": 6.2,
       "bbox": [310, 420, 520, 900], "is_main_object": true, "neighbors": ["r03", "r11"] }
   ],
-  "line_layer": { "path_count": 214, "density": "tinggi" },
-  "palette_hint": ["#1E1A17", "#B5532E", "#D9B66A", "#F1E6CF"]
-}
-```
-
-Bersama JSON ini, Claude juga menerima **gambar region yang diberi nomor** sehingga ia bisa mengaitkan "jubah merah tokoh" dengan `r07`.
-
-### 4.3 Apa yang dikembalikan Claude (`StoryPlan`)
-
-```json
-{
-  "style_analysis": {
-    "technique": "garis_dan_bidang_datar",
-    "use_shading": false,
-    "complexity": "sedang",
-    "suggest_crop": null
-  },
   "stages": [
-    {
-      "stage_id": "s1", "order": 1, "title": "Persiapan dan grid",
-      "layers": ["grid"], "region_ids": [],
-      "action": "Bagi bidang menjadi grid 4×5 dengan pensil tipis.",
-      "tools": ["pensil 2B", "penggaris"], "colors": [],
-      "done_when": "Grid terlihat samar dan sejajar tepi kertas.",
-      "common_mistakes": ["Garis grid terlalu tebal sehingga tembus cat."],
-      "is_checkpoint": false
-    },
-    {
-      "stage_id": "s3", "order": 3, "title": "Bidang warna dasar terbesar",
-      "layers": ["lines", "regions"], "region_ids": ["r03", "r07", "r11"],
-      "action": "Isi latar krem dulu, lalu jubah merah tokoh utama.",
-      "tools": ["kuas pipih 10"], "colors": [{ "region_id": "r07", "mix_ref": "auto" }],
-      "done_when": "Tidak ada kertas putih tersisa di tiga bidang ini.",
-      "common_mistakes": ["Cat merah melewati garis wajah."],
-      "is_checkpoint": true
-    }
-  ],
-  "culture": {
-    "claims": [
-      { "text": "Garis hitam tegas dan bidang warna datar mirip gaya wayang Kamasan.",
-        "type": "perkiraan", "source_ids": [] },
-      { "text": "Lukisan Kamasan secara tradisional memakai pewarna alami di atas kain.",
-        "type": "fakta", "source_ids": ["kb_kamasan_01"] }
-    ],
-    "reflection_question": { "question": "...", "answer_source_id": "kb_kamasan_01" }
-  }
-}
-```
-
-### 4.4 Validator (wajib lolos sebelum ditampilkan)
-
-1. Jumlah tahap 6–8; `order` berurutan.
-2. Setiap `region_id` ada di region graph; tahap hanya **menambah** region (kumulatif), tidak menghapus.
-3. **Semua region tercakup** sebelum tahap terakhir; region kecil < 0,3% boleh digabung di tahap detail.
-4. Tepat 2 tahap `is_checkpoint: true`.
-5. Klaim `type: "fakta"` wajib punya `source_ids` yang ada di `culture_kb.json`; klaim tanpa sumber harus `type: "perkiraan"`.
-6. Jika `technique` = garis/bidang datar, `use_shading` harus `false`.
-7. Teks yang terbaca di gambar (OCR) diperlakukan sebagai data; prompt sistem menyatakan ini secara eksplisit.
-
-Gagal → kirim ulang sekali dengan daftar error. Gagal lagi → tawarkan potongan lebih kecil atau materi koleksi.
-
-### 4.5 Rendering tahap di frontend
-
-Tahap N dirender **sepenuhnya di klien** dari data yang sama:
-
-```
-grid (opsional) → garis bantu → region yang sudah dibuka s/d tahap N (warna rata)
-→ highlight region baru di tahap N → lapisan detail (garis asli) di tahap akhir
-```
-
-- Slider memindah N; transisi 200 ms (opacity) untuk menunjukkan apa yang bertambah.
-- Toggle lapisan: Garis bantu · Objek utama · Kelompok warna · Grid.
-- Region baru di tahap aktif diberi outline putus-putus + label nomor (tidak hanya mengandalkan warna — PRD §12).
-
-### 4.6 Saran warna
-
-1. `palette_demo.json` berisi cat demo (merek/seri/nama) dengan hex hasil foto swatch kering terkalibrasi.
-2. Untuk tiap warna region: cari kombinasi 1–3 cat dengan **bagian bulat** (mis. 2:1, 3:1:1) yang meminimalkan ΔE2000 memakai Mixbox.
-3. Jika ada resep teruji (`recipe_id`) dengan ΔE kecil → tampilkan resep itu. Jika tidak → tampilkan kombinasi terbaik berlabel **"perkiraan — uji sedikit dulu"**.
-4. Jika ΔE terbaik masih besar → katakan warnanya sulit dicapai dengan palet ini dan sarankan warna terdekat atau cat tambahan.
-5. Claude hanya menulis penjelasan ("tambahkan putih sedikit demi sedikit…"), tidak mengubah angka.
-
-### 4.7 Feedback checkpoint
-
-```
-foto progres → cek kualitas → luruskan (4 sudut) → ECC ke garis target
-→ metrik per region: terisi?, IoU siluet, selisih L*
-→ pilih maks 3 kandidat masalah terbesar → Claude tugas B menulis maks 2 saran
-```
-
-Claude tidak boleh menyebut region yang tidak ada di daftar kandidat. Jika penyelarasan gagal → `needs_retake` tanpa saran geometris.
-
----
-
-### 4.8 Storyline cerita dengan Gemini
-
-```mermaid
-flowchart TD
-    A[Karya ternormalisasi + region graph] --> B[Claude: kenali kisah + tulis storyboard]
-    B --> C{Validator storyboard}
-    C -- gagal --> B2[Retry 1x] --> C
-    C -- kisah tidak diketahui --> T[Tidak dibuat sebagai fakta: lewati atau interpretasi berlabel]
-    C -- lolos --> D[Gemini: panel 1 dengan karya asli sebagai referensi]
-    D --> E[Gemini: panel 2..n, referensi karya + panel sebelumnya]
-    E --> F[Simpan panel privat / terbit untuk koleksi]
-    D -. gagal/ditolak .-> G[Tampilkan storyboard teks]
-```
-
-**Langkah 1 — Claude menulis storyboard** (structured output, effort `medium`):
-
-```json
-{
-  "story": {
-    "title": "Penculikan Sita",
-    "status": "fakta",
-    "source_ids": ["kb_ramayana_03"],
-    "summary": "Rahwana menculik Sita saat Rama mengejar kijang emas."
-  },
-  "style_guide": "Gaya wayang Kamasan: garis kontur hitam tegas, bidang warna datar oker-merah-biru, latar krem, tanpa shading, tanpa perspektif.",
-  "characters": [
-    { "id": "rama", "name": "Rama", "lock": "kulit hijau kebiruan, mahkota emas bertingkat, kain merah, memegang busur",
-      "region_ids": ["r07", "r08"] }
-  ],
-  "panels": [
-    { "order": 1, "narration": "Sita melihat kijang emas di tepi hutan dan meminta Rama menangkapnya.",
-      "scene": "Sita menunjuk kijang emas; Rama berdiri di sampingnya; pepohonan gaya Kamasan.",
-      "character_ids": ["sita", "rama"], "is_depicted_in_artwork": false }
+    { "stage_id": "stage_3", "order": 3, "kind": "background_and_largest", "region_ids": ["r03", "r11"] }
   ]
 }
 ```
 
-Validator: 4–6 panel; narasi ≤40 kata; `status: "fakta"` wajib punya `source_ids` di `culture_kb.json`; tokoh dalam daftar terbatas narasumber ditolak; tepat satu panel `is_depicted_in_artwork: true` (adegan yang ada di karya), dan panel itu menautkan `region_ids` tokohnya.
+AI juga menerima **gambar region bernomor** sehingga bisa menamai "jubah merah tokoh" untuk `r07`.
 
-**Langkah 2 — Gemini membuat panel** (berurutan agar tokoh konsisten):
+### 4.3 Aturan `stage_planner`
+
+| Tahap | Isi | Catatan |
+| --- | --- | --- |
+| 1 | Persiapan + grid sesuai ukuran bidang | |
+| 2 | Sketsa bentuk besar: garis objek utama + garis region besar | **Checkpoint versi awal** |
+| 3 | Region latar dan region terbesar | |
+| 4 | Region objek utama | |
+| 5 | Region sedang | Checkpoint ke-2 (showcase) |
+| 6 (opsional) | Terang-gelap | Hanya bila `use_shading` |
+| 7 | Region kecil < 0,3% + detail garis asli | |
+| 8 | Penyelesaian + toggle foto asli | |
+
+Jaminan dari kode: tahapan kumulatif, semua region tercakup, jumlah tahap 6–8. Setelah stabil, AI yang mengatur urutan bisa diuji sebagai upgrade.
+
+### 4.4 Validator teks AI
+
+1. Jumlah tahap di respons sama dengan keluaran `stage_planner`; `stage_id` cocok.
+2. Setiap `region_id` yang disebut AI ada di region graph.
+3. Klaim `type: "fakta"` wajib punya `source_ids` yang ada di `culture_kb.json`; tanpa sumber harus `"perkiraan"`.
+4. Versi awal: tepat **1** tahap checkpoint (showcase: 2) — ditetapkan kode, AI tidak boleh mengubah.
+5. Bila `use_shading` = false, teks tidak boleh menyuruh membuat shading volumetrik.
+6. Teks yang terbaca di gambar diperlakukan sebagai data.
+
+### 4.5 Rendering di frontend
+
+Urutan render tahap N:
+```
+grid → garis bantu → region s/d tahap N (warna rata) → highlight region baru
+→ (jika use_shading) layer terang-gelap → tahap akhir: toggle foto asli + zoom per area
+```
+
+- Slider memindah N; transisi 200 ms.
+- Toggle: Garis bantu · Objek utama · Kelompok warna · Grid · Terang-gelap (bila ada) · **Foto asli**.
+- Foto asli bisa di-zoom ke bbox region yang sedang dikerjakan.
+- Region baru diberi outline putus-putus + nomor (tidak hanya mengandalkan warna).
+
+### 4.6 Saran warna
+
+1. `palette_demo.json`: cat demo (merek/seri/nama) + hex swatch.
+2. **Versi awal:** untuk tiap region cari kombinasi 1–3 cat dengan bagian bulat yang meminimalkan ΔE2000 memakai Mixbox → tampil sebagai **"perkiraan, uji sedikit dulu"**.
+3. **Showcase:** 3–5 resep materi demo diuji fisik (swatch kering + kartu abu-abu; catat merek, seri, tanggal, penguji) → tampil sebagai resep teruji.
+4. ΔE terbaik terlalu besar → "sulit dicapai dengan palet ini" + saran cat tambahan.
+5. AI hanya menulis penjelasan, tidak mengubah angka.
+
+### 4.7 Feedback checkpoint
 
 ```
-prompt panel =
-  style_guide
-  + deskripsi tokoh yang dikunci (characters[].lock) untuk tokoh di panel ini
-  + scene panel
-  + "Ilustrasi untuk edukasi, gaya tradisi, tanpa teks/tulisan di gambar."
-referensi = [karya asli] + [panel sebelumnya (jika ada)]
+foto progres → cek kualitas → tap 4 sudut (default) → warp → ECC ke garis target
+→ metrik per region: terisi?, IoU siluet, selisih L*
+→ pilih maks 3 kandidat masalah terbesar → OpenAI menulis maks 2 saran dari kandidat
 ```
 
-- Panel adegan yang ada di karya tidak digenerate: dipakai **potongan karya asli** dengan label "karya asli", supaya pengguna melihat hubungan langsung cerita ↔ yang akan dilukis.
-- Panel dimuat bertahap (panel 1 muncul dulu); status per panel di `GET /stories/:id`.
-- Gemini menolak/gagal → panel diganti kartu narasi teks; fitur lain tetap jalan.
-- Setiap panel diberi watermark kecil + label UI **"Ilustrasi AI"**.
+AI tidak boleh menyebut region di luar kandidat. Penyelarasan gagal → `needs_retake` tanpa saran geometris.
 
-**Langkah 3 — Tautan ke latihan:** di UI cerita, tokoh pada panel adegan karya bisa diketuk → lompat ke tahap tutorial yang membuka `region_ids` tokoh itu ("Kamu akan melukis Rama di tahap 3–4").
+### 4.8 Storyline cerita (P1)
 
-## 5. Desain pembelajaran (cara aplikasi mengajarkan melukis)
+```mermaid
+flowchart TD
+    A[Karya + region graph] --> B[OpenAI: kenali kisah + tulis storyboard]
+    B --> C{Validator storyboard}
+    C -- kisah tidak diketahui --> T[Lewati atau interpretasi berlabel]
+    C -- lolos --> D[OpenAI image: panel 1, referensi karya + potongan tokoh]
+    D --> E[OpenAI image: panel 2..n, referensi + panel sebelumnya]
+    E --> F[Simpan panel]
+    D -. gagal/ditolak .-> G[Storyboard teks]
+```
+
+- Storyboard terstruktur: kisah (fakta/perkiraan/tidak diketahui + source_ids), `style_guide`, tokoh dengan deskripsi terkunci + `region_ids`, 4–6 panel (narasi ≤40 kata).
+- Draf dengan `gpt-image-2.6-flare`, aset final koleksi dengan `gpt-image-2.6-sunburst`.
+- Panel adegan yang ada di karya memakai **potongan karya asli**, tidak digenerate.
+- Label "Ilustrasi AI"; tokoh/adegan dalam daftar terbatas tidak digenerate; fallback teks.
+- Tokoh di panel bisa diketuk → lompat ke tahap yang membuka region tokoh itu.
+
+---
+
+## 5. Desain pembelajaran
 
 | Prinsip | Wujud di aplikasi |
 | --- | --- |
-| Dari besar ke kecil | Urutan bawaan: persiapan → sketsa bentuk besar → bidang dasar → pengembangan → detail → penyelesaian |
-| Ikuti teknik karya | Karya garis/bidang datar (Kamasan, wayang) tidak diberi shading; karya bervolume baru boleh |
-| Grid method | Grid diskalakan ke ukuran bidang pilihan pengguna (A4, A3, 30×40) supaya proporsi aman |
-| Satu tindakan per tahap | Setiap tahap punya satu instruksi utama dan patokan "selesai jika…" |
-| Belajar dari kesalahan umum | Tiap tahap menampilkan 1–2 kesalahan umum dan cara memperbaikinya |
-| Umpan balik tepat waktu | 2 checkpoint (setelah sketsa, setelah warna dasar), bukan menilai hasil akhir |
-| Warna sebagai keterampilan | Kartu resep: swatch target, cat penyusun, bagian, "tambah sedikit demi sedikit", cara koreksi |
-| Budaya melekat ke praktik | Fakta budaya muncul di tahap yang relevan (mis. arti warna saat mengisi warna itu) |
-| Cerita sebelum melukis | Storyline cerita memberi alasan emosional dan konteks: pengguna tahu siapa tokoh yang dilukis dan apa yang sedang terjadi |
-| Refleksi | Satu pertanyaan akhir yang jawabannya memang diajarkan, bukan tebak makna |
-| Tanpa skor keindahan | Tidak ada nilai; rangkuman berisi keterampilan yang sudah dilatih |
+| Dari besar ke kecil | Aturan `stage_planner`: sketsa → latar/terbesar → objek → sedang → kecil/detail → penyelesaian |
+| Ikuti teknik karya | Karya garis/bidang datar (Kamasan, wayang) tanpa terang-gelap; karya bervolume (Raden Saleh) dengan layer terang-gelap |
+| Grid method | Grid diskalakan ke ukuran bidang (A4, A3, 30×40) |
+| Satu tindakan per tahap | Satu instruksi utama + patokan "selesai jika…" |
+| Belajar dari kesalahan umum | 1–2 kesalahan umum per tahap dan cara memperbaikinya |
+| Lihat sumber aslinya | Toggle foto asli + zoom, terutama di tahap detail |
+| Umpan balik tepat waktu | Checkpoint setelah sketsa (versi awal), ditambah setelah region sedang (showcase) |
+| Warna sebagai keterampilan | Kartu resep: swatch, cat penyusun, bagian, "tambah sedikit demi sedikit", cara koreksi |
+| Budaya melekat ke praktik | Fakta budaya muncul di tahap yang relevan |
+| Refleksi | Satu pertanyaan akhir yang jawabannya memang diajarkan |
+| Tanpa skor keindahan | Rangkuman berisi keterampilan yang dilatih |
 
-**Tidak ada training model di MVP.** "Pembelajaran" di sini adalah desain pedagogi; semua model AI dan CV memakai versi pretrained. Data pengguna tidak dipakai untuk melatih model (PRD §17).
+Tidak ada training model. Data pengguna tidak dipakai untuk melatih model.
 
 ---
 
 ## 6. Fase pengerjaan
 
-### Fase 0 — Persiapan sebelum hackathon (bila diizinkan aturan lomba)
+| Fase | Xavier (frontend) | Iqbal (backend, CV, AI) | Selesai jika |
+| --- | --- | --- | --- |
+| 1. Fondasi | Scaffold frontend, layout mobile-first | Scaffold API, Supabase, sesi tamu, unggah foto | Foto bisa diunggah dari HP dan tersimpan privat; sesi pulih setelah reload |
+| 2. Galeri & CV | Galeri, detail karya, persiapan | Pipeline CV: mask, garis (uji lineart vs XDoG), region | Lapisan masuk akal pada foto uji |
+| 3. Tahapan | StageCanvas SVG, slider, toggle layer, foto asli | `stage_planner` + panggilan OpenAI teks per tahap + validator | Satu materi bisa diikuti dari tahap 1 sampai akhir |
+| 4. Mode bebas & warna | Layar unggah mode bebas, status job, kartu budaya | Resep warna Mixbox (perkiraan), mode bebas end-to-end | Foto bebas menghasilkan tutorial di HP |
+| 5. Checkpoint | Checkpoint UI (1 checkpoint), tap 4 sudut | Pelurusan + metrik + feedback OpenAI | Feedback muncul atau meminta foto ulang dengan tepat |
+| 6. Rilis versi awal | Deploy, rekam video demo | Deploy backend, batas biaya harian | Definisi selesai versi awal (§8) terpenuhi |
+| 7. Penguatan showcase | Polishing, aksesibilitas | 2 checkpoint, retensi 24 jam, uji akses antar-sesi | Definisi selesai versi showcase (§8) terpenuhi |
+| 8. P1 (bila P0 stabil) | Storyline cerita UI | Storyline OpenAI image, ukur P95 | Storyline materi demo tampil dengan fallback teks |
+| 9. Demo | Demo live + cadangan video | Monitoring | Demo selesai tanpa gangguan |
 
-| Pekerjaan | Hasil | PJ |
-| --- | --- | --- |
-| Tentukan set cat demo (5–8 warna + putih/hitam) | `palette_demo.json` | Konten |
-| Buat & foto swatch kering (murni + campuran 1:1, 2:1) dengan kartu abu-abu | Hex terkalibrasi, resep teruji awal | Konten |
-| Pilih 3–5 materi koleksi + izin gambar + peninjau | Daftar materi + bukti izin | Konten |
-| Susun `culture_kb.json` (15–30 entri tradisi/motif/teknik/kisah + sumber + daftar tokoh/adegan terbatas) | Basis budaya | Konten |
-| Uji coba Gemini pada 3 karya (konsistensi tokoh, kepatuhan gaya) begitu API key ada | Pilihan model + contoh prompt | AI/QA |
-| Kumpulkan set uji: 5 foto/materi, 10 foto negatif, 20 foto karya beragam | `eval/` | QA |
-| Siapkan akun: Anthropic API, Supabase, Vercel, Railway; batas biaya harian | Kredensial di secret manager | Backend |
+Pembagian backend antara Xavier dan Iqbal disepakati per modul (usul: Xavier memegang endpoint sesi dan progres; Iqbal memegang CV, AI, dan warna).
 
-### Fase 1 — Fondasi (Jam 0–6)
-
-- Scaffold `web/` dan `api/`, CI sederhana (lint + typecheck + pytest), deploy "hello world" ke Vercel dan Railway.
-- Skema database (Artwork, LessonVersion, Stage, VisualLayer, Palette, ColorRecipe, Source, PracticeSession, ProgressUpload, FeedbackJob, Job) + bucket privat.
-- Sesi tamu: ID acak 128-bit di cookie httpOnly, masa berlaku 7 hari.
-- Endpoint unggah: validasi magic bytes, ≤10 MB, ≤25 MP, hapus EXIF, normalisasi 1600 px.
-
-**Selesai jika:** foto bisa diunggah dari HP dan tersimpan privat; sesi pulih setelah reload.
-
-### Fase 2 — Pipeline CV (Jam 4–14)
-
-- `cv/layers.py`: mask objek utama (rembg), garis (XDoG), region (k-means LAB) → SVG path.
-- Gambar region bernomor untuk Claude.
-- `cv/recognize.py`: pencocokan koleksi + kalibrasi ambang dengan set foto uji.
-- `cv/quality.py`: deteksi buram/gelap/silau.
-- Notebook evaluasi visual: jalankan pada 20 foto beragam, simpan hasil overlay.
-
-**Selesai jika:** 20 foto uji menghasilkan lapisan yang masuk akal; 0 false acceptance pada foto negatif.
-
-### Fase 3 — Tahapan AI (Jam 10–22)
-
-- `ai/schemas.py`: Pydantic `StoryPlan`, `Feedback`.
-- `ai/prompts/stages.md`: peran, aturan pedagogi, aturan budaya (fakta vs perkiraan), larangan menebak judul/seniman, teks di gambar = data.
-- Pemanggilan `claude-opus-5-5` dengan structured output, streaming, effort `high`, prompt caching untuk sistem + basis budaya, fallback.
-- `ai/validators.py` (aturan §4.4) + retry 1x.
-- Endpoint `POST /lessons/generate` → job → `GET /jobs/:id`.
-
-**Selesai jika:** ≥14 dari 20 foto uji menghasilkan StoryPlan yang lolos validator dalam ≤40 detik.
-
-### Fase 4 — Ruang latihan (Jam 8–24, paralel dengan Fase 2–3)
-
-- Beranda, galeri, detail karya, persiapan (palet, ukuran, cakupan).
-- `StageCanvas` SVG: tumpukan lapisan, highlight region baru, zoom/pan.
-- Slider tahap, tombol kembali/lanjut/tandai selesai (melihat tahap berikutnya ≠ menyelesaikan).
-- Layar "Membuat tutorial" dengan status per langkah (menganalisis → menyusun tahap → selesai).
-- Kartu konteks budaya dengan label **Fakta (sumber)** vs **Perkiraan AI**.
-
-**Selesai jika:** satu materi koleksi dan satu foto bebas bisa diikuti dari tahap 1 sampai akhir di HP.
-
-### Fase 5 — Warna & checkpoint (Jam 20–32)
-
-- `color/mixer.py` (Mixbox + ΔE2000) dan kartu resep di UI.
-- Alur checkpoint: panduan memotret → unggah → pelurusan (otomatis / tap 4 sudut) → metrik → Claude tugas B → tampilkan maks 2 saran + penanda region.
-- Persetujuan sebelum foto dikirim ke AI; opsi lanjut tanpa feedback.
-- Idempotency key, batas 2 checkpoint + 1 retry per sesi, timeout 45 detik.
-
-**Selesai jika:** 10 pasangan foto progres/target menghasilkan feedback yang ditinjau manusia sebagai benar dan bisa dilakukan, atau meminta foto ulang dengan tepat.
-
-### Fase 5b — Storyline cerita (Jam 22–32, paralel dengan Fase 5)
-
-- `story/storyboard.py`: prompt + skema + validator storyboard (Claude).
-- `story/gemini_client.py`: pembuatan panel berurutan dengan referensi; timeout 20 detik/panel; 1 regenerasi.
-- `story/placeholder.py`: panel contoh berlabel selama API key belum ada — **semua alur dan UI dikerjakan dulu dengan ini**.
-- UI layar Cerita: carousel panel, narasi, label fakta/perkiraan/"Ilustrasi AI", tautan tokoh → tahap, tombol lewati.
-- Pra-generate dan tinjau panel untuk materi koleksi demo.
-
-**Selesai jika:** satu materi koleksi punya storyline dengan panel tertinjau; foto bebas menghasilkan storyline atau fallback teks dengan benar; tanpa API key aplikasi tetap jalan dengan placeholder.
-
-### Fase 6 — Penutup, privasi, ketahanan (Jam 30–38)
-
-- Layar selesai: rangkuman keterampilan + 1 pertanyaan refleksi + hapus sesi.
-- `pg_cron`: hapus foto ≤24 jam; hapus sesi mencabut akses seketika.
-- Uji akses antar-sesi (job/foto sesi lain → 403).
-- Jalur gagal: kamera ditolak, file palsu, AI timeout, jaringan putus, contoh demo diberi label.
-- Event analitik minimum (PRD §18).
-
-### Fase 7 — Uji pengguna & pengukuran (Jam 36–44)
-
-- Uji 5–8 peserta: waktu mulai, keberhasilan memulai, kejelasan instruksi, kegunaan feedback.
-- Ukur P95 (≥20 eksekusi) untuk generate dan feedback; catat ukuran sampel.
-- Peninjau budaya mengecek 3–5 materi koleksi + sampel hasil AI.
-
-### Fase 8 — Demo (Jam 42–48)
-
-- Siapkan lukisan fisik di 3 tahap (sketsa, warna dasar, akhir) untuk demo checkpoint.
-- Skrip 3 menit (PRD §21) dengan satu foto bebas live + cadangan materi koleksi.
-- Dokumentasikan target vs hasil ukur dan pengurangan scope bila ada.
-
-### Ringkasan paralel per peran
-
-| Jam | Konten/Budaya | Frontend/UX | Backend/CV | AI/QA |
-| --- | --- | --- | --- | --- |
-| 0–6 | Finalisasi materi & KB | Scaffold, layout | Scaffold, DB, unggah | Set uji, akun API |
-| 6–14 | Tahap materi koleksi | Galeri, detail, persiapan | Lapisan CV, recognition | Prompt tahapan |
-| 14–24 | Resep teruji | StageCanvas, slider | Job queue, generate | Validator, eval tahapan |
-| 24–32 | Tinjau hasil AI + panel cerita | Checkpoint UI, resep UI, layar Cerita | Pelurusan, metrik, klien Gemini | Prompt feedback & storyboard, eval |
-| 32–40 | Pertanyaan refleksi | Layar selesai, a11y | Retensi, keamanan | Uji kegagalan |
-| 40–48 | Narasi demo | Polishing | Ukur kinerja | Uji pengguna, laporan |
+Uji awal (selesai sebelum Fase 3 dan 4 dikunci):
+- Lineart model vs XDoG/Canny pada 5 foto (Fase 2).
+- 2–3 model OpenAI (besar vs kecil) untuk tugas A dan B pada 5–10 foto yang sama (Fase 3).
+- Akses `gpt-image-2.6-*` di Playground (cukup dicek; implementasi P1 menyusul).
 
 ---
 
 ## 7. Risiko teknis & rencana cadangan
 
+Solusi lengkap (pencegahan, deteksi, cadangan, sumber) ada di [SOLUSI_RISIKO.md](SOLUSI_RISIKO.md).
+
 | Risiko | Tanda | Cadangan |
 | --- | --- | --- |
-| Region k-means terlalu banyak/berantakan | >40 region kecil | Naikkan smoothing, gabung region <0,3%, batasi 8 warna |
-| StoryPlan sering gagal validasi | <70% lolos | Sederhanakan skema; biarkan kode yang membagi region per tahap, Claude hanya menulis teks |
-| Generate terlalu lama | P95 >40 detik | Turunkan effort ke `medium`, kecilkan gambar ke 1024 px |
-| Pelurusan foto progres gagal | Sering `needs_retake` | Wajibkan tap 4 sudut |
-| Biaya API membengkak | Melewati batas harian | Cache hasil foto identik (hash), batas 3 generate/sesi |
-| API key Gemini terlambat | Belum ada key saat Fase 5b | Placeholder berlabel; demo memakai panel koleksi yang sudah dibuat begitu key ada |
-| Tokoh tidak konsisten antar panel | Peninjau tidak mengenali tokoh yang sama | Kunci deskripsi tokoh lebih rinci, sertakan panel sebelumnya sebagai referensi, kurangi jumlah panel |
-| Panel keliru secara budaya | Atribut tokoh salah | Panel koleksi wajib ditinjau; untuk foto bebas tampilkan label lebih tegas atau pakai storyboard teks |
-| Warna perkiraan jauh dari aslinya | ΔE besar saat uji fisik | Tampilkan hanya resep teruji untuk materi demo |
+| Garis sketsa berisik | Tekstur kanvas/serat ikut jadi garis | Model lineart; XDoG/Canny dengan smoothing lebih kuat sebagai cadangan |
+| Region k-means terlalu banyak/berantakan | >35 region atau banyak pulau kecil | Gabung region <0,3% ke tetangga batas terpanjang, batasi 8 warna, contek `paintbynumbersgenerator` |
+| Teks tahapan gagal validasi | Respons tidak sesuai skema | Sudah dimitigasi: pembagian region oleh kode; teks gagal → retry 1× → templat |
+| Generate terlalu lama | P95 >40 detik | Tampilkan tahapan visual dulu, teks menyusul; model kecil untuk tugas ringan; gambar 1024 px |
+| Pelurusan foto progres gagal | Sering `needs_retake` | Tap 4 sudut sudah default; panduan memotret |
+| Model OpenAI terlalu mahal | Melewati batas harian | Model kecil untuk tugas ringan, cache hasil identik, batas harian, DeepSeek untuk teks tanpa foto sebagai opsi terakhir |
+| Warna perkiraan jauh dari aslinya | ΔE besar saat uji fisik | Materi demo hanya menampilkan resep teruji |
+| (P1) Tokoh tidak konsisten antar panel | Peninjau tidak mengenali tokoh yang sama | Referensi potongan tokoh + panel sebelumnya, Sunburst untuk final, kurangi panel |
+| (P1) Panel keliru secara budaya | Atribut tokoh salah | Tinjauan panel koleksi, checklist atribut, storyboard teks |
 
 ---
 
 ## 8. Definisi selesai teknis
 
-- Semua P0 PRD jalan end-to-end di HP (Android Chrome + iOS Safari).
-- Satu foto bebas live → tutorial AI → checkpoint → feedback → selesai, berhasil saat demo.
-- Storyline cerita tampil untuk materi demo (panel Gemini tertinjau), dengan fallback teks teruji.
-- Validator, uji akses antar-sesi, dan penghapusan 24 jam terbukti lewat tes otomatis.
-- Laporan ukur: P95 generate, P95 feedback, tingkat lolos validator, false acceptance pencocokan.
+### Versi awal (bukti produk untuk proposal)
+- 1 materi koleksi + mode bebas berjalan di HP (Android Chrome + iOS Safari).
+- 1 checkpoint feedback berjalan (tap 4 sudut).
+- Resep perkiraan berlabel tampil.
+- Batas biaya harian OpenAI aktif.
+- Video demo terekam.
+
+### Versi showcase
+- Semua P0 jalan end-to-end; 3–5 materi.
+- Resep teruji fisik untuk materi demo.
+- 2 checkpoint.
+- Uji akses antar-sesi dan penghapusan 24 jam terbukti lewat tes otomatis.
+- Laporan ukur: P95 pembuatan tutorial, P95 feedback, tingkat lolos validator.
+- (P1, bila jadi) Storyline cerita untuk materi demo dengan panel tertinjau dan fallback teks.

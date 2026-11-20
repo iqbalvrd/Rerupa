@@ -1,0 +1,13 @@
+{
+  "id": "9f6a6dc4-f529-4ec5-b68d-f6fe8ddd0e68",
+  "type": "generate_lesson",
+  "status": "failed",
+  "is_final": true,
+  "progress": { "step": "done" },
+  "result": null,
+  "error_code": "pipeline_not_ready",
+  "error_message": "Pembuatan tutorial otomatis belum tersedia.",
+  "lesson_version_id": null,
+  "created_at": "2026-11-21T08:15:02.420+00:00",
+  "finished_at": "2026-11-21T08:15:03.101+00:00"
+}

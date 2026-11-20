@@ -1,0 +1,23 @@
+{
+  "id": "a3e5f0c2-8d41-4b77-b2a9-6c0d9e1f4a58",
+  "slug": "kamasan-figur-1",
+  "title": "Figur wayang gaya Kamasan",
+  "artist": null,
+  "tradition": "Kamasan",
+  "region_origin": "Bali",
+  "license": "cc_by_sa",
+  "license_note": "Tropenmuseum, CC BY-SA 3.0",
+  "thumbnail_url": "https://<project>.supabase.co/storage/v1/object/sign/catalog/kamasan-figur-1/thumb.jpg?token=…",
+  "image_url": "https://<project>.supabase.co/storage/v1/object/sign/catalog/kamasan-figur-1/full.jpg?token=…",
+  "lesson_version_id": null,
+  "adaptation_scope": "Potongan figur kiri",
+  "sources": [
+    {
+      "code": "kb_kamasan_01",
+      "title": "Balinese Traditional Classic Paintings: Kamasan Style",
+      "publisher": "ARMA Museum",
+      "url": "https://artsandculture.google.com/…",
+      "claim_note": "Asal gaya dan teknik"
+    }
+  ]
+}

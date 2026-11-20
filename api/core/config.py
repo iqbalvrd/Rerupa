@@ -1,6 +1,7 @@
 """Konfigurasi aplikasi dari environment (.env)."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,13 +20,32 @@ class Settings(BaseSettings):
     openai_text_model: str = ""
     openai_vision_model: str = ""
 
-    # Perilaku aplikasi
+    # Sesi tamu
+    session_cookie_name: str = "rerupa_session"
+    session_ttl_days: int = 7
+    # Lokal (localhost:3000 → localhost:8000) cukup "lax". Produksi lintas domain
+    # (Vercel → Railway) butuh "none" + cookie_secure=true agar cookie ikut terkirim.
+    cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    cookie_secure: bool = False
+
+    # Unggahan
+    max_upload_bytes: int = 10 * 1024 * 1024
+    max_image_pixels: int = 25_000_000
+
+    # Kuota & biaya
+    generate_quota_per_session: int = 3
     daily_ai_budget_usd: float = 5.0
+
+    # Perilaku aplikasi
     checkpoint_count: int = 1
     lineart_method: str = "xdog"
     frontend_origin: str = "http://localhost:3000"
     feature_story: bool = False
     feature_recognition: bool = False
+
+    # Worker
+    worker_poll_seconds: float = 0.5
+    worker_stale_after_seconds: int = 120
 
     @property
     def supabase_configured(self) -> bool:

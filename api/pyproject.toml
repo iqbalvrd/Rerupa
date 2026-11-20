@@ -27,6 +27,7 @@ cv = [
     "numpy>=2.5.5",
     "opencv-python-headless>=5.1.0.95",
     "pillow>=13.0.0",
+    "psutil>=7.2.2",
     "rembg[cpu]>=2.0.87",
     "scikit-image>=0.26.0",
     "scikit-learn>=1.9.1",

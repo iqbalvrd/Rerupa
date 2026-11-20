@@ -93,9 +93,27 @@ def get_job_for_session(job_id: str, session_id: str) -> dict:
 
 # ---------- dipakai worker ----------
 
-def claim_job(worker_id: str, types: list[str]) -> dict | None:
-    rows = get_supabase().rpc("claim_job", {"p_worker": worker_id, "p_types": types}).execute().data
+def claim_job(worker_id: str, types: list[str], session_id: str | None = None) -> dict | None:
+    """Klaim job antre tertua. Job dari sesi yang dihapus/kedaluwarsa tidak pernah diambil (lihat migrasi 8)."""
+    rows = (
+        get_supabase()
+        .rpc("claim_job", {"p_worker": worker_id, "p_types": types, "p_session_id": session_id})
+        .execute()
+        .data
+    )
     return rows[0] if rows else None
+
+
+def cancel_queued_jobs(session_id: str) -> None:
+    """Dipanggil saat sesi dihapus: job yang belum jalan dibatalkan agar foto tidak diproses lagi."""
+    get_supabase().table("jobs").update(
+        {
+            "status": "failed",
+            "error_code": "session_deleted",
+            "finished_at": now_utc().isoformat(),
+            "progress": {"step": "done"},
+        }
+    ).eq("session_id", session_id).eq("status", "queued").execute()
 
 
 def requeue_stale(stale_after_seconds: int) -> int:

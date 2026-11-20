@@ -33,6 +33,7 @@ MESSAGES: dict[str, str] = {
     "ai_refused": "Bagian ini tidak bisa dibuat otomatis.",
     "pipeline_not_ready": "Pembuatan tutorial otomatis belum tersedia.",
     "worker_timeout": "Proses terlalu lama. Coba lagi.",
+    "session_deleted": "Sesi sudah dihapus, jadi proses ini dibatalkan.",
     "internal_error": "Terjadi kesalahan di server. Coba lagi.",
 }
 

@@ -2,6 +2,9 @@
 
 Fase 1: generate_lesson belum punya pipeline (Fase 2–4), jadi job diselesaikan sebagai
 failed/pipeline_not_ready — jujur ke frontend, bukan pura-pura berhasil.
+
+Aturan untuk handler berikutnya: sebelum mengirim foto ke penyedia AI, cek ulang bahwa
+sesi belum dihapus dan params.consent_ai_photo = true.
 """
 
 from collections.abc import Callable

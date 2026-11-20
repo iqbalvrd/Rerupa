@@ -19,6 +19,7 @@ from core.session import (
     set_session_cookie,
 )
 from core.supabase_client import get_supabase
+from services.jobs import cancel_queued_jobs
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -119,6 +120,7 @@ def delete_session(session_id: UUID, response: Response, session: dict = Depends
     get_supabase().table("practice_sessions").update({"deleted_at": now_utc().isoformat()}).eq(
         "id", session["id"]
     ).execute()
+    cancel_queued_jobs(session["id"])
     response.status_code = status.HTTP_204_NO_CONTENT
     clear_session_cookie(response)
     return response

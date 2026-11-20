@@ -26,9 +26,12 @@ def make_worker_id() -> str:
     return f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:6]}"
 
 
-def process_one(worker_id: str, handlers: dict[str, Handler] = HANDLERS) -> bool:
-    """Ambil dan jalankan satu job. Return False bila antrean kosong."""
-    job = job_service.claim_job(worker_id, list(handlers))
+def process_one(worker_id: str, handlers: dict[str, Handler] = HANDLERS, session_id: str | None = None) -> bool:
+    """Ambil dan jalankan satu job. Return False bila antrean kosong.
+
+    session_id membatasi ke satu sesi (dipakai tes); worker produksi memanggil tanpa filter.
+    """
+    job = job_service.claim_job(worker_id, list(handlers), session_id)
     if job is None:
         return False
 

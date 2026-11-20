@@ -4,9 +4,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import get_settings
-from routes import health
+from core.errors import register_error_handlers
+from core.logging_setup import setup_logging
+from routes import health, sessions
 
 settings = get_settings()
+setup_logging()
 
 app = FastAPI(title="Rerupa API", version="0.1.0")
 
@@ -17,5 +20,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Idempotency-Key"],
 )
+register_error_handlers(app)
 
 app.include_router(health.router)
+app.include_router(sessions.router)

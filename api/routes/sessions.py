@@ -1,5 +1,6 @@
 """Sesi tamu: POST/GET/PATCH/DELETE /sessions."""
 
+import logging
 from datetime import timedelta
 from typing import Literal
 from uuid import UUID, uuid4
@@ -20,7 +21,9 @@ from core.session import (
 )
 from core.supabase_client import get_supabase
 from services.jobs import cancel_queued_jobs
+from services.uploads import purge_session_files
 
+log = logging.getLogger("rerupa.sessions")
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 CanvasSize = Literal["A4", "A3", "30x40"]
@@ -121,6 +124,11 @@ def delete_session(session_id: UUID, response: Response, session: dict = Depends
         "id", session["id"]
     ).execute()
     cancel_queued_jobs(session["id"])
+    try:
+        purge_session_files(session["id"])
+    except Exception:
+        # Akses sudah dicabut; file yang gagal dihapus sekarang dibersihkan pekerjaan retensi.
+        log.exception("purge_on_delete_failed", extra={"session_id": session["id"]})
     response.status_code = status.HTTP_204_NO_CONTENT
     clear_session_cookie(response)
     return response

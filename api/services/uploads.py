@@ -19,6 +19,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from core.config import get_settings
 from core.errors import AppError
 from core.security import sha256_hex
+from core.session import now_utc
 from core.supabase_client import get_supabase
 
 log = logging.getLogger("rerupa.uploads")
@@ -141,6 +142,27 @@ def store_upload(
     except Exception:
         storage.remove([path])
         raise
+
+
+def purge_session_files(session_id: str) -> int:
+    """Hapus semua file unggahan milik sesi dari Storage dan tandai purged. Dipanggil saat sesi dihapus."""
+    db = get_supabase()
+    rows = (
+        db.table("uploads")
+        .select("id, raw_path, normalized_path, rectified_path")
+        .eq("session_id", session_id)
+        .is_("purged_at", "null")
+        .execute()
+        .data
+    )
+    paths = [p for r in rows for p in (r["raw_path"], r["normalized_path"], r["rectified_path"]) if p]
+    if paths:
+        db.storage.from_(BUCKET).remove(paths)
+    if rows:
+        db.table("uploads").update(
+            {"raw_path": None, "normalized_path": None, "rectified_path": None, "purged_at": now_utc().isoformat()}
+        ).in_("id", [r["id"] for r in rows]).execute()
+    return len(paths)
 
 
 def discard_upload(upload: dict) -> None:

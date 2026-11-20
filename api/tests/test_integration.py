@@ -226,3 +226,28 @@ def test_artworks_only_published():
         assert c.get("/artworks/pytest-draf").status_code == 404
     finally:
         db.table("artworks").delete().in_("id", [published["id"], draft["id"]]).execute()
+
+
+def test_deleting_session_removes_photo_files(client_factory):
+    from core.supabase_client import get_supabase
+
+    a = client_factory()
+    assert _generate(a, make_image("JPEG"), "key-purge-0001").status_code == 202
+    db = get_supabase()
+    path = db.table("uploads").select("raw_path").eq("session_id", a.session_id).execute().data[0]["raw_path"]
+    assert a.delete(f"/sessions/{a.session_id}").status_code == 204
+
+    row = db.table("uploads").select("raw_path, purged_at").eq("session_id", a.session_id).execute().data[0]
+    assert row["raw_path"] is None and row["purged_at"] is not None
+    folder = db.storage.from_("uploads").list(a.session_id)
+    assert path.split("/")[-1] not in [f["name"] for f in folder]
+
+
+def test_oversized_request_rejected_early(client_factory):
+    a = client_factory()
+    res = a.post(
+        "/lessons/generate",
+        content=b"x",
+        headers={"Content-Length": str(20 * 1024 * 1024), "Idempotency-Key": "key-oversize-01", "Content-Type": "multipart/form-data; boundary=x"},
+    )
+    assert res.status_code == 413 and res.json()["error"]["code"] == "file_too_large"

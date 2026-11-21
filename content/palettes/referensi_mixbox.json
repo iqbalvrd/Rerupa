@@ -1,0 +1,25 @@
+{
+  "_catatan": "Palet SEMENTARA untuk pengembangan. Warna = nilai pigmen referensi dari dokumentasi Mixbox (+ putih dan hitam), BUKAN hasil ukur cat fisik. Ganti dengan palet cat demo yang swatch-nya difoto dengan kartu abu-abu (PRD §9).",
+  "key": "referensi-mixbox",
+  "brand": "Referensi digital",
+  "series": "Mixbox (bukan cat fisik)",
+  "name": "Palet referensi digital",
+  "is_demo": true,
+  "paints": [
+    { "code": "cadmium_yellow",       "name": "Kuning Kadmium (Cadmium Yellow)",        "hex": "#FEEC00", "pigment_code": "PY35" },
+    { "code": "hansa_yellow",         "name": "Kuning Hansa (Hansa Yellow)",            "hex": "#FCD300", "pigment_code": "PY3" },
+    { "code": "cadmium_orange",       "name": "Jingga Kadmium (Cadmium Orange)",        "hex": "#FF6900", "pigment_code": "PO20" },
+    { "code": "cadmium_red",          "name": "Merah Kadmium (Cadmium Red)",            "hex": "#E12301", "pigment_code": "PR108" },
+    { "code": "quinacridone_magenta", "name": "Magenta Kuinakridon (Quinacridone Magenta)", "hex": "#80022E", "pigment_code": "PR122" },
+    { "code": "cobalt_violet",        "name": "Ungu Kobalt (Cobalt Violet)",            "hex": "#4E0042", "pigment_code": "PV14" },
+    { "code": "ultramarine_blue",     "name": "Biru Ultramarin (Ultramarine Blue)",     "hex": "#190059", "pigment_code": "PB29" },
+    { "code": "cobalt_blue",          "name": "Biru Kobalt (Cobalt Blue)",              "hex": "#002185", "pigment_code": "PB28" },
+    { "code": "phthalo_blue",         "name": "Biru Ftalo (Phthalo Blue)",              "hex": "#0D1B44", "pigment_code": "PB15" },
+    { "code": "phthalo_green",        "name": "Hijau Ftalo (Phthalo Green)",            "hex": "#003C32", "pigment_code": "PG7" },
+    { "code": "permanent_green",      "name": "Hijau Permanen (Permanent Green)",       "hex": "#076D16", "pigment_code": null },
+    { "code": "sap_green",            "name": "Hijau Sap (Sap Green)",                  "hex": "#6B9404", "pigment_code": null },
+    { "code": "burnt_sienna",         "name": "Sienna Bakar (Burnt Sienna)",            "hex": "#7B4800", "pigment_code": "PBr7" },
+    { "code": "titanium_white",       "name": "Putih Titanium (Titanium White)",        "hex": "#FFFFFF", "pigment_code": "PW6" },
+    { "code": "ivory_black",          "name": "Hitam Gading (Ivory Black)",             "hex": "#1E1E1E", "pigment_code": "PBk9" }
+  ]
+}

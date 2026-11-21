@@ -1,6 +1,6 @@
 # Rerupa API — Panduan untuk Frontend
 
-Status per Fase 3 backend. Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
+Status per Fase 4 backend. Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
 
 ## Cara memanggil
 
@@ -22,8 +22,9 @@ Status per Fase 3 backend. Dokumentasi interaktif lengkap: jalankan API lalu buk
 | `DELETE /sessions/{id}` | ✅ | ✅ | 204; akses langsung dicabut, foto dan lapisan tutorial dihapus |
 | `POST /lessons/generate` | ✅ | ✅ | multipart `file` + `consent_ai_photo` + `scope` (opsional) + header `Idempotency-Key` → 202 job |
 | `GET /jobs/{id}` | ✅ | ✅ | Polling tiap 1 detik sampai `is_final: true` |
-| `GET /lessons/{id}` | ✅ | hanya untuk mode bebas | Tutorial lengkap. [contoh nyata](examples/lesson_detail.json) |
-| `GET /recipes/{id}` | ⏳ Fase 4 | — | `region_colors` di lesson masih `[]` |
+| `GET /lessons/{id}` | ✅ | hanya untuk mode bebas | Tutorial lengkap + saran warna. Query opsional `?palette_id=`. [contoh nyata](examples/lesson_detail.json) |
+| `GET /palettes` | ✅ | — | Palet yang bisa dipilih di layar Persiapan + daftar cat. [contoh](examples/palettes.json) |
+| `GET /recipes/{id}` | ✅ | — | Detail resep (teruji/perkiraan) bila `recipe_id` terisi |
 | `PATCH /sessions/{id}/progress` | ⏳ Fase 5 | ✅ | |
 | `POST /sessions/{id}/checkpoints` | ⏳ Fase 5 | ✅ | |
 
@@ -32,14 +33,14 @@ Status per Fase 3 backend. Dokumentasi interaktif lengkap: jalankan API lalu buk
 ```
 POST /sessions                      → cookie terpasang (sekali per pengguna)
 POST /lessons/generate              → 202 { id, status: "queued" }
-GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → started → cv → planning → writing → saving → done
+GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → started → cv → planning → colors → writing → saving → done
                                     → is_final: true → cek status:
    succeeded     → GET /lessons/{lesson_version_id}
    needs_retake  → tampilkan error_message (photo_unusable / not_artwork), minta foto ulang atau tawarkan galeri
    failed        → tampilkan error_message, tawarkan coba lagi / galeri
 ```
 
-Teks untuk layar "Membuat tutorial" per `progress.step`: `cv` = "Menganalisis foto", `planning` = "Membagi tahapan", `writing` = "Menulis instruksi", `saving` = "Menyimpan".
+Teks untuk layar "Membuat tutorial" per `progress.step`: `cv` = "Menganalisis foto", `planning` = "Membagi tahapan", `colors` = "Menghitung campuran warna", `writing` = "Menulis instruksi", `saving` = "Menyimpan".
 
 Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 
@@ -62,6 +63,8 @@ Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 - `ai_text_status`: `ai`, `template`, atau `curated`.
 - `culture_claims[]`: tampilkan label berbeda untuk `type: "fakta"` (dengan `sources`) dan `"perkiraan"`.
 - `reflection` bisa `null` (hanya ada bila ada fakta bersumber).
+- `region_colors[]` (satu per region) untuk `palette_id` yang dipakai: palet dari `?palette_id=`, lalu palet sesi (`PATCH /sessions` `palette_id`), lalu palet demo pertama. Isi: `label` ("Perkiraan, uji sedikit dulu" / "Sulit dicapai dengan palet ini" / "Resep teruji"), `components` (cat + `parts`, urut dari bagian terbesar), `mixed_hex` (pratinjau warna campuran), `delta_e`, `explanation` (kalimat siap tampil), `tips` (cara koreksi). Angka berasal dari model pencampuran pigmen, bukan AI.
+- Bila foto dan cakupan yang sama dikirim lagi dalam sesi yang sama, backend memakai tutorial lama (`result.cached = true`) tanpa proses atau biaya ulang.
 
 ## Kode error yang perlu ditangani di UI
 

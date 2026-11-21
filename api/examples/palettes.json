@@ -1,0 +1,115 @@
+[
+  {
+    "id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+    "name": "Palet referensi digital",
+    "brand": "Referensi digital",
+    "series": "Mixbox (bukan cat fisik)",
+    "paints": [
+      {
+        "id": "92fc8774-2d7f-49df-a7ae-65c0173d016a",
+        "code": "burnt_sienna",
+        "name": "Sienna Bakar (Burnt Sienna)",
+        "hex": "#7B4800",
+        "pigment_code": "PBr7"
+      },
+      {
+        "id": "f05b92e8-10a0-45c7-91ff-e74f912c24d9",
+        "code": "cadmium_orange",
+        "name": "Jingga Kadmium (Cadmium Orange)",
+        "hex": "#FF6900",
+        "pigment_code": "PO20"
+      },
+      {
+        "id": "db6c727c-5c1c-49ea-b924-11817099eec0",
+        "code": "cadmium_red",
+        "name": "Merah Kadmium (Cadmium Red)",
+        "hex": "#E12301",
+        "pigment_code": "PR108"
+      },
+      {
+        "id": "c701d047-6ec4-4732-b95a-df063c4e62c8",
+        "code": "cadmium_yellow",
+        "name": "Kuning Kadmium (Cadmium Yellow)",
+        "hex": "#FEEC00",
+        "pigment_code": "PY35"
+      },
+      {
+        "id": "52635da8-5321-4fd5-acc2-958bee3f8669",
+        "code": "cobalt_blue",
+        "name": "Biru Kobalt (Cobalt Blue)",
+        "hex": "#002185",
+        "pigment_code": "PB28"
+      },
+      {
+        "id": "d8ac435d-fa0e-4861-ab93-e86dcdbb8dac",
+        "code": "cobalt_violet",
+        "name": "Ungu Kobalt (Cobalt Violet)",
+        "hex": "#4E0042",
+        "pigment_code": "PV14"
+      },
+      {
+        "id": "b98474e5-4ba3-469d-87bc-687fb51481e9",
+        "code": "hansa_yellow",
+        "name": "Kuning Hansa (Hansa Yellow)",
+        "hex": "#FCD300",
+        "pigment_code": "PY3"
+      },
+      {
+        "id": "74cbe04b-5198-4bf4-a010-887bdd7dda0a",
+        "code": "ivory_black",
+        "name": "Hitam Gading (Ivory Black)",
+        "hex": "#1E1E1E",
+        "pigment_code": "PBk9"
+      },
+      {
+        "id": "530601b0-cd97-4004-b3d8-a718a41964e6",
+        "code": "permanent_green",
+        "name": "Hijau Permanen (Permanent Green)",
+        "hex": "#076D16",
+        "pigment_code": null
+      },
+      {
+        "id": "6fc20f36-d738-4682-bbbe-f75b27ba4c86",
+        "code": "phthalo_blue",
+        "name": "Biru Ftalo (Phthalo Blue)",
+        "hex": "#0D1B44",
+        "pigment_code": "PB15"
+      },
+      {
+        "id": "b907179a-3d0a-44ce-b42d-f8a346b7a86e",
+        "code": "phthalo_green",
+        "name": "Hijau Ftalo (Phthalo Green)",
+        "hex": "#003C32",
+        "pigment_code": "PG7"
+      },
+      {
+        "id": "a27a4757-696e-4337-844c-c49b5a44ff21",
+        "code": "quinacridone_magenta",
+        "name": "Magenta Kuinakridon (Quinacridone Magenta)",
+        "hex": "#80022E",
+        "pigment_code": "PR122"
+      },
+      {
+        "id": "124a1b6b-f6fa-4d9c-924a-b82380e8ae08",
+        "code": "sap_green",
+        "name": "Hijau Sap (Sap Green)",
+        "hex": "#6B9404",
+        "pigment_code": null
+      },
+      {
+        "id": "b1eb0fba-324f-4d75-9cc4-1f0df9757733",
+        "code": "titanium_white",
+        "name": "Putih Titanium (Titanium White)",
+        "hex": "#FFFFFF",
+        "pigment_code": "PW6"
+      },
+      {
+        "id": "0fcad1cc-6ad1-4835-9121-774dd3316015",
+        "code": "ultramarine_blue",
+        "name": "Biru Ultramarin (Ultramarine Blue)",
+        "hex": "#190059",
+        "pigment_code": "PB29"
+      }
+    ]
+  }
+]

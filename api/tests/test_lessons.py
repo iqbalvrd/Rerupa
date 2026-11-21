@@ -184,3 +184,82 @@ def test_draft_collection_lesson_is_hidden_until_published():
         assert c.get(f"/lessons/{lesson_id}").status_code == 200
     finally:
         db.table("artworks").delete().eq("id", art["id"]).execute()
+
+
+# ---------- Fase 4: palet, warna, cache ----------
+
+def test_palettes_lists_demo_palette():
+    from fastapi.testclient import TestClient
+
+    from main import app
+
+    palettes = TestClient(app).get("/palettes").json()
+    assert palettes and all(p["paints"] for p in palettes)
+    assert any(paint["code"] == "titanium_white" for paint in palettes[0]["paints"])
+
+
+def test_lesson_has_color_suggestion_for_every_region(client_factory):
+    a = client_factory()
+    job_id = generate(a, figure_jpeg(), "key-color-0001").json()["id"]
+    run_job(a)
+    L = a.get(f"/lessons/{a.get(f'/jobs/{job_id}').json()['lesson_version_id']}").json()
+    assert L["palette_id"] is not None
+    codes = {r["code"] for r in L["regions"]}
+    assert {c["region_code"] for c in L["region_colors"]} == codes
+    for c in L["region_colors"]:
+        assert c["reachability"] in ("estimate", "hard", "recipe") and c["label"]
+        assert c["components"] and c["explanation"]
+        assert all(comp["parts"] >= 1 for comp in c["components"])
+    # Latar krem gambar uji harus bisa didekati palet referensi.
+    background = next(c for c in L["region_colors"] if c["region_code"] == "r01")
+    assert background["reachability"] == "estimate" and background["delta_e"] <= 8
+
+
+def test_unknown_palette_returns_no_colors(client_factory):
+    a = client_factory()
+    job_id = generate(a, figure_jpeg(), "key-color-0002").json()["id"]
+    run_job(a)
+    lesson_id = a.get(f"/jobs/{job_id}").json()["lesson_version_id"]
+    L = a.get(f"/lessons/{lesson_id}", params={"palette_id": "00000000-0000-0000-0000-000000000000"}).json()
+    assert L["region_colors"] == []
+
+
+def test_same_photo_same_scope_reuses_lesson(client_factory):
+    a = client_factory()
+    photo = figure_jpeg()
+    first = generate(a, photo, "key-cache-0001").json()["id"]
+    run_job(a)
+    second = generate(a, photo, "key-cache-0002").json()["id"]  # kunci beda, foto sama
+    run_job(a)
+    j1, j2 = a.get(f"/jobs/{first}").json(), a.get(f"/jobs/{second}").json()
+    assert j2["status"] == "succeeded" and j2["result"] == {"cached": True}
+    assert j2["lesson_version_id"] == j1["lesson_version_id"]
+
+    third = generate(a, photo, "key-cache-0003", scope={"x": 0.1, "y": 0.1, "w": 0.8, "h": 0.8}).json()["id"]
+    run_job(a)
+    j3 = a.get(f"/jobs/{third}").json()
+    assert j3["lesson_version_id"] != j1["lesson_version_id"]  # cakupan beda → diproses ulang
+
+
+def test_recipe_endpoint(client_factory):
+    from fastapi.testclient import TestClient
+
+    from color.mixer import hex_to_lab
+    from main import app
+
+    db = get_supabase()
+    palette = TestClient(app).get("/palettes").json()[0]
+    paints = {p["code"]: p["id"] for p in palette["paints"]}
+    rec = db.table("color_recipes").insert({
+        "palette_id": palette["id"], "target_hex": "#B5532E", "target_lab": [round(float(v), 2) for v in hex_to_lab("#B5532E")],
+        "components": [{"paint_id": paints["cadmium_red"], "parts": 2}, {"paint_id": paints["burnt_sienna"], "parts": 3}],
+        "delta_e": 1.6, "kind": "estimated", "method": "mixbox_v2",
+    }).execute().data[0]
+    try:
+        c = TestClient(app)
+        body = c.get(f"/recipes/{rec['id']}").json()
+        assert body["label"] == "Perkiraan, uji sedikit dulu"
+        assert [x["paint_code"] for x in body["components"]] == ["burnt_sienna", "cadmium_red"]
+        assert c.get("/recipes/00000000-0000-0000-0000-000000000000").status_code == 404
+    finally:
+        db.table("color_recipes").delete().eq("id", rec["id"]).execute()

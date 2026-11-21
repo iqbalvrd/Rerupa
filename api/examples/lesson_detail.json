@@ -1,5 +1,5 @@
 {
-  "_catatan": "Contoh NYATA dari pipeline (potongan lukisan Kamasan, mode bebas, teks templat karena AI belum aktif). Daftar regions dipersingkat dari 35 menjadi 6. URL dipalsukan.",
+  "_catatan": "Contoh NYATA dari pipeline (potongan lukisan Kamasan, mode bebas, teks templat karena AI belum aktif). Daftar regions dipersingkat dari 35 menjadi 6. URL dipalsukan. region_colors memakai palet referensi digital (bukan cat fisik).",
   "id": "e4cfabb9-24a3-4317-8cc6-f453cfb90b7c",
   "origin": "free_mode",
   "artwork_id": null,
@@ -390,5 +390,181 @@
   ],
   "culture_claims": [],
   "reflection": null,
-  "region_colors": []
+  "region_colors": [
+    {
+      "region_code": "r01",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "recipe_id": null,
+      "components": [
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 3
+        },
+        {
+          "paint_code": "burnt_sienna",
+          "name": "Sienna Bakar (Burnt Sienna)",
+          "hex": "#7B4800",
+          "parts": 2
+        },
+        {
+          "paint_code": "cobalt_blue",
+          "name": "Biru Kobalt (Cobalt Blue)",
+          "hex": "#002185",
+          "parts": 1
+        }
+      ],
+      "mixed_hex": "#9D9193",
+      "delta_e": 2.91,
+      "explanation": "Perkiraan, uji sedikit dulu: mulai dari 3 bagian Putih Titanium (Titanium White), tambahkan 2 bagian Sienna Bakar (Burnt Sienna), lalu 1 bagian Biru Kobalt (Cobalt Blue) sedikit saja. Coba di kertas dan tunggu kering sebelum dipakai.",
+      "tips": []
+    },
+    {
+      "region_code": "r02",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "recipe_id": null,
+      "components": [
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 4
+        },
+        {
+          "paint_code": "ivory_black",
+          "name": "Hitam Gading (Ivory Black)",
+          "hex": "#1E1E1E",
+          "parts": 3
+        }
+      ],
+      "mixed_hex": "#9899A0",
+      "delta_e": 0.51,
+      "explanation": "Perkiraan, uji sedikit dulu: mulai dari 4 bagian Putih Titanium (Titanium White), lalu tambahkan 3 bagian Hitam Gading (Ivory Black) sedikit demi sedikit sambil diaduk. Coba di kertas dan tunggu kering sebelum dipakai.",
+      "tips": []
+    },
+    {
+      "region_code": "r03",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "recipe_id": null,
+      "components": [
+        {
+          "paint_code": "ivory_black",
+          "name": "Hitam Gading (Ivory Black)",
+          "hex": "#1E1E1E",
+          "parts": 2
+        },
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 2
+        },
+        {
+          "paint_code": "burnt_sienna",
+          "name": "Sienna Bakar (Burnt Sienna)",
+          "hex": "#7B4800",
+          "parts": 1
+        }
+      ],
+      "mixed_hex": "#8B796E",
+      "delta_e": 2.22,
+      "explanation": "Perkiraan, uji sedikit dulu: mulai dari 2 bagian Hitam Gading (Ivory Black), tambahkan 2 bagian Putih Titanium (Titanium White), lalu 1 bagian Sienna Bakar (Burnt Sienna) sedikit saja. Coba di kertas dan tunggu kering sebelum dipakai.",
+      "tips": []
+    },
+    {
+      "region_code": "r04",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "recipe_id": null,
+      "components": [
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 3
+        },
+        {
+          "paint_code": "ivory_black",
+          "name": "Hitam Gading (Ivory Black)",
+          "hex": "#1E1E1E",
+          "parts": 2
+        }
+      ],
+      "mixed_hex": "#9E9FA6",
+      "delta_e": 0.91,
+      "explanation": "Perkiraan, uji sedikit dulu: mulai dari 3 bagian Putih Titanium (Titanium White), lalu tambahkan 2 bagian Hitam Gading (Ivory Black) sedikit demi sedikit sambil diaduk. Coba di kertas dan tunggu kering sebelum dipakai.",
+      "tips": []
+    },
+    {
+      "region_code": "r05",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "recipe_id": null,
+      "components": [
+        {
+          "paint_code": "cobalt_violet",
+          "name": "Ungu Kobalt (Cobalt Violet)",
+          "hex": "#4E0042",
+          "parts": 3
+        },
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 3
+        },
+        {
+          "paint_code": "permanent_green",
+          "name": "Hijau Permanen (Permanent Green)",
+          "hex": "#076D16",
+          "parts": 2
+        }
+      ],
+      "mixed_hex": "#8C697A",
+      "delta_e": 3.0,
+      "explanation": "Perkiraan, uji sedikit dulu: mulai dari 3 bagian Ungu Kobalt (Cobalt Violet), tambahkan 3 bagian Putih Titanium (Titanium White), lalu 2 bagian Hijau Permanen (Permanent Green) sedikit saja. Coba di kertas dan tunggu kering sebelum dipakai.",
+      "tips": []
+    },
+    {
+      "region_code": "r06",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "recipe_id": null,
+      "components": [
+        {
+          "paint_code": "burnt_sienna",
+          "name": "Sienna Bakar (Burnt Sienna)",
+          "hex": "#7B4800",
+          "parts": 3
+        },
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 3
+        },
+        {
+          "paint_code": "cobalt_blue",
+          "name": "Biru Kobalt (Cobalt Blue)",
+          "hex": "#002185",
+          "parts": 2
+        }
+      ],
+      "mixed_hex": "#7E7A82",
+      "delta_e": 4.11,
+      "explanation": "Perkiraan, uji sedikit dulu: mulai dari 3 bagian Sienna Bakar (Burnt Sienna), tambahkan 3 bagian Putih Titanium (Titanium White), lalu 2 bagian Biru Kobalt (Cobalt Blue) sedikit saja. Coba di kertas dan tunggu kering sebelum dipakai.",
+      "tips": []
+    }
+  ],
+  "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8"
 }

@@ -85,6 +85,7 @@ def main() -> None:
         log.exception("model_warm_up_failed")
 
     last_requeue = 0.0
+    last_retention = 0.0
     try:
         while True:
             now = time.monotonic()
@@ -99,6 +100,14 @@ def main() -> None:
                 if overdue:
                     log.warning("overdue_jobs_failed", extra={"count": overdue})
                 last_requeue = now
+            if now - last_retention > settings.retention_every_seconds:
+                last_retention = now
+                try:
+                    from services import retention
+
+                    retention.run()
+                except Exception:
+                    log.exception("retention_failed")  # dicoba lagi di putaran berikutnya
             try:
                 did_work = process_one(worker_id)
             except Exception:

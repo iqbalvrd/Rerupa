@@ -46,7 +46,8 @@ class Settings(BaseSettings):
     daily_ai_budget_usd: float = 5.0
 
     # Perilaku aplikasi
-    checkpoint_count: int = 1
+    # Versi showcase: 2 checkpoint (setelah sketsa + setelah bidang sedang). Versi awal: 1.
+    checkpoint_count: int = 2
     # Hasil evaluasi Fase 2 (eval/HASIL_FASE2.md): TEED cukup cepat di CPU untuk mode bebas;
     # "model" (Informative Drawings) lebih bersih tetapi 2–36 s di CPU → dipakai untuk materi koleksi.
     lineart_method: str = "teed"
@@ -66,6 +67,7 @@ class Settings(BaseSettings):
     # PRD §16: batas tunggu analisis (sejak permintaan dibuat). Lewat batas + toleransi → failed/worker_timeout.
     generate_deadline_seconds: int = 60
     deadline_grace_seconds: int = 15
+    retention_every_seconds: int = 900  # 15 menit (PRD §17: foto & sesi terhapus dibersihkan ≤24 jam)
 
     # Produksi
     environment: Literal["development", "production"] = "development"

@@ -161,6 +161,27 @@ def _describe(warp: np.ndarray, size: tuple[int, int]) -> dict:
     }
 
 
+def _plausible(d: dict) -> bool:
+    """Koreksi ECC wajar untuk tap sudut yang sedikit meleset; lebih dari ini kemungkinan salah kunci."""
+    return (
+        abs(d["tx_pct"]) <= GRID_MAX_SHIFT * 100
+        and abs(d["ty_pct"]) <= GRID_MAX_SHIFT * 100
+        and all(GRID_SCALE_RANGE[0] <= d[k] <= GRID_SCALE_RANGE[1] for k in ("scale_x", "scale_y"))
+        and abs(d["rot_deg"]) <= GRID_MAX_ROT_DEG
+    )
+
+
+def color_edges(rgb: np.ndarray) -> np.ndarray:
+    """Besar gradien di ruang LAB (terang + warna), dinormalisasi 0–1: tepi antar-bidang warna."""
+    lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB).astype(np.float32)
+    lab = cv2.GaussianBlur(lab, (0, 0), 1.5)
+    mag = np.zeros(lab.shape[:2], np.float32)
+    for c in range(3):
+        mag += cv2.magnitude(cv2.Sobel(lab[..., c], cv2.CV_32F, 1, 0, ksize=3), cv2.Sobel(lab[..., c], cv2.CV_32F, 0, 1, ksize=3))
+    m = max(1e-6, float(np.percentile(mag, 99)))
+    return np.clip(mag / m, 0, 1)
+
+
 def _apply(img: np.ndarray, warp: np.ndarray, size: tuple[int, int], nearest: bool = False) -> np.ndarray:
     flags = (cv2.INTER_NEAREST if nearest else cv2.INTER_LINEAR) | cv2.WARP_INVERSE_MAP
     return cv2.warpAffine(img, warp, size, flags=flags, borderMode=cv2.BORDER_REPLICATE)
@@ -173,8 +194,13 @@ def align(
     target_height: int,
     target_lines: np.ndarray,
     grid: tuple[int, int],
+    target_rgb: np.ndarray | None = None,
 ) -> Alignment:
-    """img = foto progres RGB (orientasi sudah benar). target_lines = garis target (0/1) di ukuran kerja."""
+    """img = foto progres RGB (orientasi sudah benar). target_lines = garis target (0/1) di ukuran kerja.
+
+    target_rgb (tahap warna): gambar target berwarna di ukuran kerja. Pada tahap warna grid biasanya
+    sudah tertutup cat, jadi penyelarasan memakai tepi bidang warna (method "color_edges").
+    """
     size, _ = work_size(target_width, target_height)
     quad = order_corners(corners)
     reason = check_corners(quad, img.shape[1], img.shape[0], target_width, target_height)
@@ -190,20 +216,20 @@ def align(
     warp = _ecc(gmap, strokes, cv2.MOTION_AFFINE)
     if warp is not None:
         d = _describe(warp, size)
-        plausible = (
-            abs(d["tx_pct"]) <= GRID_MAX_SHIFT * 100
-            and abs(d["ty_pct"]) <= GRID_MAX_SHIFT * 100
-            and all(GRID_SCALE_RANGE[0] <= d[k] <= GRID_SCALE_RANGE[1] for k in ("scale_x", "scale_y"))
-            and abs(d["rot_deg"]) <= GRID_MAX_ROT_DEG
-        )
-        if plausible:
+        if _plausible(d):
             moved = _apply(strokes, warp, size, nearest=True)
             near = cv2.dilate(moved, np.ones((5, 5), np.uint8))
             coverage = float(near[gmap > 0].mean())
             if coverage >= GRID_MIN_COVERAGE:
                 return Alignment(True, method="grid", rectified=_apply(rectified, warp, size), strokes=moved, correction=d, grid_coverage=round(coverage, 3))
 
-    # 2) Cadangan: ECC translasi kecil terhadap garis target
+    # 2) Tahap warna: ECC terhadap tepi bidang warna target
+    if target_rgb is not None:
+        warp = _ecc(color_edges(target_rgb), color_edges(rectified), cv2.MOTION_AFFINE)
+        if warp is not None and _plausible(_describe(warp, size)):
+            return Alignment(True, method="color_edges", rectified=_apply(rectified, warp, size), strokes=_apply(strokes, warp, size, nearest=True), correction=_describe(warp, size))
+
+    # 3) Cadangan: ECC translasi kecil terhadap garis target
     warp = _ecc(target_lines, strokes, cv2.MOTION_TRANSLATION)
     if warp is not None and hypot(float(warp[0, 2]), float(warp[1, 2])) <= LINES_MAX_SHIFT * long_side:
         return Alignment(True, method="lines", rectified=_apply(rectified, warp, size), strokes=_apply(strokes, warp, size, nearest=True), correction=_describe(warp, size))

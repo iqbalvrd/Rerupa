@@ -94,8 +94,9 @@ def generate_lesson(
 class LayerOut(BaseModel):
     kind: str
     format: str
-    url: str | None
+    url: str | None  # null bila file sudah dihapus (retensi 24 jam foto & turunannya)
     meta: dict
+    purged: bool = False
 
 
 class RegionOut(BaseModel):
@@ -214,7 +215,7 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
         raise AppError("not_found", 404)
 
     lid = lesson["id"]
-    layers = db.table("visual_layers").select("kind, bucket, asset_path, format, meta").eq("lesson_version_id", lid).execute().data
+    layers = db.table("visual_layers").select("kind, bucket, asset_path, format, meta, purged_at").eq("lesson_version_id", lid).execute().data
     regions = db.table("regions").select("id, code, hex, area_pct, bbox, centroid, is_main_object, is_background, value_level, label").eq("lesson_version_id", lid).order("code").execute().data
     stages = db.table("stages").select("*, stage_regions(regions(code))").eq("lesson_version_id", lid).order("order_no").execute().data
     claims = db.table("culture_claims").select("text, type, order_no, stage_id, culture_claim_sources(sources(code, title, url))").eq("lesson_version_id", lid).order("order_no").execute().data
@@ -223,7 +224,7 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
     urls: dict[str, str] = {}
     for bucket in {layer["bucket"] for layer in layers}:
         ttl = CATALOG_URL_TTL if bucket == "catalog" else PRIVATE_URL_TTL
-        urls.update(signed_urls(bucket, [l["asset_path"] for l in layers if l["bucket"] == bucket], ttl))
+        urls.update(signed_urls(bucket, [l["asset_path"] for l in layers if l["bucket"] == bucket and not l["purged_at"]], ttl))
 
     stage_code_by_id = {s["id"]: s["code"] for s in stages}
     return LessonOut(
@@ -238,7 +239,10 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
         generated_automatically=lesson["origin"] == "free_mode",
         skill_goal=lesson["skill_goal"],
         culture_goal=lesson["culture_goal"],
-        layers=[LayerOut(kind=l["kind"], format=l["format"], url=urls.get(l["asset_path"]), meta=l["meta"]) for l in layers],
+        layers=[
+            LayerOut(kind=l["kind"], format=l["format"], url=None if l["purged_at"] else urls.get(l["asset_path"]), meta=l["meta"], purged=bool(l["purged_at"]))
+            for l in layers
+        ],
         regions=[RegionOut(**{k: r[k] for k in RegionOut.model_fields}) for r in regions],
         stages=[
             StageOut(

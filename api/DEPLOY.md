@@ -31,7 +31,7 @@ Dua service dari **image yang sama** (`api/Dockerfile`): `api` (HTTP) dan `worke
 | `OPENAI_API_KEY`, `OPENAI_VISION_MODEL`, `OPENAI_TEXT_MODEL` | ✅ | ✅ | Setelah uji model. Kosong = semua teks templat (aplikasi tetap jalan) |
 | `OPENAI_PRICE_INPUT_PER_M`, `OPENAI_PRICE_OUTPUT_PER_M` | ✅ | ✅ | **Wajib** bila key diisi (dipakai menghitung batas biaya) |
 | `DAILY_AI_BUDGET_USD` | ✅ | ✅ | `5` (atau sesuai kesepakatan tim) |
-| `CHECKPOINT_COUNT` | | ✅ | `1` (versi awal) |
+| `CHECKPOINT_COUNT` | | ✅ | `2` (showcase; `1` = versi awal) |
 | `LINEART_METHOD`, `MASK_MODEL` | | ✅ | `teed`, `u2net` |
 
 ## 3. Batas biaya (dua lapis)
@@ -55,4 +55,10 @@ Dua service dari **image yang sama** (`api/Dockerfile`): `api` (HTTP) dan `worke
   uv run --group cv python scripts/import_collection.py ../content/artworks/<slug> --publish
   ```
   Materi koleksi diproses saat impor, jadi saat demo tidak menunggu AI.
+- Ukur P95 (≥20 putaran) setelah deploy, naikkan sementara `RATE_LIMIT_UPLOADS_PER_IP_HOUR` ke ≥40 selama pengukuran:
+  ```bash
+  uv run --group cv python scripts/measure_p95.py --base-url https://<domain-api> --runs 20 --out ../eval/P95_PRODUKSI.md
+  uv run python scripts/report_ai.py --days 7 --out ../eval/LAPORAN_AI.md
+  ```
+- Retensi berjalan otomatis (worker tiap 15 menit + `pg_cron`); log `retention_done` menunjukkan jumlah yang dibersihkan.
 - Pantau log Railway: `job_finished` (durasi), `overdue_jobs_failed`, `ai_budget_warning`, `unhandled_error`.

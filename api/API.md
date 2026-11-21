@@ -1,6 +1,6 @@
 # Rerupa API — Panduan untuk Frontend
 
-Status per Fase 6 backend (siap deploy; URL produksi menyusul). Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
+Status per Fase 7 backend (versi showcase; URL produksi menyusul). Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
 
 ## Cara memanggil
 
@@ -59,6 +59,7 @@ Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 ## Membaca `GET /lessons/{id}`
 
 - `image_width × image_height` = ruang koordinat **semua** lapisan, `bbox`, dan `focus_bbox`. Pakai satu `<svg viewBox="0 0 W H">`.
+- `purged: true` + `url: null` pada lapisan mode bebas = file sudah dihapus otomatis (foto dan turunannya ≤24 jam, PRD §17). Tampilkan penanda "Foto sudah dihapus otomatis"; teks tahap, resep, dan feedback tetap ada. `grid` tidak pernah dihapus.
 - `layers[]`: `kind` = `grid`, `sketch`, `main_object` (bila ada), `regions`, `value` (hanya bila `use_shading`), `lineart` (PNG transparan), `original_photo` (JPEG). `url` adalah signed URL **30 menit** (koleksi: 60 menit) — panggil ulang `GET /lessons/{id}` bila kedaluwarsa.
 - `regions.svg` berisi satu `<path id="rNN">` per region. Tahap N menampilkan semua region dari `new_region_codes` tahap 1..N; region baru di tahap N diberi highlight.
 - `stages[]` urut `order_no`; `layers` = lapisan yang tampil di tahap itu; `is_checkpoint` = tahap yang meminta foto progres (versi awal: hanya tahap sketsa).
@@ -77,7 +78,7 @@ Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 - Setelah reload: `GET /sessions/{id}` → `GET /lessons/{lesson_version_id}` → `GET …/progress` (status tiap tahap + `current_stage_order` + `feedback_count`) → `GET …/checkpoints` (teks feedback tetap ada walau foto sudah dihapus).
 - Checkpoint boleh dilewati: tahap checkpoint bisa langsung `completed` tanpa foto; UI jangan menampilkannya seolah sudah mendapat feedback.
 
-## Alur checkpoint (versi awal: 1 checkpoint, di tahap sketsa)
+## Alur checkpoint (showcase: 2 checkpoint — tahap sketsa dan tahap bidang sedang)
 
 ```
 Tahap dengan is_checkpoint: true → panduan memotret (seluruh bidang terlihat, cahaya rata, tanpa bayangan tangan)
@@ -85,7 +86,7 @@ Tahap dengan is_checkpoint: true → panduan memotret (seluruh bidang terlihat, 
 POST /sessions/{id}/checkpoints     → 202 { id, type: "feedback", status: "queued" }
 GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → cv → writing → saving → done
    succeeded    → GET /sessions/{id}/checkpoints/{job_id} → tampilkan summary + suggestions
-   needs_retake → tampilkan retake_message, minta foto/tap ulang (error_code: photo_unusable | alignment_failed | sketch_not_visible)
+   needs_retake → tampilkan retake_message, minta foto/tap ulang (error_code: photo_unusable | alignment_failed | sketch_not_visible | progress_not_visible)
 ```
 
 Perkiraan waktu: ±6–8 s (laptop, CPU, tanpa AI).
@@ -108,6 +109,7 @@ Kuota: per tahap checkpoint maks **2 feedback** (1 + 1 retry); foto ulang (`need
 - `bbox` `[x, y, w, h]` di ruang `image_width × image_height` lesson — dipakai untuk penanda di atas foto/panduan. Hanya ada bila penyelarasan berhasil.
 - `photo_url`: foto yang sudah diluruskan (rasio sama dengan lesson). Tampilkan di `<image width=W height=H>` pada `viewBox` lesson, lalu tumpuk lapisan `sketch`/`grid` untuk membandingkan. Signed URL 30 menit; `null` setelah foto dihapus (teks tetap ada).
 - `text_source`: `ai` atau `template`; `generated_automatically: true` → label "dibuat otomatis".
+- Checkpoint tahap sketsa menilai garis (posisi, ukuran, garis yang belum digambar). Checkpoint tahap warna menilai bidang yang belum terisi dan terang-gelap relatif terhadap panduan; di tahap ini grid boleh sudah tertutup cat (penyelarasan memakai tepi bidang warna). `corners` tetap 4 sudut area gambar.
 - Cakupan penilaian versi awal: posisi relatif, ukuran bentuk besar, area yang belum tergambar/terisi. **Bukan** rona halus atau teknik sapuan — jangan ditampilkan seolah menilai itu.
 
 ### Event analitik (`POST /events`)
@@ -132,7 +134,7 @@ Nama yang diterima dari UI: `lesson_viewed`, `recipe_opened`, `original_photo_op
 | 403 | `origin_not_allowed` | Domain frontend belum didaftarkan di `FRONTEND_ORIGIN` backend |
 | 500 | `internal_error` | Tampilkan pesan umum, boleh coba lagi |
 
-Di status job (`error_code`): `photo_unusable`, `not_artwork`, `alignment_failed`, `sketch_not_visible` (needs_retake), `session_deleted`, `worker_timeout` (melewati batas tunggu: tutorial 60 s, feedback 45 s; tidak memakan kuota — tawarkan coba lagi), `internal_error` (failed). Daftar lengkap pesan ada di `core/errors.py`.
+Di status job (`error_code`): `photo_unusable`, `not_artwork`, `alignment_failed`, `sketch_not_visible`, `progress_not_visible` (needs_retake), `session_deleted`, `worker_timeout` (melewati batas tunggu: tutorial 60 s, feedback 45 s; tidak memakan kuota — tawarkan coba lagi), `internal_error` (failed). Daftar lengkap pesan ada di `core/errors.py`.
 
 ## Cookie di produksi
 

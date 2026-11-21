@@ -44,6 +44,7 @@ def wait_job(c: httpx.Client, job_id: str, limit: float) -> dict:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8")  # konsol Windows
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", required=True)
     args = ap.parse_args()
@@ -81,7 +82,7 @@ def main() -> None:
 
             sketch = next(l for l in lesson["layers"] if l["kind"] == "sketch")
             grid = next(l for l in lesson["layers"] if l["kind"] == "grid")["meta"]
-            paper = S.drawing_from_svg(httpx.get(sketch["url"]).text, lesson["image_width"], lesson["image_height"], (grid["cols"], grid["rows"]))
+            paper = S.drawing_from_svg(S.fetch_text(sketch["url"]), lesson["image_width"], lesson["image_height"], (grid["cols"], grid["rows"]))
             photo, corners = S.photograph_any(paper)
             stage = next(s for s in lesson["stages"] if s["is_checkpoint"])
             cp = step("unggah checkpoint", lambda: c.post(

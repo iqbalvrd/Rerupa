@@ -105,6 +105,24 @@ def test_candidates_capped_at_three():
     assert 1 <= len(res.candidates) <= cmp.MAX_CANDIDATES
 
 
+def test_paint_stage_aligns_on_color_edges_without_grid():
+    paper = S.drawing(paint=True, draw_grid=False, draw_shapes=False)
+    res = run(paper, kind="medium_regions", open_codes={"r02", "r03"})
+    assert not res.needs_retake and res.alignment_method == "color_edges" and res.candidates == []
+    res = run(paper, kind="medium_regions", open_codes={"r02", "r03"}, corners=lambda c: [v + (25 if i % 2 == 0 else 16) for i, v in enumerate(c)])
+    assert res.alignment == "confirmed" and res.candidates == []
+
+
+def test_paint_stage_detects_unfilled_without_grid():
+    res = run(S.drawing(paint=True, draw_grid=False, draw_shapes=False, scale_x={"r03": 0.4}), kind="medium_regions", open_codes={"r02", "r03"})
+    assert [(c["region_code"], c["kind"]) for c in res.candidates] == [("r03", "unfilled")]
+
+
+def test_empty_canvas_at_paint_stage_needs_retake():
+    res = run(S.drawing(draw_grid=False, draw_shapes=False), kind="medium_regions", open_codes={"r02", "r03"})
+    assert res.needs_retake and res.retake_code == "progress_not_visible"
+
+
 # ---------------------------------------------------------------- foto ulang
 
 def test_blank_sketch_needs_retake():

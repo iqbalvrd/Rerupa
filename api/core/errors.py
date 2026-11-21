@@ -28,6 +28,7 @@ MESSAGES: dict[str, str] = {
     "too_complex": "Karyanya rumit. Coba potong bagian yang lebih kecil.",
     "alignment_failed": "Sudut belum pas. Tap ulang keempat sudut bidang dan pastikan garis grid terlihat.",
     "sketch_not_visible": "Garis sketsa belum terlihat di foto. Tebalkan garis atau foto lebih dekat di tempat terang.",
+    "progress_not_visible": "Belum terlihat cat di foto. Foto seluruh bidang lukis di tempat terang.",
     "lesson_required": "Pilih materi atau buat tutorial dulu.",
     "not_checkpoint": "Tahap ini tidak meminta foto progres.",
     "checkpoint_quota_exceeded": "Batas feedback untuk tahap ini tercapai. Lanjutkan ke tahap berikutnya.",

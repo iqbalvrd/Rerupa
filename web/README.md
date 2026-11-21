@@ -11,7 +11,18 @@ npm install
 npm run dev                  # http://localhost:3000
 ```
 
-API harus jalan di terminal lain (lihat `HANDOFF.md §7`). Di mode dev, beranda menampilkan kartu **Status API** untuk memastikan web bisa menjangkau API.
+API harus jalan di terminal lain (lihat `HANDOFF.md §7`).
+
+### Galeri tanpa API (data contoh)
+
+Selama belum ada karya terbit, galeri bisa memakai data contoh dari `../content/artworks`:
+
+```bash
+npm run fixtures                                   # tulis public/_dev/ (tidak masuk git)
+echo "NEXT_PUBLIC_GALLERY_SOURCE=fixtures" >> .env.local
+```
+
+Galeri lalu menampilkan label "Data contoh (dev), belum terbit". Hapus baris itu untuk kembali memakai `GET /artworks`.
 
 ## Perintah
 

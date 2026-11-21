@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/brand/logo";
 
 /** Mobile-first page frame: header, a single readable column, safe-area padding. */
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -6,8 +7,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <header className="pt-safe px-safe border-b">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between pb-3">
-          <Link href="/" className="font-display inline-flex min-h-(--target-size) items-center text-xl">
-            Rerupa
+          <Link href="/" className="inline-flex min-h-(--target-size) items-center">
+            <Logo priority />
           </Link>
         </div>
       </header>

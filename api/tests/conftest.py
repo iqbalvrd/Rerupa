@@ -57,7 +57,8 @@ def client_factory():
 
     db = get_supabase()
     for sid in created:
-        paths = [u["raw_path"] for u in db.table("uploads").select("raw_path").eq("session_id", sid).execute().data if u["raw_path"]]
+        rows = db.table("uploads").select("raw_path, rectified_path").eq("session_id", sid).execute().data
+        paths = [p for u in rows for p in (u["raw_path"], u["rectified_path"]) if p]
         if paths:
             db.storage.from_("uploads").remove(paths)
         from services.storage import remove_prefix

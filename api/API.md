@@ -1,6 +1,6 @@
 # Rerupa API — Panduan untuk Frontend
 
-Status per Fase 4 backend. Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
+Status per Fase 5 backend. Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
 
 ## Cara memanggil
 
@@ -16,17 +16,21 @@ Status per Fase 4 backend. Dokumentasi interaktif lengkap: jalankan API lalu buk
 | `GET /health` | ✅ | — | Status API, Supabase, OpenAI |
 | `GET /artworks` | ✅ | — | Galeri karya terbit. [contoh](examples/artworks_list.json) |
 | `GET /artworks/{slug}` | ✅ | — | Detail + sumber. [contoh](examples/artwork_detail.json) |
-| `POST /sessions` | ✅ | — | Body `{canvas_size?, palette_id?}` → 201 + Set-Cookie. [contoh](examples/session.json) |
+| `POST /sessions` | ✅ | — | Body `{canvas_size?, palette_id?, lesson_version_id?}` → 201 + Set-Cookie. [contoh](examples/session.json) |
 | `GET /sessions/{id}` | ✅ | ✅ | Pulihkan sesi setelah reload; `lesson_version_id` terisi otomatis setelah tutorial jadi |
-| `PATCH /sessions/{id}` | ✅ | ✅ | Body `{palette_id?, canvas_size?, current_stage_order?}` |
+| `PATCH /sessions/{id}` | ✅ | ✅ | Body `{lesson_version_id?, palette_id?, canvas_size?, current_stage_order?}`. `lesson_version_id`: materi koleksi terbit (dari `GET /artworks`) atau tutorial mode bebas milik sesi ini |
 | `DELETE /sessions/{id}` | ✅ | ✅ | 204; akses langsung dicabut, foto dan lapisan tutorial dihapus |
 | `POST /lessons/generate` | ✅ | ✅ | multipart `file` + `consent_ai_photo` + `scope` (opsional) + header `Idempotency-Key` → 202 job |
 | `GET /jobs/{id}` | ✅ | ✅ | Polling tiap 1 detik sampai `is_final: true` |
 | `GET /lessons/{id}` | ✅ | hanya untuk mode bebas | Tutorial lengkap + saran warna. Query opsional `?palette_id=`. [contoh nyata](examples/lesson_detail.json) |
 | `GET /palettes` | ✅ | — | Palet yang bisa dipilih di layar Persiapan + daftar cat. [contoh](examples/palettes.json) |
 | `GET /recipes/{id}` | ✅ | — | Detail resep (teruji/perkiraan) bila `recipe_id` terisi |
-| `PATCH /sessions/{id}/progress` | ⏳ Fase 5 | ✅ | |
-| `POST /sessions/{id}/checkpoints` | ⏳ Fase 5 | ✅ | |
+| `GET /sessions/{id}/progress` | ✅ | ✅ | Status tiap tahap untuk memulihkan latihan. [contoh](examples/progress.json) |
+| `PATCH /sessions/{id}/progress` | ✅ | ✅ | Body `{stage_code, status: "viewed" \| "completed"}` → sama seperti GET |
+| `POST /sessions/{id}/checkpoints` | ✅ | ✅ | multipart `file` + `stage_code` + `corners` + `consent_ai_photo` + header `Idempotency-Key` → 202 job `feedback` |
+| `GET /sessions/{id}/checkpoints` | ✅ | ✅ | Semua checkpoint sesi, terbaru dulu |
+| `GET /sessions/{id}/checkpoints/{job_id}` | ✅ | ✅ | Hasil satu checkpoint. [contoh](examples/checkpoint_feedback.json), [foto ulang](examples/checkpoint_retake.json) |
+| `POST /events` | ✅ | opsional | Body `{name, props?}` → 204. Event analitik dari UI |
 
 ## Alur unggah mode bebas
 
@@ -66,6 +70,50 @@ Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 - `region_colors[]` (satu per region) untuk `palette_id` yang dipakai: palet dari `?palette_id=`, lalu palet sesi (`PATCH /sessions` `palette_id`), lalu palet demo pertama. Isi: `label` ("Perkiraan, uji sedikit dulu" / "Sulit dicapai dengan palet ini" / "Resep teruji"), `components` (cat + `parts`, urut dari bagian terbesar), `mixed_hex` (pratinjau warna campuran), `delta_e`, `explanation` (kalimat siap tampil), `tips` (cara koreksi). Angka berasal dari model pencampuran pigmen, bukan AI.
 - Bila foto dan cakupan yang sama dikirim lagi dalam sesi yang sama, backend memakai tutorial lama (`result.cached = true`) tanpa proses atau biaya ulang.
 
+## Progres latihan
+
+- Materi koleksi: ambil `lesson_version_id` dari kartu `GET /artworks`, lalu `POST /sessions` (atau `PATCH /sessions/{id}`) dengan `lesson_version_id`. Mode bebas: terpasang otomatis setelah tutorial jadi.
+- Saat tahap dibuka: `PATCH …/progress {stage_code, status: "viewed"}`. Saat pengguna menekan "Selesai": `status: "completed"`. **Melihat tidak sama dengan menyelesaikan**: `viewed` tidak pernah menurunkan tahap yang sudah `completed`.
+- Setelah reload: `GET /sessions/{id}` → `GET /lessons/{lesson_version_id}` → `GET …/progress` (status tiap tahap + `current_stage_order` + `feedback_count`) → `GET …/checkpoints` (teks feedback tetap ada walau foto sudah dihapus).
+- Checkpoint boleh dilewati: tahap checkpoint bisa langsung `completed` tanpa foto; UI jangan menampilkannya seolah sudah mendapat feedback.
+
+## Alur checkpoint (versi awal: 1 checkpoint, di tahap sketsa)
+
+```
+Tahap dengan is_checkpoint: true → panduan memotret (seluruh bidang terlihat, cahaya rata, tanpa bayangan tangan)
+→ ambil/unggah foto → pengguna TAP 4 SUDUT bidang grid (kiri-atas, kanan-atas, kanan-bawah, kiri-bawah; urutan bebas)
+POST /sessions/{id}/checkpoints     → 202 { id, type: "feedback", status: "queued" }
+GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → cv → writing → saving → done
+   succeeded    → GET /sessions/{id}/checkpoints/{job_id} → tampilkan summary + suggestions
+   needs_retake → tampilkan retake_message, minta foto/tap ulang (error_code: photo_unusable | alignment_failed | sketch_not_visible)
+```
+
+Perkiraan waktu: ±6–8 s (laptop, CPU, tanpa AI).
+
+### Form `POST /sessions/{id}/checkpoints`
+
+| Field | Wajib | Isi |
+| --- | --- | --- |
+| `file` | ✅ | JPEG/PNG/WebP ≤10 MB |
+| `stage_code` | ✅ | Kode tahap dengan `is_checkpoint: true` (mis. `stage_2`). Tahap lain → 422 `not_checkpoint` |
+| `corners` | ✅ | JSON string 8 angka `[x1,y1,x2,y2,x3,y3,x4,y4]`: 4 sudut **area grid** (bidang yang sama dengan gambar panduan) dalam **piksel foto seperti tampil di layar** (orientasi sudah benar, ukuran asli `naturalWidth × naturalHeight`, bukan ukuran CSS). Urutan bebas |
+| `consent_ai_photo` | — | `true` bila pengguna setuju foto progres dikirim ke AI. Bawaan `false` → saran ditulis templat |
+
+Kuota: per tahap checkpoint maks **2 feedback** (1 + 1 retry); foto ulang (`needs_retake`) tidak dihitung, total percobaan per tahap maks 6 → 429 `checkpoint_quota_exceeded`.
+
+### Membaca hasil checkpoint
+
+- `summary`: 1 kalimat pembuka. `suggestions`: **0–2** saran `{region_code, observation, action, bbox}`. Tanpa saran = sketsa sudah sesuai.
+- `region_code` = kode region (`rNN`, sorot `<path id="rNN">` di `regions.svg`) atau `"main"` = siluet objek utama (sorot lapisan `main_object`).
+- `bbox` `[x, y, w, h]` di ruang `image_width × image_height` lesson — dipakai untuk penanda di atas foto/panduan. Hanya ada bila penyelarasan berhasil.
+- `photo_url`: foto yang sudah diluruskan (rasio sama dengan lesson). Tampilkan di `<image width=W height=H>` pada `viewBox` lesson, lalu tumpuk lapisan `sketch`/`grid` untuk membandingkan. Signed URL 30 menit; `null` setelah foto dihapus (teks tetap ada).
+- `text_source`: `ai` atau `template`; `generated_automatically: true` → label "dibuat otomatis".
+- Cakupan penilaian versi awal: posisi relatif, ukuran bentuk besar, area yang belum tergambar/terisi. **Bukan** rona halus atau teknik sapuan — jangan ditampilkan seolah menilai itu.
+
+### Event analitik (`POST /events`)
+
+Nama yang diterima dari UI: `lesson_viewed`, `recipe_opened`, `original_photo_opened`, `feedback_shown`, `reflection_answered` (P1: `story_opened`, `recognition_confirmed`). `props` hanya `stage_order`, `origin`, `lesson_version_id`, `correct` (lainnya dibuang). Event `practice_started`, `stage_completed`, `checkpoint_requested`, `lesson_completed`, `session_deleted` dicatat backend sendiri. Tidak menyimpan gambar, jawaban bebas, atau ID sesi mentah.
+
 ## Kode error yang perlu ditangani di UI
 
 | HTTP | `code` | Saran UI |
@@ -77,9 +125,12 @@ Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 | 413 | `file_too_large`, `image_too_large` | Minta foto lebih kecil |
 | 422 | `file_invalid`, `validation_error` | Minta JPG/PNG/WebP; `fields` berisi nama field yang salah (termasuk `scope` yang keluar dari foto) |
 | 429 | `quota_exceeded` | Batas 3 tutorial per sesi; arahkan ke galeri |
+| 429 | `checkpoint_quota_exceeded` | Batas feedback tahap ini; ajak lanjut ke tahap berikutnya |
+| 409 | `lesson_required` | Sesi belum punya materi: pilih dari galeri atau buat tutorial |
+| 422 | `not_checkpoint` | Bug frontend: tahap ini tidak meminta foto |
 | 500 | `internal_error` | Tampilkan pesan umum, boleh coba lagi |
 
-Di status job (`error_code`): `photo_unusable`, `not_artwork` (needs_retake), `session_deleted`, `worker_timeout`, `internal_error` (failed). Daftar lengkap pesan ada di `core/errors.py`.
+Di status job (`error_code`): `photo_unusable`, `not_artwork`, `alignment_failed`, `sketch_not_visible` (needs_retake), `session_deleted`, `worker_timeout`, `internal_error` (failed). Daftar lengkap pesan ada di `core/errors.py`.
 
 ## Cookie di produksi
 

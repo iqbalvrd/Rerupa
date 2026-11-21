@@ -1,0 +1,41 @@
+{
+  "job_id": "53f2ea25-cd9e-4f79-94e3-1cc75a970d2a",
+  "stage_code": "stage_2",
+  "status": "succeeded",
+  "is_final": true,
+  "needs_retake": false,
+  "retake_code": null,
+  "retake_message": null,
+  "reasons": [],
+  "image_quality": "usable",
+  "alignment": "confirmed",
+  "summary": "Sebagian bentuk sudah terbaca. Periksa hal berikut sebelum mulai mewarnai.",
+  "suggestions": [
+    {
+      "region_code": "r02",
+      "observation": "Bidang nomor 2 tampak bergeser sedikit ke kanan dari panduan.",
+      "action": "Cocokkan posisinya dengan garis grid terdekat, lalu geser garisnya ke kiri.",
+      "bbox": [
+        300,
+        398,
+        302,
+        604
+      ]
+    },
+    {
+      "region_code": "r03",
+      "observation": "Bidang nomor 3 (atas) tampak bergeser sedikit ke kanan dari panduan.",
+      "action": "Cocokkan posisinya dengan garis grid terdekat, lalu geser garisnya ke kiri.",
+      "bbox": [
+        340,
+        190,
+        219,
+        219
+      ]
+    }
+  ],
+  "text_source": "template",
+  "generated_automatically": true,
+  "photo_url": "https://<project>.supabase.co/storage/v1/object/sign/uploads/...?token=...",
+  "created_at": "2026-11-21T09:04:57.296794+00:00"
+}

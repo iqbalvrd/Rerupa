@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from core.config import get_settings
 from core.errors import message_for, register_error_handlers
 from core.logging_setup import setup_logging
-from routes import artworks, health, jobs, lessons, palettes, sessions
+from routes import artworks, checkpoints, health, jobs, lessons, palettes, progress, sessions
 
 settings = get_settings()
 setup_logging()
@@ -50,3 +50,5 @@ app.include_router(sessions.router)
 app.include_router(jobs.router)
 app.include_router(lessons.router)
 app.include_router(palettes.router)
+app.include_router(progress.router)
+app.include_router(checkpoints.router)

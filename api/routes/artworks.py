@@ -32,7 +32,7 @@ class ArtworkCard(BaseModel):
     license: str
     license_note: str | None
     thumbnail_url: str | None
-    lesson_version_id: UUID | None  # diisi di Fase 3 (lesson_versions belum ada)
+    lesson_version_id: UUID | None  # versi lesson terbit terbaru; kirim ke POST/PATCH /sessions untuk mulai latihan
 
 
 class ArtworkDetail(ArtworkCard):
@@ -53,7 +53,8 @@ def list_artworks() -> list[ArtworkCard]:
         .data
     )
     urls = signed_urls("catalog", [r["thumbnail_path"] for r in rows], CATALOG_URL_TTL)
-    return [ArtworkCard(**_card_fields(r), thumbnail_url=urls.get(r["thumbnail_path"])) for r in rows]
+    lessons = _published_lessons([r["id"] for r in rows])
+    return [ArtworkCard(**_card_fields(r, lessons), thumbnail_url=urls.get(r["thumbnail_path"])) for r in rows]
 
 
 @router.get("/{slug}", response_model=ArtworkDetail)
@@ -78,7 +79,7 @@ def get_artwork(slug: str) -> ArtworkDetail:
         if link.get("sources")
     ]
     return ArtworkDetail(
-        **_card_fields(r),
+        **_card_fields(r, _published_lessons([r["id"]])),
         thumbnail_url=urls.get(r["thumbnail_path"]),
         image_url=urls.get(r["image_path"]),
         adaptation_scope=r["adaptation_scope"],
@@ -86,7 +87,27 @@ def get_artwork(slug: str) -> ArtworkDetail:
     )
 
 
-def _card_fields(r: dict) -> dict:
+def _published_lessons(artwork_ids: list[str]) -> dict[str, str]:
+    """artwork_id → id lesson terbit dengan versi tertinggi."""
+    if not artwork_ids:
+        return {}
+    rows = (
+        get_supabase()
+        .table("lesson_versions")
+        .select("id, artwork_id, version")
+        .in_("artwork_id", artwork_ids)
+        .eq("status", "published")
+        .order("version", desc=True)
+        .execute()
+        .data
+    )
+    out: dict[str, str] = {}
+    for row in rows:
+        out.setdefault(row["artwork_id"], row["id"])
+    return out
+
+
+def _card_fields(r: dict, lessons: dict[str, str]) -> dict:
     return {
         "id": r["id"],
         "slug": r["slug"],
@@ -96,5 +117,5 @@ def _card_fields(r: dict) -> dict:
         "region_origin": r["region_origin"],
         "license": r["license"],
         "license_note": r["license_note"],
-        "lesson_version_id": None,
+        "lesson_version_id": lessons.get(r["id"]),
     }

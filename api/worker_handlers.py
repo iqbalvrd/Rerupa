@@ -198,6 +198,9 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
     )
 
 
+from worker_feedback import handle_feedback  # noqa: E402  (setelah definisi di atas: hindari impor melingkar)
+
 HANDLERS: dict[str, Handler] = {
+    "feedback": handle_feedback,
     "generate_lesson": handle_generate_lesson,
 }

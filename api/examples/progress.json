@@ -1,0 +1,62 @@
+{
+  "lesson_version_id": "d987b3a6-443a-4bbd-a44a-8a859a2cdbe6",
+  "current_stage_order": 2,
+  "completed_count": 1,
+  "stage_count": 6,
+  "stages": [
+    {
+      "code": "stage_1",
+      "order_no": 1,
+      "is_checkpoint": false,
+      "status": "completed",
+      "viewed_at": "2026-11-21T09:05:10+00:00",
+      "completed_at": "2026-11-21T09:12:40+00:00",
+      "feedback_count": 0
+    },
+    {
+      "code": "stage_2",
+      "order_no": 2,
+      "is_checkpoint": true,
+      "status": "viewed",
+      "viewed_at": "2026-11-21T09:12:41+00:00",
+      "completed_at": null,
+      "feedback_count": 1
+    },
+    {
+      "code": "stage_3",
+      "order_no": 3,
+      "is_checkpoint": false,
+      "status": "not_started",
+      "viewed_at": null,
+      "completed_at": null,
+      "feedback_count": 0
+    },
+    {
+      "code": "stage_4",
+      "order_no": 4,
+      "is_checkpoint": false,
+      "status": "not_started",
+      "viewed_at": null,
+      "completed_at": null,
+      "feedback_count": 0
+    },
+    {
+      "code": "stage_5",
+      "order_no": 5,
+      "is_checkpoint": false,
+      "status": "not_started",
+      "viewed_at": null,
+      "completed_at": null,
+      "feedback_count": 0
+    },
+    {
+      "code": "stage_6",
+      "order_no": 6,
+      "is_checkpoint": false,
+      "status": "not_started",
+      "viewed_at": null,
+      "completed_at": null,
+      "feedback_count": 0
+    }
+  ]
+}

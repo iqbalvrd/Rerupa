@@ -1,0 +1,20 @@
+{
+  "job_id": "6825c6d2-1149-41e1-aebf-c0742071b377",
+  "stage_code": "stage_2",
+  "status": "needs_retake",
+  "is_final": true,
+  "needs_retake": true,
+  "retake_code": "alignment_failed",
+  "retake_message": "Sudut belum pas. Tap ulang keempat sudut bidang dan pastikan garis grid terlihat.",
+  "reasons": [
+    "corners_invalid"
+  ],
+  "image_quality": "usable",
+  "alignment": "failed",
+  "summary": null,
+  "suggestions": [],
+  "text_source": null,
+  "generated_automatically": true,
+  "photo_url": null,
+  "created_at": "2026-11-21T09:04:42.0318+00:00"
+}

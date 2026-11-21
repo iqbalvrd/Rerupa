@@ -52,7 +52,49 @@ export async function mockRequest(method: string, path: string, body: unknown): 
 
   if (method === "GET" && path === "/health") return { status: "ok", mock: true };
   if (method === "GET" && path === "/palettes") return example("palettes");
-  if (method === "GET" && path.startsWith("/lessons/")) return example("lesson_detail");
+  // Synthetic lesson: the example lesson with shape layers that actually load.
+  if (method === "GET" && path.startsWith("/lessons/")) return example("lesson_mock");
+
+  const progressMatch = path.match(/^\/sessions\/([^/]+)\/progress$/);
+  if (progressMatch) {
+    const session = loadSession();
+    if (!session || session.id !== progressMatch[1]) sessionRequired();
+    const lesson = (await example("lesson_mock")) as {
+      stages: { code: string; order_no: number; is_checkpoint: boolean }[];
+    };
+    const state = (session.progress ?? {}) as Record<string, { status: string; viewed_at: string | null; completed_at: string | null }>;
+    if (method === "PATCH") {
+      const { stage_code, status } = json as { stage_code: string; status: "viewed" | "completed" };
+      if (!lesson.stages.some((s) => s.code === stage_code)) {
+        throw new ApiError("not_found", "Tahap tidak ditemukan.", { status: 404 });
+      }
+      const now = new Date().toISOString();
+      const prev = state[stage_code] ?? { status: "not_started", viewed_at: null, completed_at: null };
+      // Viewing never downgrades a completed stage (API.md, "Progres latihan").
+      state[stage_code] =
+        status === "completed"
+          ? { status: "completed", viewed_at: prev.viewed_at ?? now, completed_at: prev.completed_at ?? now }
+          : { ...prev, status: prev.status === "completed" ? "completed" : "viewed", viewed_at: prev.viewed_at ?? now };
+      const order = lesson.stages.find((s) => s.code === stage_code)!.order_no;
+      saveSession({ ...session, progress: state, current_stage_order: order });
+    }
+    const stages = lesson.stages.map((s) => ({
+      code: s.code,
+      order_no: s.order_no,
+      is_checkpoint: s.is_checkpoint,
+      status: state[s.code]?.status ?? "not_started",
+      viewed_at: state[s.code]?.viewed_at ?? null,
+      completed_at: state[s.code]?.completed_at ?? null,
+      feedback_count: 0,
+    }));
+    return {
+      lesson_version_id: session.lesson_version_id ?? DEV_LESSON_ID,
+      current_stage_order: (loadSession()?.current_stage_order as number | undefined) ?? 1,
+      completed_count: stages.filter((s) => s.status === "completed").length,
+      stage_count: stages.length,
+      stages,
+    };
+  }
 
   if (path === "/sessions" && method === "POST") {
     const base = (await example("session")) as MockSession;

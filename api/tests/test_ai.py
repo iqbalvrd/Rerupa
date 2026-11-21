@@ -224,6 +224,17 @@ def test_parse_success_records_usage(fake_sdk):
     assert recorded[0][5] == "ok"  # outcome
 
 
+def test_parse_sends_reasoning_effort_when_configured(monkeypatch):
+    from types import SimpleNamespace as NS
+
+    seen = []
+    monkeypatch.setattr(oc, "_record_usage", lambda *a: None)
+    monkeypatch.setattr(oc, "get_settings", lambda: NS(openai_vision_model="m", openai_price_input_per_m=1.0, openai_price_output_per_m=2.0, openai_reasoning_effort="low"))
+    monkeypatch.setattr(oc, "_client", lambda: NS(responses=NS(parse=lambda **kw: seen.append(kw) or _Resp(parsed=good_output()))))
+    _call()
+    assert seen[0]["reasoning"] == {"effort": "low"} and seen[0]["store"] is False
+
+
 @pytest.mark.parametrize("resp,code,outcome", [
     (_Resp(status="incomplete"), "ai_unavailable", "truncated"),
     (_Resp(refusal=True, parsed=None), "ai_refused", "refusal"),

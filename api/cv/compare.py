@@ -32,6 +32,12 @@ DL_MAX = 15.0
 MAX_CANDIDATES = 3
 MIN_SCORE = 0.02
 MAIN = "main"  # kode semu untuk siluet objek utama
+SKETCH = "sketch"  # kode semu untuk seluruh sketsa (pergeseran global)
+GLOBAL_SEARCH_FRAC = 0.12  # cari pergeseran seluruh sketsa sampai ±12% sisi panjang
+GLOBAL_GAIN = 0.7  # pergeseran global diterima bila skor jarak turun ≥30% dibanding tanpa geser
+GLOBAL_MIN_RECALL = 0.75  # setelah dikompensasi, ≥75% garis target harus tertutup goresan
+GLOBAL_MAX_LOST = 0.15  # garis yang tadinya sudah pas lalu meleset karena kompensasi: maks 15%
+# (bila hanya SATU bentuk yang bergeser, bentuk lain yang sudah benar akan "hilang" → bukan pergeseran global)
 
 
 @dataclass
@@ -163,6 +169,52 @@ def _sketch_candidate(code: str, m: dict, bbox: tuple[int, int, int, int], long_
     return {"region_code": code, **best, "severity": round(best["severity"], 3)}
 
 
+def _direction(dx: float, dy: float) -> str:
+    horiz = "kanan" if dx > 0 else "kiri"
+    vert = "bawah" if dy > 0 else "atas"
+    if abs(dx) >= 2 * abs(dy):
+        return horiz
+    if abs(dy) >= 2 * abs(dx):
+        return vert
+    return f"{horiz} {vert}"
+
+
+def global_shift(target_lines: np.ndarray, dist_user: np.ndarray, tol: float, far: float, long_side: int) -> dict:
+    """Pergeseran (dx, dy) seluruh sketsa terhadap panduan: cari offset yang paling menempelkan garis target
+    ke goresan pengguna (jarak chamfer, dipotong di `far`). Kasar (1%) lalu halus (2 px)."""
+    ys, xs = np.nonzero(target_lines)
+    if len(ys) < 50:
+        return {"dx": 0, "dy": 0, "gain": 1.0, "recall": 0.0, "lost": 0.0}
+    if len(ys) > 4000:
+        sel = np.linspace(0, len(ys) - 1, 4000).astype(int)
+        ys, xs = ys[sel], xs[sel]
+    h, w = dist_user.shape
+
+    def score(dx: int, dy: int) -> float:
+        yy, xx = ys + dy, xs + dx
+        inside = (yy >= 0) & (yy < h) & (xx >= 0) & (xx < w)
+        if inside.mean() < 0.6:
+            return far
+        d = np.minimum(dist_user[yy[inside], xx[inside]], far)
+        return float(d.mean())
+
+    s0 = score(0, 0)
+    step = max(2, round(0.01 * long_side))
+    rng = round(GLOBAL_SEARCH_FRAC * long_side)
+    best = min(((score(dx, dy), dx, dy) for dx in range(-rng, rng + 1, step) for dy in range(-rng, rng + 1, step)), key=lambda t: t[0])
+    _, bx, by = best
+    best = min(((score(dx, dy), dx, dy) for dx in range(bx - step, bx + step + 1, 2) for dy in range(by - step, by + step + 1, 2)), key=lambda t: t[0])
+    sb, bx, by = best
+    yy, xx = ys + by, xs + bx
+    inside = (yy >= 0) & (yy < h) & (xx >= 0) & (xx < w)
+    matched0 = dist_user[ys, xs] <= tol
+    matched = np.zeros_like(matched0)
+    matched[inside] = dist_user[yy[inside], xx[inside]] <= tol
+    recall = float(matched.mean())
+    lost = float((matched0 & ~matched).mean())
+    return {"dx": bx, "dy": by, "gain": round(sb / s0, 3) if s0 > 0 else 1.0, "recall": round(recall, 3), "lost": round(lost, 3), "score0": round(s0, 2), "score": round(sb, 2)}
+
+
 def compare_sketch(
     strokes: np.ndarray,
     labels: np.ndarray,
@@ -196,6 +248,35 @@ def compare_sketch(
         "shapes": {},
     }
     candidates = []
+
+    # 1) Seluruh sketsa bergeser? (kesalahan paling umum pemula: titik awal salah, semua ikut bergeser)
+    g = global_shift(target_lines, dist, tol, far, long_side)
+    # Relatif per sumbu (dx terhadap lebar, dy terhadap tinggi): potongan satu figur sering tinggi-sempit,
+    # dan pemula membaca pergeseran terhadap ukuran bidangnya sendiri.
+    fx, fy = g["dx"] / w, g["dy"] / h
+    mag = max(abs(fx), abs(fy))
+    metrics["global_shift"] = {**g, "shift_x_pct": round(fx * 100, 1), "shift_y_pct": round(fy * 100, 1)}
+    if mag >= SHIFT_MIN and g["gain"] <= GLOBAL_GAIN and g["recall"] >= GLOBAL_MIN_RECALL and g["lost"] <= GLOBAL_MAX_LOST:
+        tb = _bbox(target_lines > 0)
+        candidates.append({
+            "region_code": SKETCH, "kind": "shifted", "severity": round(mag / 0.05, 3),
+            "facts": {"direction": _direction(fx, fy), "shift_pct": round(mag * 100, 1)},
+            "score": round(mag / 0.05 + 1.0, 4),  # selalu di atas saran per bentuk
+            "bbox": _to_lesson_bbox(tb, scale), "location": "",
+        })
+        # Nilai bentuk per bidang SETELAH pergeseran global dikompensasi → hanya sisa kesalahan yang dilaporkan.
+        back = np.float32([[1, 0, -g["dx"]], [0, 1, -g["dy"]]])
+        user = cv2.warpAffine(user, back, (w, h), flags=cv2.INTER_NEAREST, borderValue=0)
+        # Bagian yang setelah kompensasi berada di luar foto (atau di tepi yang selalu dikosongkan
+        # extract_strokes) tidak punya data goresan → jangan dinilai, supaya tidak muncul "lebih sempit" palsu.
+        seen = np.zeros((h, w), np.uint8)
+        mgn = max(4, round(0.015 * long_side)) + 2
+        seen[mgn:-mgn, mgn:-mgn] = 1
+        seen = cv2.warpAffine(seen, back, (w, h), flags=cv2.INTER_NEAREST, borderValue=0)
+        grid_ignore = ((grid_ignore > 0) | (seen == 0)).astype(np.uint8)
+        dist, (near_y, near_x) = ndimage.distance_transform_edt(user == 0, return_indices=True)
+        line_recall = float((dist[tgt] <= tol).mean()) if tgt.any() else 0.0
+        metrics["line_recall_compensated"] = round(line_recall, 3)
     shapes: list[tuple[str, np.ndarray, float, bool]] = []
     if main_mask is not None and main_mask.any():
         shapes.append((MAIN, main_mask.astype(np.uint8), float(main_mask.mean() * 100), True))

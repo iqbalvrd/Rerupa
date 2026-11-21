@@ -76,6 +76,15 @@ def test_shifted_main_object():
     assert all(c["region_code"] != "r02" for c in res.candidates)  # region = siluet → dinilai sekali
 
 
+def test_whole_sketch_shift_is_one_global_suggestion():
+    res = run(S.drawing(shift=(80, 50)))
+    top = res.candidates[0]
+    assert (top["region_code"], top["kind"]) == ("sketch", "shifted") and top["facts"]["direction"] == "kanan bawah"
+    assert all(c["region_code"] == "sketch" for c in res.candidates)  # setelah dikompensasi, tak ada sisa kesalahan palsu
+    text = fb.template_suggestion(top, {})
+    assert text.observation.startswith("Seluruh sketsa tampak bergeser") and "ke kiri atas" in text.action
+
+
 def test_shift_without_grid_detected_with_direction():
     res = run(S.drawing(draw_grid=False, shift={"r02": (-80, 40)}))
     assert res.candidates[0]["kind"] == "shifted" and res.candidates[0]["facts"]["direction"].startswith("kiri")

@@ -44,6 +44,8 @@ class FeedbackText(_Strict):
 def part_name(code: str, labels: dict[str, str | None]) -> str:
     if code == "main":
         return "objek utama"
+    if code == "sketch":
+        return "seluruh sketsa"
     label = labels.get(code)
     return label if label else f"bidang nomor {int(code[1:])}"
 
@@ -70,6 +72,10 @@ def template_suggestion(c: dict, labels: dict[str, str | None]) -> FeedbackSugge
     if kind == "missing_outline":
         obs = f"Garis luar {name}{where} belum terlihat jelas."
         act = "Gambar dulu garis luarnya mengikuti kotak grid sebelum mulai mewarnai."
+    elif kind == "shifted" and c["region_code"] == "sketch":
+        amount = "sedikit" if f.get("shift_pct", 0) < 4 else "cukup jauh"
+        obs = f"Seluruh sketsa tampak bergeser {amount} ke {f.get('direction', 'samping')} dari panduan."
+        act = f"Bandingkan titik penting (puncak kepala, ujung bawah bentuk) dengan garis grid, lalu pindahkan seluruh bentuk ke {_opposite(f.get('direction', 'samping'))} sebelum mewarnai."
     elif kind == "shifted":
         amount = "sedikit" if f.get("shift_pct", 0) < 4 else "cukup jauh"
         obs = f"{_cap(name)}{where} tampak bergeser {amount} ke {f.get('direction', 'samping')} dari panduan."

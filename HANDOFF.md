@@ -47,13 +47,13 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Checkpoint (Fase 5) | `PATCH/GET /sessions/{id}/progress` (melihat ≠ menyelesaikan), `POST/GET /sessions/{id}/checkpoints`; tap 4 sudut → warp → ECC ke **grid** (cadangan: ke garis target, translasi ≤3%) → metrik per bentuk (garis tergambar, geser, lebar/tinggi; tahap warna: % terisi, ΔL*) → maks 3 kandidat → maks 2 saran (AI dari kandidat saja, templat cadangan); foto buram/gelap/sudut salah/sketsa tak terlihat → `needs_retake` tanpa saran; kuota 1 retry per checkpoint; event analitik (`POST /events` + event server); materi koleksi bisa dipasang ke sesi (`lesson_version_id`) | 160 tes, job ±6–8 s |
 | Rilis (Fase 6) | Rate limit per IP/sesi/buat sesi/unggah (429 + `Retry-After`); cek origin untuk permintaan yang mengubah data; header keamanan; batas tunggu job 60/45 s → `worker_timeout` (tidak memakan kuota); cek konfigurasi produksi saat start; `/health` melaporkan antrean; alarm biaya 50/80/100%; Dockerfile (torch CPU, bobot model di-cache saat build) + `railway.toml` + [DEPLOY.md](api/DEPLOY.md); `scripts/smoke.py` alur lengkap lulus di lokal | Tes + smoke test |
 | Showcase (Fase 7) | 2 checkpoint (sketsa + bidang sedang; tahap warna diselaraskan dengan tepi bidang warna); retensi: worker tiap 15 menit hapus foto + lapisan turunan foto >24 jam dan sesi terhapus/kedaluwarsa, `pg_cron` untuk `events`/`ai_usage`; lapisan terhapus → `purged: true`; tes otomatis akses antar-sesi/hapus sesi/idempotensi/retensi; `scripts/measure_p95.py` + `scripts/report_ai.py` | P95 lokal (20 putaran): tutorial 29,0 s, feedback 15,0 s — [eval/P95_LOKAL.md](eval/P95_LOKAL.md) |
+| AI OpenAI | Uji 3 model pada 4 materi koleksi ([eval/HASIL_UJI_MODEL.md](eval/HASIL_UJI_MODEL.md)): **gpt-6.1-terra** dipilih untuk mode bebas + feedback (lolos validator 4/4, ±18 s, ±$0,012/tutorial), gpt-6.2-sol untuk impor koleksi; `reasoning.effort=low`; alur penuh dengan AI sungguhan terbukti (teks tahap + feedback, biaya tercatat di `ai_usage`) | Uji model + uji end-to-end |
 | Pipeline CV (Fase 2) | `api/cv/`: normalisasi, cek kualitas, mask (rembg u2net), garis (TEED untuk mode bebas, model lineart untuk koleksi, XDoG cadangan) dengan ambang adaptif, region k-means ≤35 yang digabung berdasarkan kemiripan warna, terang-gelap 3–5 tingkat, SVG + gambar region bernomor | 59 tes + evaluasi foto nyata ([eval/HASIL_FASE2.md](eval/HASIL_FASE2.md)) |
 
 ### 2.2 Berikutnya
 
 | Prioritas | Pekerjaan | Fase | Membuka untuk frontend |
 | --- | --- | --- | --- |
-| 1 | Isi API key OpenAI + uji 2–3 model untuk teks tahap (lalu set `OPENAI_VISION_MODEL` dan harga) | 3 | Teks tahap dari AI |
 | 2 | Uji checkpoint dengan 3–5 foto progres sketsa nyata (`eval/run_checkpoint.py`), kalibrasi ambang | 5 | — |
 | 4 | Uji CV dengan foto HP sungguhan dari lukisan fisik | 2 | — |
 
@@ -67,7 +67,8 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 - Checkpoint (sketsa + tahap warna) dikalibrasi dengan foto sintetis; ambang (`cv/compare.py`, `cv/checkpoint.py`) perlu disesuaikan setelah uji foto progres nyata.
 - Materi koleksi yang diimpor sebelum Fase 7 (Raden Saleh v2) masih 1 checkpoint; impor ulang agar mendapat 2.
 - Saat seluruh sketsa bergeser ke satu arah, saran saat ini menyebut per bentuk (bisa dua saran mirip); bisa digabung jadi satu saran setelah uji nyata.
-- OpenAI belum dikonfigurasi (`OPENAI_API_KEY` kosong); `DATABASE_URL` belum diisi (belum dibutuhkan).
+- OpenAI aktif di lokal (`gpt-6.1-terra`). Key yang dipakai pernah ditempel di chat → **cabut dan ganti** sebelum deploy, lalu set batas pengeluaran di dashboard OpenAI. `DATABASE_URL` belum diisi (belum dibutuhkan).
+- Checkpoint: deteksi "seluruh sketsa bergeser" (`region_code: "sketch"`) teruji pada 4 materi nyata dengan foto sintetis (20/20, [eval/HASIL_CHECKPOINT_NYATA.md](eval/HASIL_CHECKPOINT_NYATA.md)); uji dengan foto progres sungguhan tetap diperlukan.
 - CV: lukisan utuh yang penuh tokoh terlalu rumit untuk 35 region — **UI perlu mengarahkan pemula memotong satu figur**. Waktu CV mode bebas ±6–12 s di CPU laptop (target 8 s), perlu diukur di server.
 
 ### 2.4 Catatan untuk frontend dari Fase 2
@@ -125,7 +126,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Xavier → Tim | Batas pengeluaran di dashboard OpenAI | ⏳ |
 | Frontend → Backend | Domain Vercel untuk `FRONTEND_ORIGIN` (CORS) | ⏳ |
 | Frontend → Backend | Masukan bentuk JSON lesson setelah mencoba draf | ⏳ |
-| Xavier → Iqbal | Undangan ke project OpenAI + akses Playground | ⏳ |
+| Xavier → Iqbal | Key OpenAI | ✅ diterima (harus diganti sebelum deploy) |
 | Tim → Backend | Kesepakatan pembagian modul backend (usul: sesi & progres oleh Xavier) | ⏳ |
 | Konten → Backend | 1 materi koleksi + lisensi + 5–10 entri basis budaya + palet demo (format di [content/README.md](content/README.md); contoh Raden Saleh sudah ada sebagai draf) | ⏳ |
 | Konten → Backend | Tinjau contoh Raden Saleh lalu terbitkan (`--publish`) | ⏳ |
@@ -159,7 +160,8 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | `feat/fase-4-warna` | Fase 4: saran campuran warna | Sudah di-merge ke `main` (PR #5) |
 | `feat/fase-5-checkpoint` | Fase 5: progres + checkpoint foto progres | Sudah di-merge ke `main` (PR #6) |
 | `feat/fase-6-rilis` | Fase 6: persiapan rilis + deploy | Sudah di-merge ke `main` (PR #7) |
-| `feat/fase-7-showcase` | Fase 7: penguatan showcase | Lokal, belum di-push |
+| `feat/fase-7-showcase` | Fase 7: penguatan showcase + 4 materi koleksi | Sudah di-merge ke `main` (PR #8) |
+| `feat/ai-model-openai` | Uji & aktivasi model OpenAI | Lokal, belum di-push |
 | `feat/web-…` | Frontend | Dibuat Xavier |
 
 ---

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # untuk mencatat biaya di ai_usage dan menegakkan DAILY_AI_BUDGET_USD.
     openai_price_input_per_m: float = 0.0
     openai_price_output_per_m: float = 0.0
+    # Usaha penalaran model (none|low|medium|high; kosong = bawaan model). "low" cukup untuk menulis
+    # teks dari data terstruktur dan menjaga latensi/biaya (uji model: eval/HASIL_UJI_MODEL.md).
+    openai_reasoning_effort: str = "low"
 
     # Sesi tamu
     session_cookie_name: str = "rerupa_session"

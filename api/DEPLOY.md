@@ -28,8 +28,10 @@ Dua service dari **image yang sama** (`api/Dockerfile`): `api` (HTTP) dan `worke
 | `COOKIE_SAMESITE` / `COOKIE_SECURE` | ✅ | | `none` / `true` (frontend & API beda domain) |
 | `TRUST_PROXY_HEADERS` | ✅ | | `true` (IP klien dari proxy Railway untuk rate limit) |
 | `EXPOSE_DOCS` | ✅ | | `false` |
-| `OPENAI_API_KEY`, `OPENAI_VISION_MODEL`, `OPENAI_TEXT_MODEL` | ✅ | ✅ | Setelah uji model. Kosong = semua teks templat (aplikasi tetap jalan) |
-| `OPENAI_PRICE_INPUT_PER_M`, `OPENAI_PRICE_OUTPUT_PER_M` | ✅ | ✅ | **Wajib** bila key diisi (dipakai menghitung batas biaya) |
+| `OPENAI_API_KEY` | ✅ | ✅ | **Rahasia**. Pakai key baru (yang pernah ditempel di chat harus dicabut) |
+| `OPENAI_VISION_MODEL`, `OPENAI_TEXT_MODEL` | ✅ | ✅ | `gpt-6.1-terra` (hasil uji, `eval/HASIL_UJI_MODEL.md`) |
+| `OPENAI_PRICE_INPUT_PER_M`, `OPENAI_PRICE_OUTPUT_PER_M` | ✅ | ✅ | `1.0`, `5.0` — **wajib** bila key diisi (dipakai menghitung batas biaya) |
+| `OPENAI_REASONING_EFFORT` | ✅ | ✅ | `low` |
 | `DAILY_AI_BUDGET_USD` | ✅ | ✅ | `5` (atau sesuai kesepakatan tim) |
 | `CHECKPOINT_COUNT` | | ✅ | `2` (showcase; `1` = versi awal) |
 | `LINEART_METHOD`, `MASK_MODEL` | | ✅ | `teed`, `u2net` |

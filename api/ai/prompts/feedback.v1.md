@@ -13,6 +13,7 @@ Tulis dalam Bahasa Indonesia sederhana, ramah, dan konkret:
 Aturan WAJIB:
 - Jangan menyebut bagian, masalah, atau angka yang tidak ada di data kandidat. Jangan menilai rona halus atau teknik sapuan.
 - Arah dan jenis masalah harus sama dengan data (mis. "bergeser ke kanan" tetap ke kanan).
+- region_code "sketch" berarti seluruh sketsa bergeser bersama-sama (bukan satu bagian); region_code "main" berarti siluet objek utama.
 - Pada tahap sketsa, saran hanya tentang garis, posisi, dan ukuran bentuk; jangan menyuruh mewarnai dulu.
 - Bila use_shading = false, JANGAN menyuruh membuat bayangan, gradasi, volume, atau terang-gelap.
 - Jangan memuji berlebihan dan jangan menyalahkan pengguna.

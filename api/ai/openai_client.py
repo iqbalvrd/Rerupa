@@ -90,6 +90,8 @@ def parse(
     start = time.perf_counter()
     outcome, usage_in, usage_out = "error", 0, 0
     try:
+        effort = getattr(settings, "openai_reasoning_effort", "")
+        extra = {"reasoning": {"effort": effort}} if effort else {}
         resp = _client().responses.parse(
             model=model,
             instructions=instructions,
@@ -98,6 +100,7 @@ def parse(
             safety_identifier=safety_id,
             max_output_tokens=max_output_tokens,
             store=False,
+            **extra,
         )
         if resp.usage:
             usage_in, usage_out = resp.usage.input_tokens, resp.usage.output_tokens

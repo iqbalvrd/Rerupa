@@ -64,7 +64,7 @@ type RequestOptions = {
 
 async function request<T>(path: string, schema: z.ZodType<T> | null, opts: RequestOptions = {}): Promise<T> {
   if (DEV_MOCK_API) {
-    const data = await mockRequest(opts.method ?? "GET", path, opts.json);
+    const data = await mockRequest(opts.method ?? "GET", path, opts.json, opts.form);
     return (schema ? schema.parse(data) : undefined) as T;
   }
   const url = new URL(API_BASE_URL + path);

@@ -45,10 +45,114 @@ function sessionRequired(): never {
   throw new ApiError("session_required", "Sesi tidak ditemukan. Mulai sesi baru.", { status: 401 });
 }
 
-export async function mockRequest(method: string, path: string, body: unknown): Promise<unknown> {
+// ── Mock jobs (checkpoint feedback), kept in memory for this page load ──────
+
+type MockJob = {
+  id: string;
+  type: "feedback";
+  createdAt: number;
+  stageCode: string;
+  outcome: "succeeded" | "needs_retake";
+  photoUrl: string | null;
+};
+const jobs = new Map<string, MockJob>();
+
+/** Feedback job timeline, roughly like the API's ±6–8 s on a laptop, sped up. */
+const FEEDBACK_STEPS: [number, string][] = [
+  [600, "queued"],
+  [1800, "cv"],
+  [2800, "writing"],
+  [3400, "saving"],
+];
+
+function jobOut(job: MockJob) {
+  const elapsed = Date.now() - job.createdAt;
+  const step = FEEDBACK_STEPS.find(([until]) => elapsed < until)?.[1];
+  const done = step === undefined;
+  return {
+    id: job.id,
+    type: job.type,
+    status: done ? job.outcome : step === "queued" ? "queued" : "processing",
+    is_final: done,
+    progress: { step: done ? "done" : step },
+    result: null,
+    error_code: done && job.outcome === "needs_retake" ? "alignment_failed" : null,
+    error_message: null,
+    lesson_version_id: null,
+    created_at: new Date(job.createdAt).toISOString(),
+    finished_at: done ? new Date(job.createdAt + 3400).toISOString() : null,
+  };
+}
+
+/** Area of the tapped quadrilateral as a share of the photo (shoelace formula). */
+function cornerArea(corners: number[], w: number, h: number): number {
+  const pts = [0, 1, 2, 3].map((i) => [corners[i * 2], corners[i * 2 + 1]]);
+  const cx = pts.reduce((a, p) => a + p[0], 0) / 4;
+  const cy = pts.reduce((a, p) => a + p[1], 0) / 4;
+  pts.sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
+  let area = 0;
+  for (let i = 0; i < 4; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % 4];
+    area += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(area) / 2 / (w * h || 1);
+}
+
+async function imageSize(file: Blob): Promise<[number, number]> {
+  try {
+    const bmp = await createImageBitmap(file);
+    const size: [number, number] = [bmp.width, bmp.height];
+    bmp.close();
+    return size;
+  } catch {
+    return [1, 1];
+  }
+}
+
+export async function mockRequest(method: string, path: string, body: unknown, form?: FormData): Promise<unknown> {
   // Small delay so loading states are visible, like a real network.
   await new Promise((r) => setTimeout(r, 250));
   const json = (body ?? {}) as Record<string, unknown>;
+
+  // POST /sessions/{id}/checkpoints → feedback job. A tiny tapped area (corners
+  // bunched together) answers like a failed alignment, to exercise "foto ulang".
+  const createCheckpoint = path.match(/^\/sessions\/([^/]+)\/checkpoints$/);
+  if (createCheckpoint && method === "POST" && form) {
+    const session = loadSession();
+    if (!session || session.id !== createCheckpoint[1]) sessionRequired();
+    const file = form.get("file");
+    const corners = JSON.parse(String(form.get("corners") ?? "[]")) as number[];
+    const [w, h] = file instanceof Blob ? await imageSize(file) : [1, 1];
+    const job: MockJob = {
+      id: crypto.randomUUID(),
+      type: "feedback",
+      createdAt: Date.now(),
+      stageCode: String(form.get("stage_code")),
+      outcome: corners.length === 8 && cornerArea(corners, w, h) >= 0.15 ? "succeeded" : "needs_retake",
+      photoUrl: file instanceof Blob ? URL.createObjectURL(file) : null,
+    };
+    jobs.set(job.id, job);
+    return jobOut(job);
+  }
+  const jobMatch = path.match(/^\/jobs\/([^/]+)$/);
+  if (jobMatch && method === "GET") {
+    const job = jobs.get(jobMatch[1]);
+    if (!job) throw new ApiError("not_found", "Pekerjaan tidak ditemukan.", { status: 404 });
+    return jobOut(job);
+  }
+  const checkpointResult = path.match(/^\/sessions\/([^/]+)\/checkpoints\/([^/]+)$/);
+  if (checkpointResult && method === "GET") {
+    const job = jobs.get(checkpointResult[2]);
+    if (!job) throw new ApiError("not_found", "Checkpoint tidak ditemukan.", { status: 404 });
+    const base = (await example(job.outcome === "succeeded" ? "checkpoint_feedback" : "checkpoint_retake")) as Record<string, unknown>;
+    return {
+      ...base,
+      job_id: job.id,
+      stage_code: job.stageCode,
+      photo_url: job.outcome === "succeeded" ? job.photoUrl : null,
+    };
+  }
 
   if (method === "GET" && path === "/health") return { status: "ok", mock: true };
   if (method === "GET" && path === "/palettes") return example("palettes");

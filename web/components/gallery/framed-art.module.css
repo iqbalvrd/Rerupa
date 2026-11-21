@@ -1,0 +1,25 @@
+/* A gilded frame (CSS border-image) around an artwork image or any content. */
+.frame {
+  /* Artwork plus both frame sides must fit the available width. */
+  --art-max-w: min(calc(100vw - 5rem - 2 * var(--frame-w)), 26rem);
+  --art-max-h: 34dvh;
+  display: block;
+  border-style: solid;
+  border-width: var(--frame-w);
+  border-image-source: var(--frame-src);
+  border-image-slice: var(--frame-slice);
+  border-image-width: var(--frame-w);
+  border-image-repeat: stretch;
+  /* the frame casts a soft shadow on the wall, lit from above */
+  filter: drop-shadow(0 0.9rem 0.8rem rgb(60 45 30 / 0.35));
+}
+
+.art {
+  display: block;
+  max-inline-size: var(--art-max-w);
+  max-block-size: var(--art-max-h);
+  inline-size: auto;
+  block-size: auto;
+  object-fit: contain;
+  background: #e9e2d4;
+}

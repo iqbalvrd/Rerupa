@@ -2,11 +2,21 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ChevronLeft, ChevronRight, Camera } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
-import { GALLERY_SOURCE, artworkByline, licenseLabel, useArtworks, type GalleryArtwork } from "@/lib/artworks";
-import { DEFAULT_FRAME, FRAME_STYLES, type FrameStyleId } from "./frames";
+import {
+  GALLERY_SOURCE,
+  artworkByline,
+  licenseLabel,
+  useArtworks,
+  usePrefetchArtwork,
+  type GalleryArtwork,
+} from "@/lib/artworks";
+import { lastArtwork, navigateToArtwork, rememberArtwork } from "@/lib/view-transition";
+import { DEFAULT_FRAME, type FrameStyleId } from "./frames";
+import { FramedArt } from "./framed-art";
 import styles from "./gallery.module.css";
 
 // The 3D room loads after the page is interactive. Until it is ready, or when
@@ -37,9 +47,13 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
   // Render the wall only once the collection has loaded (or failed). Inserting
   // artworks before an already snapped bay makes the browser keep that bay in
   // view, which would open the gallery at its last frame.
-  const bays: Bay[] = artworks.isPending
-    ? []
-    : [...(artworks.data ?? []).map((artwork) => ({ kind: "artwork" as const, artwork })), { kind: "upload" }];
+  const bays: Bay[] = useMemo(
+    () =>
+      artworks.isPending
+        ? []
+        : [...(artworks.data ?? []).map((artwork) => ({ kind: "artwork" as const, artwork })), { kind: "upload" }],
+    [artworks.isPending, artworks.data],
+  );
 
   const sceneRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -136,6 +150,19 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
     };
   }, [count, nearestBay]);
 
+  // Warm up the artwork in front of the visitor (and its neighbours): detail
+  // data, full image and route, so tapping a frame opens it without waiting.
+  const prefetchArtwork = usePrefetchArtwork();
+  const router = useRouter();
+  useEffect(() => {
+    for (const i of [settled, settled + 1, settled - 1]) {
+      const bay = bays[i];
+      if (bay?.kind !== "artwork") continue;
+      prefetchArtwork(bay.artwork.slug);
+      router.prefetch(`/karya/${bay.artwork.slug}`);
+    }
+  }, [settled, bays, prefetchArtwork, router]);
+
   // Finite navigation: when an end button becomes disabled while focused, move focus to the other one.
   const atStart = settled === 0;
   const atEnd = settled === count - 1;
@@ -144,7 +171,23 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
     if (atEnd && document.activeElement === nextRef.current) prevRef.current?.focus();
   }, [atStart, atEnd]);
 
-  const frame = FRAME_STYLES[frameStyle];
+  const frame = frameStyle;
+
+  // Coming back from an artwork page: reopen the wall at that artwork, without animating.
+  const restored = useRef(false);
+  useEffect(() => {
+    const track = trackRef.current;
+    if (restored.current || !track || count === 0) return;
+    restored.current = true;
+    const slug = lastArtwork();
+    const index = slug ? bays.findIndex((b) => b.kind === "artwork" && b.artwork.slug === slug) : -1;
+    if (index > 0) {
+      track.scrollTo({ left: index * track.clientWidth, behavior: "instant" });
+      lastSettled.current = index;
+      setCurrent(index);
+      setSettled(index);
+    }
+  }, [bays, count]);
 
   return (
     <div ref={sceneRef} className={styles.scene} data-room={roomReady ? "3d" : "css"}>
@@ -256,38 +299,41 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
   );
 }
 
-type FrameProps = { frame: (typeof FRAME_STYLES)[FrameStyleId] };
-
-function frameVars(frame: FrameProps["frame"]): CSSProperties {
-  return {
-    "--frame-src": `url("${frame.src}")`,
-    "--frame-slice": frame.slice.join(" "),
-    "--frame-w": `clamp(1rem, calc(${frame.thickness} * min(52vw, 30dvh)), 4rem)`,
-  } as CSSProperties;
-}
+type FrameProps = { frame: FrameStyleId };
 
 function ArtworkExhibit({ artwork, frame, eager }: FrameProps & { artwork: GalleryArtwork; eager: boolean }) {
+  const router = useRouter();
+  const frameRef = useRef<HTMLSpanElement>(null);
+  const href = `/karya/${artwork.slug}`;
+
+  // Plain link without JS or with modifier keys; otherwise "walk up to the painting".
+  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    rememberArtwork(artwork.slug);
+    navigateToArtwork(frameRef.current, () => router.push(href));
+  };
+
   return (
-    <Link href={`/karya/${artwork.slug}`} className={styles.exhibit}>
-      <span className={styles.frame} style={frameVars(frame)}>
-        {artwork.thumbnail_url ? (
-          // Signed URLs from Supabase change per request; next/image optimization is not used for them.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            className={styles.art}
-            src={artwork.thumbnail_url}
-            alt={`${artwork.title}, ${artworkByline(artwork)}`}
-            width={artwork.width}
-            height={artwork.height}
-            decoding="async"
-            {...(eager ? { fetchPriority: "high" as const } : { loading: "lazy" as const })}
-          />
-        ) : (
+    <Link href={href} className={styles.exhibit} onClick={onClick}>
+      {artwork.thumbnail_url ? (
+        <FramedArt
+          frame={frame}
+          src={artwork.thumbnail_url}
+          alt={`${artwork.title}, ${artworkByline(artwork)}`}
+          width={artwork.width}
+          height={artwork.height}
+          priority={eager}
+          frameRef={frameRef}
+          gallerySlug={artwork.slug}
+        />
+      ) : (
+        <FramedArt frame={frame}>
           <span className={styles.emptyCanvas}>
             <span>Gambar belum tersedia</span>
           </span>
-        )}
-      </span>
+        </FramedArt>
+      )}
       <span className={styles.plaque}>
         <span className={styles.plaqueTitle}>{artwork.title}</span>
         <br />
@@ -302,13 +348,13 @@ function ArtworkExhibit({ artwork, frame, eager }: FrameProps & { artwork: Galle
 function UploadExhibit({ frame }: FrameProps) {
   return (
     <Link href="/unggah" className={styles.exhibit}>
-      <span className={styles.frame} style={frameVars(frame)}>
+      <FramedArt frame={frame}>
         <span className={styles.emptyCanvas}>
           <Camera aria-hidden="true" className="mx-auto" />
           <strong>Foto lukisanmu</strong>
           <span>Unggah foto karya, lalu ikuti tahapannya.</span>
         </span>
-      </span>
+      </FramedArt>
       <span className={styles.plaque}>
         <span className={styles.plaqueTitle}>Bingkai untukmu</span>
         <br />

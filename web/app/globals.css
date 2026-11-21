@@ -185,6 +185,73 @@
   }
 }
 
+/*
+ * Gallery → artwork "walk up to the painting" (lib/view-transition.ts):
+ * the frame flies to its new place while the room behind it zooms toward the
+ * painting and dims, as if the visitor stepped closer and the lights went down.
+ */
+/*
+ * Only transform and opacity are animated (compositor-friendly, smooth on
+ * phones). The "lights going down" comes from the dark backdrop of the
+ * transition showing through as the room fades, not from a filter.
+ */
+::view-transition-group(artwork-hero) {
+  animation-duration: 0.6s;
+  animation-timing-function: cubic-bezier(0.22, 0.7, 0.18, 1);
+}
+:root[data-transition]::view-transition {
+  background: #120d09;
+}
+:root[data-transition="walk-up"]::view-transition-old(root) {
+  transform-origin: var(--walk-origin-x, 50%) var(--walk-origin-y, 40%);
+  animation: walk-room-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+:root[data-transition="walk-up"]::view-transition-new(root) {
+  animation: walk-fade-in 0.45s 0.2s ease-out both;
+}
+/* Walk back: the dark artwork room fades, the gallery zooms out from the painting. */
+:root[data-transition="walk-back"]::view-transition-old(root) {
+  animation: walk-fade-out 0.35s ease-in both;
+}
+:root[data-transition="walk-back"]::view-transition-new(root) {
+  transform-origin: var(--walk-origin-x, 50%) var(--walk-origin-y, 40%);
+  animation: walk-room-back 0.6s cubic-bezier(0.22, 0.7, 0.18, 1) both;
+}
+@keyframes walk-room-out {
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@keyframes walk-room-back {
+  from {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@keyframes walk-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes walk-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+::view-transition-old(artwork-hero),
+::view-transition-new(artwork-hero) {
+  height: 100%;
+  object-fit: contain;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 @utility font-display {
   font-family: var(--font-heading);
 }

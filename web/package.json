@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "npm run lint && npm run typecheck && npm run test",
-    "fixtures": "node scripts/build-dev-fixtures.mjs"
+    "fixtures": "node scripts/build-dev-fixtures.mjs",
+    "build:check": "node scripts/build-check.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

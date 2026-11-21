@@ -32,6 +32,29 @@ def lineart_detector():
         return LineartDetector.from_pretrained("lllyasviel/Annotators")
 
 
+def warm_up(lineart_method: str, mask_model: str | None) -> dict[str, int]:
+    """Muat model dan jalankan satu inferensi kecil saat worker start, supaya job pertama
+    pengguna tidak menunggu unduhan/pemuatan model (uji Fase 3: job pertama 114 s, 82 s di antaranya TEED)."""
+    import time
+
+    import numpy as np
+
+    from cv.lineart import edge_map
+    from cv.mask import main_object_mask
+
+    dummy = np.full((256, 256, 3), 200, np.uint8)
+    dummy[64:192, 64:192] = (120, 60, 40)
+    timings = {}
+    start = time.perf_counter()
+    edge_map(dummy, lineart_method)
+    timings["lineart"] = int((time.perf_counter() - start) * 1000)
+    if mask_model:
+        start = time.perf_counter()
+        main_object_mask(dummy, mask_model)
+        timings["mask"] = int((time.perf_counter() - start) * 1000)
+    return timings
+
+
 @lru_cache(maxsize=1)
 def teed_detector():
     """TEED: detektor tepi sangat kecil."""

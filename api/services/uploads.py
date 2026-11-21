@@ -21,7 +21,7 @@ from core.errors import AppError
 from core.security import sha256_hex
 from core.session import now_utc
 from core.supabase_client import get_supabase
-from services.storage import is_duplicate, with_retry
+from services.storage import is_duplicate, remove_prefix, with_retry
 
 log = logging.getLogger("rerupa.uploads")
 
@@ -167,7 +167,8 @@ def purge_session_files(session_id: str) -> int:
         db.table("uploads").update(
             {"raw_path": None, "normalized_path": None, "rectified_path": None, "purged_at": now_utc().isoformat()}
         ).in_("id", [r["id"] for r in rows]).execute()
-    return len(paths)
+    # Lapisan tutorial mode bebas (turunan foto) milik sesi ini.
+    return len(paths) + remove_prefix("derived", session_id)
 
 
 def discard_upload(upload: dict) -> None:

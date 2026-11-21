@@ -2,7 +2,7 @@
 
 Dokumen hidup untuk melacak progres **backend (Iqbal)** dan **frontend (Xavier)**, serta titik serah-terima di antaranya. Perbarui setiap selesai satu bagian kerja.
 
-Terakhir diperbarui: setelah pipeline CV Fase 2 dibangun dan dievaluasi.
+Terakhir diperbarui: setelah Fase 3 backend (tahapan tutorial end-to-end) selesai.
 
 Legenda: ✅ selesai · 🟡 sedang dikerjakan · ⏳ belum mulai · ⛔ terhambat
 
@@ -16,8 +16,8 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | --- | --- | --- |
 | 1. Fondasi | ✅ | ⏳ |
 | 2. Galeri & CV | 🟡 galeri ✅, pipeline CV ✅, uji foto HP asli ⏳ | ⏳ |
-| 3. Tahapan | ⏳ | ⏳ |
-| 4. Mode bebas & warna | 🟡 unggah + job ✅, pipeline ⏳ | ⏳ |
+| 3. Tahapan | ✅ (teks AI menunggu API key; templat jalan) | ⏳ |
+| 4. Mode bebas & warna | 🟡 mode bebas end-to-end ✅, resep warna ⏳ | ⏳ |
 | 5. Checkpoint | ⏳ | ⏳ |
 | 6. Rilis versi awal | ⏳ | ⏳ |
 | 7. Penguatan showcase | ⏳ | ⏳ |
@@ -38,23 +38,21 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Sesi tamu | `POST/GET/PATCH/DELETE /sessions`; token di cookie httpOnly, DB simpan hash; sesi lain → 404; hapus sesi mencabut akses, membatalkan job antre, menghapus file foto | Tes integrasi |
 | Antrean job | Idempoten (`Idempotency-Key`), klaim atomik, job macet dicoba ulang lalu gagal, job sesi terhapus tidak diproses; `GET /jobs/{id}` | Tes integrasi |
 | Unggahan | Cek isi file (magic bytes), ≤10 MB, ≤25 MP, orientasi diperbaiki, **semua metadata termasuk GPS dibuang**, simpan privat | Tes unit + integrasi |
-| Mode bebas (kerangka) | `POST /lessons/generate` menerima foto → job. Sementara berakhir `failed` / `pipeline_not_ready` | Tes integrasi |
+| Mode bebas | `POST /lessons/generate` (+ `scope` potong satu figur) → worker: CV → `stage_planner` → teks → simpan atomik → `GET /lessons/{id}`. Foto buram/polos → `needs_retake` | Tes integrasi end-to-end |
 | Galeri | `GET /artworks`, `GET /artworks/{slug}`: hanya karya terbit, signed URL, sumber | Tes integrasi |
 | Tes | 37 tes (unit + integrasi ke Supabase, data uji dibersihkan otomatis) | `uv run pytest` |
 | Serah-terima | `api/API.md` + `api/examples/*.json` (tervalidasi terhadap model respons) + draf bentuk tutorial | — |
+| Tahapan (Fase 3) | 9 tabel tutorial + fungsi `create_lesson` atomik; `stage_planner` (6–8 tahap, tiap region tepat sekali, ≤10 region per tahap bila muat, checkpoint di tahap sketsa); lapisan AI (prompt, structured output, validator aturan PRD, retry 1×, templat cadangan, catat biaya, batas harian); heartbeat worker + pemuatan model saat start; skrip impor koleksi + 1 contoh (Raden Saleh, draf) | 105 tes |
 | Pipeline CV (Fase 2) | `api/cv/`: normalisasi, cek kualitas, mask (rembg u2net), garis (TEED untuk mode bebas, model lineart untuk koleksi, XDoG cadangan) dengan ambang adaptif, region k-means ≤35 yang digabung berdasarkan kemiripan warna, terang-gelap 3–5 tingkat, SVG + gambar region bernomor | 59 tes + evaluasi foto nyata ([eval/HASIL_FASE2.md](eval/HASIL_FASE2.md)) |
 
 ### 2.2 Berikutnya
 
 | Prioritas | Pekerjaan | Fase | Membuka untuk frontend |
 | --- | --- | --- | --- |
-| 1 | Uji CV dengan foto HP sungguhan dari lukisan fisik (menggantikan simulasi) | 2 | — |
-| 2 | Contoh lesson JSON + SVG nyata dari pipeline untuk Xavier | 2 | `StageCanvas` dengan data nyata |
-| 3 | Tabel lesson (`lesson_versions`, `regions`, `stages`, …) + `stage_planner` | 3 | `GET /lessons/{id}` nyata |
-| 4 | Integrasi OpenAI teks per tahap + validator + templat cadangan | 3 | Teks tahap nyata |
-| 5 | Impor materi koleksi pertama | 3 | Galeri berisi data nyata |
-| 6 | Resep warna Mixbox (perkiraan) + mode bebas end-to-end | 4 | `GET /recipes`, job `succeeded` |
-| 7 | Checkpoint: tap 4 sudut, ECC, metrik, feedback | 5 | `POST /sessions/{id}/checkpoints` |
+| 1 | Isi API key OpenAI + uji 2–3 model untuk teks tahap (lalu set `OPENAI_VISION_MODEL` dan harga) | 3 | Teks tahap dari AI |
+| 2 | Resep warna Mixbox (perkiraan) + `region_colors` | 4 | Kartu resep, `GET /recipes` |
+| 3 | Checkpoint: tap 4 sudut, ECC, metrik, feedback | 5 | `POST /sessions/{id}/checkpoints` |
+| 4 | Uji CV dengan foto HP sungguhan dari lukisan fisik | 2 | — |
 
 ### 2.3 Belum ada / catatan teknis
 
@@ -87,17 +85,16 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | --- | --- | --- |
 | Scaffold Next.js + layout mobile-first | — | ⏳ |
 | Klien API (`credentials: "include"`, penanganan error `{code, message}`) | [API.md](api/API.md) | ⏳ |
-| Galeri + detail karya | `GET /artworks`, `GET /artworks/{slug}` (data masih kosong → pakai [contoh](api/examples/artworks_list.json)) | ⏳ |
+| Galeri + detail karya | `GET /artworks`, `GET /artworks/{slug}` (galeri masih kosong; 1 contoh berstatus draf → pakai [contoh](api/examples/artworks_list.json)) | ⏳ |
 | Mulai/pulihkan/hapus sesi | `POST/GET/PATCH/DELETE /sessions` | ⏳ |
-| Layar unggah mode bebas + kamera + persetujuan kirim foto ke AI | `POST /lessons/generate` (multipart, `Idempotency-Key`) | ⏳ |
-| Layar status job (polling tiap 1 detik) | `GET /jobs/{id}` | ⏳ |
-| `StageCanvas` SVG, slider, toggle lapisan, foto asli + zoom | Draf [lesson_detail.draft.json](api/examples/lesson_detail.draft.json) | ⏳ |
+| Layar unggah mode bebas + kamera + persetujuan kirim foto ke AI + **potong satu figur** (`scope`) | `POST /lessons/generate` (multipart, `Idempotency-Key`) | ⏳ |
+| Layar "Membuat tutorial" (polling tiap 1 detik, teks per `progress.step`) | `GET /jobs/{id}` | ⏳ |
+| `StageCanvas` SVG, slider, toggle lapisan, foto asli + zoom ke `focus_bbox` | **`GET /lessons/{id}` nyata** — [contoh](api/examples/lesson_detail.json), cara membaca di [API.md](api/API.md#membaca-get-lessonsid) | ⏳ |
 
 ### 3.3 Menunggu backend
 
 | Pekerjaan | Menunggu |
 | --- | --- |
-| Ruang latihan dengan data nyata | `GET /lessons/{id}` (Fase 3) |
 | Kartu resep warna | `GET /recipes/{id}` (Fase 4) |
 | Penanda tahap selesai | `PATCH /sessions/{id}/progress` (Fase 5) |
 | Checkpoint UI + tap 4 sudut | `POST /sessions/{id}/checkpoints` (Fase 5) |
@@ -109,14 +106,14 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Dari → Ke | Apa | Status |
 | --- | --- | --- |
 | Backend → Frontend | Panduan API + contoh respons | ✅ `api/API.md`, `api/examples/` |
-| Backend → Frontend | Draf bentuk `GET /lessons/{id}` | ✅ draf (bisa berubah di Fase 3) |
-| Backend → Frontend | `GET /lessons/{id}` nyata + SVG lapisan | ⏳ Fase 3 |
+| Backend → Frontend | `GET /lessons/{id}` nyata + SVG/PNG lapisan | ✅ Fase 3 |
 | Backend → Frontend | URL API produksi | ⏳ Fase 6 |
 | Frontend → Backend | Domain Vercel untuk `FRONTEND_ORIGIN` (CORS) | ⏳ |
 | Frontend → Backend | Masukan bentuk JSON lesson setelah mencoba draf | ⏳ |
 | Xavier → Iqbal | Undangan ke project OpenAI + akses Playground | ⏳ |
 | Tim → Backend | Kesepakatan pembagian modul backend (usul: sesi & progres oleh Xavier) | ⏳ |
-| Konten → Backend | 1 materi koleksi + lisensi + 5–10 entri basis budaya + palet demo | ⏳ |
+| Konten → Backend | 1 materi koleksi + lisensi + 5–10 entri basis budaya + palet demo (format di [content/README.md](content/README.md); contoh Raden Saleh sudah ada sebagai draf) | ⏳ |
+| Konten → Backend | Tinjau contoh Raden Saleh lalu terbitkan (`--publish`) | ⏳ |
 
 ---
 
@@ -141,7 +138,8 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | `main` | Dokumen (PRD, rencana, ERD, arsitektur) | Di GitHub |
 | `chore/api-setup` | Setup `api/` | Di GitHub, PR belum dibuat |
 | `feat/db-schema` … `feat/api-artworks` | Fase 1 backend | Sudah di-merge ke `main` (PR #2) |
-| `feat/fase-2-cv` | Fase 2: pipeline CV + evaluasi | Lokal, belum di-push |
+| `feat/fase-2-cv` | Fase 2: pipeline CV + evaluasi | Sudah di-merge ke `main` (PR #3) |
+| `feat/fase-3-tahapan` | Fase 3: tahapan tutorial end-to-end | Lokal, belum di-push |
 | `feat/web-…` | Frontend | Dibuat Xavier |
 
 ---
@@ -169,4 +167,5 @@ Dokumentasi interaktif: `http://localhost:8000/docs`
 | Bagian | Ringkasan |
 | --- | --- |
 | Backend Fase 1 | Skema DB + keamanan, sesi tamu, antrean job + worker, unggahan aman, galeri, 37 tes, panduan API |
+| Backend Fase 3 | Tutorial end-to-end (CV → tahapan → teks → simpan atomik → GET /lessons), lapisan AI siap pakai menunggu key, impor koleksi, 105 tes |
 | Backend Fase 2 | Pipeline CV + evaluasi di foto nyata; metode dipilih (TEED/u2net), 4 perbaikan dari hasil uji, retry Storage, 59 tes |

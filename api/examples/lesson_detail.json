@@ -1,0 +1,394 @@
+{
+  "_catatan": "Contoh NYATA dari pipeline (potongan lukisan Kamasan, mode bebas, teks templat karena AI belum aktif). Daftar regions dipersingkat dari 35 menjadi 6. URL dipalsukan.",
+  "id": "e4cfabb9-24a3-4317-8cc6-f453cfb90b7c",
+  "origin": "free_mode",
+  "artwork_id": null,
+  "image_width": 605,
+  "image_height": 910,
+  "use_shading": false,
+  "checkpoint_count": 1,
+  "ai_text_status": "template",
+  "generated_automatically": true,
+  "skill_goal": "Melukis ulang karya secara bertahap dari bentuk besar ke detail.",
+  "culture_goal": null,
+  "layers": [
+    {
+      "kind": "grid",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/grid.svg?token=…",
+      "meta": {
+        "cols": 4,
+        "rows": 6
+      }
+    },
+    {
+      "kind": "sketch",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/sketch.svg?token=…",
+      "meta": {}
+    },
+    {
+      "kind": "regions",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/regions.svg?token=…",
+      "meta": {}
+    },
+    {
+      "kind": "lineart",
+      "format": "png",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/lineart.png?token=…",
+      "meta": {
+        "method": "teed"
+      }
+    },
+    {
+      "kind": "original_photo",
+      "format": "jpeg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/original.jpg?token=…",
+      "meta": {}
+    }
+  ],
+  "regions": [
+    {
+      "code": "r01",
+      "hex": "#938A8C",
+      "area_pct": 8.89,
+      "bbox": [
+        13,
+        0,
+        592,
+        368
+      ],
+      "centroid": [
+        278,
+        210
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null
+    },
+    {
+      "code": "r02",
+      "hex": "#9899A1",
+      "area_pct": 8.07,
+      "bbox": [
+        392,
+        141,
+        213,
+        346
+      ],
+      "centroid": [
+        515,
+        306
+      ],
+      "is_main_object": false,
+      "is_background": false,
+      "value_level": null,
+      "label": null
+    },
+    {
+      "code": "r03",
+      "hex": "#927D72",
+      "area_pct": 6.69,
+      "bbox": [
+        119,
+        574,
+        292,
+        335
+      ],
+      "centroid": [
+        264,
+        735
+      ],
+      "is_main_object": false,
+      "is_background": false,
+      "value_level": null,
+      "label": null
+    },
+    {
+      "code": "r04",
+      "hex": "#A1A1A7",
+      "area_pct": 6.47,
+      "bbox": [
+        0,
+        0,
+        260,
+        416
+      ],
+      "centroid": [
+        77,
+        247
+      ],
+      "is_main_object": false,
+      "is_background": false,
+      "value_level": null,
+      "label": null
+    },
+    {
+      "code": "r05",
+      "hex": "#886A74",
+      "area_pct": 5.71,
+      "bbox": [
+        0,
+        356,
+        255,
+        251
+      ],
+      "centroid": [
+        130,
+        499
+      ],
+      "is_main_object": false,
+      "is_background": false,
+      "value_level": null,
+      "label": null
+    },
+    {
+      "code": "r06",
+      "hex": "#867980",
+      "area_pct": 5.49,
+      "bbox": [
+        60,
+        221,
+        387,
+        362
+      ],
+      "centroid": [
+        265,
+        386
+      ],
+      "is_main_object": false,
+      "is_background": false,
+      "value_level": null,
+      "label": null
+    }
+  ],
+  "stages": [
+    {
+      "code": "stage_1",
+      "order_no": 1,
+      "kind": "preparation",
+      "is_checkpoint": false,
+      "layers": [
+        "grid"
+      ],
+      "new_region_codes": [],
+      "title": "Persiapan dan grid",
+      "action": "Siapkan cat dan kuas, lalu bagi bidang lukis dengan grid pensil tipis sesuai panduan.",
+      "tools": [
+        "pensil 2B",
+        "penggaris",
+        "penghapus"
+      ],
+      "done_when": "Grid terlihat samar dan garisnya sejajar dengan tepi bidang.",
+      "common_mistakes": [
+        "Garis grid terlalu tebal sehingga masih terlihat setelah dicat."
+      ],
+      "focus_bbox": null,
+      "text_source": "template"
+    },
+    {
+      "code": "stage_2",
+      "order_no": 2,
+      "kind": "sketch",
+      "is_checkpoint": true,
+      "layers": [
+        "grid",
+        "sketch"
+      ],
+      "new_region_codes": [],
+      "title": "Sketsa bentuk besar",
+      "action": "Gambar garis luar bentuk-bentuk besar mengikuti grid. Abaikan detail kecil dulu.",
+      "tools": [
+        "pensil 2B",
+        "penghapus"
+      ],
+      "done_when": "Semua bentuk besar sudah terlihat dan proporsinya sesuai grid.",
+      "common_mistakes": [
+        "Bentuk terlalu besar sehingga terpotong di tepi bidang."
+      ],
+      "focus_bbox": null,
+      "text_source": "template"
+    },
+    {
+      "code": "stage_3",
+      "order_no": 3,
+      "kind": "background_and_largest",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_region_codes": [
+        "r02"
+      ],
+      "title": "Latar dan bidang terbesar",
+      "action": "Isi bidang yang menyala di panduan, mulai dari latar dan bidang terluas.",
+      "tools": [
+        "kuas pipih besar"
+      ],
+      "done_when": "Tidak ada bagian kosong di bidang-bidang yang menyala.",
+      "common_mistakes": [
+        "Cat melewati garis sketsa ke bentuk di sebelahnya."
+      ],
+      "focus_bbox": [
+        392,
+        141,
+        213,
+        346
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "stage_4",
+      "order_no": 4,
+      "kind": "main_object",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_region_codes": [
+        "r01"
+      ],
+      "title": "Objek utama",
+      "action": "Isi bidang objek utama yang menyala di panduan dengan warna dasarnya.",
+      "tools": [
+        "kuas pipih sedang",
+        "kuas bulat"
+      ],
+      "done_when": "Bentuk objek utama terbaca jelas dengan warna dasarnya.",
+      "common_mistakes": [
+        "Lapisan cat terlalu tebal di tepi sehingga bentuk melebar."
+      ],
+      "focus_bbox": [
+        13,
+        0,
+        592,
+        368
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "stage_5",
+      "order_no": 5,
+      "kind": "medium_regions",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_region_codes": [
+        "r03",
+        "r04",
+        "r05",
+        "r06"
+      ],
+      "title": "Bidang sedang (bagian 1)",
+      "action": "Isi bidang-bidang sedang yang menyala di panduan satu per satu.",
+      "tools": [
+        "kuas bulat sedang"
+      ],
+      "done_when": "Semua bidang sedang sudah terisi warna dasarnya.",
+      "common_mistakes": [
+        "Mengisi bidang sebelum cat di sebelahnya kering sehingga warnanya tercampur."
+      ],
+      "focus_bbox": [
+        0,
+        0,
+        605,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "stage_6",
+      "order_no": 6,
+      "kind": "medium_regions",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_region_codes": [
+        "r12",
+        "r13",
+        "r14"
+      ],
+      "title": "Bidang sedang (bagian 2)",
+      "action": "Isi bidang-bidang sedang yang menyala di panduan satu per satu.",
+      "tools": [
+        "kuas bulat sedang"
+      ],
+      "done_when": "Semua bidang sedang sudah terisi warna dasarnya.",
+      "common_mistakes": [
+        "Mengisi bidang sebelum cat di sebelahnya kering sehingga warnanya tercampur."
+      ],
+      "focus_bbox": [
+        0,
+        0,
+        605,
+        909
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "stage_7",
+      "order_no": 7,
+      "kind": "medium_regions",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_region_codes": [
+        "r20",
+        "r21",
+        "r22"
+      ],
+      "title": "Bidang sedang (bagian 3)",
+      "action": "Isi bidang-bidang sedang yang menyala di panduan satu per satu.",
+      "tools": [
+        "kuas bulat sedang"
+      ],
+      "done_when": "Semua bidang sedang sudah terisi warna dasarnya.",
+      "common_mistakes": [
+        "Mengisi bidang sebelum cat di sebelahnya kering sehingga warnanya tercampur."
+      ],
+      "focus_bbox": [
+        0,
+        0,
+        605,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "stage_8",
+      "order_no": 8,
+      "kind": "finishing",
+      "is_checkpoint": false,
+      "layers": [
+        "regions",
+        "lineart",
+        "original_photo"
+      ],
+      "new_region_codes": [],
+      "title": "Penyelesaian",
+      "action": "Bandingkan lukisanmu dengan foto asli, lalu rapikan tepi dan bagian yang belum rata.",
+      "tools": [
+        "kuas bulat kecil"
+      ],
+      "done_when": "Lukisan terlihat rapi saat dibandingkan dengan foto asli.",
+      "common_mistakes": [
+        "Menambah detail terlalu banyak sampai bentuk besar hilang."
+      ],
+      "focus_bbox": null,
+      "text_source": "template"
+    }
+  ],
+  "culture_claims": [],
+  "reflection": null,
+  "region_colors": []
+}

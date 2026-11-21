@@ -1,6 +1,6 @@
 # Rerupa API — Panduan untuk Frontend
 
-Status per Fase 1 backend. Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
+Status per Fase 3 backend. Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
 
 ## Cara memanggil
 
@@ -17,28 +17,51 @@ Status per Fase 1 backend. Dokumentasi interaktif lengkap: jalankan API lalu buk
 | `GET /artworks` | ✅ | — | Galeri karya terbit. [contoh](examples/artworks_list.json) |
 | `GET /artworks/{slug}` | ✅ | — | Detail + sumber. [contoh](examples/artwork_detail.json) |
 | `POST /sessions` | ✅ | — | Body `{canvas_size?, palette_id?}` → 201 + Set-Cookie. [contoh](examples/session.json) |
-| `GET /sessions/{id}` | ✅ | ✅ | Pulihkan sesi setelah reload |
+| `GET /sessions/{id}` | ✅ | ✅ | Pulihkan sesi setelah reload; `lesson_version_id` terisi otomatis setelah tutorial jadi |
 | `PATCH /sessions/{id}` | ✅ | ✅ | Body `{palette_id?, canvas_size?, current_stage_order?}` |
-| `DELETE /sessions/{id}` | ✅ | ✅ | 204; akses langsung dicabut |
-| `POST /lessons/generate` | ✅ (job) | ✅ | multipart `file` + `consent_ai_photo` + header `Idempotency-Key` → 202 job |
+| `DELETE /sessions/{id}` | ✅ | ✅ | 204; akses langsung dicabut, foto dan lapisan tutorial dihapus |
+| `POST /lessons/generate` | ✅ | ✅ | multipart `file` + `consent_ai_photo` + `scope` (opsional) + header `Idempotency-Key` → 202 job |
 | `GET /jobs/{id}` | ✅ | ✅ | Polling tiap 1 detik sampai `is_final: true` |
-| `GET /lessons/{id}` | ⏳ Fase 3 | sesi untuk mode bebas | Bentuk draf: [lesson_detail.draft.json](examples/lesson_detail.draft.json) |
-| `GET /recipes/{id}` | ⏳ Fase 4 | — | |
+| `GET /lessons/{id}` | ✅ | hanya untuk mode bebas | Tutorial lengkap. [contoh nyata](examples/lesson_detail.json) |
+| `GET /recipes/{id}` | ⏳ Fase 4 | — | `region_colors` di lesson masih `[]` |
 | `PATCH /sessions/{id}/progress` | ⏳ Fase 5 | ✅ | |
 | `POST /sessions/{id}/checkpoints` | ⏳ Fase 5 | ✅ | |
-
-Catatan Fase 1: `POST /lessons/generate` sudah menerima dan menyimpan foto, tetapi job berakhir `failed` dengan `error_code: "pipeline_not_ready"` sampai pipeline CV + AI jadi (Fase 2–4). Pakai ini untuk membangun layar unggah dan status job.
 
 ## Alur unggah mode bebas
 
 ```
 POST /sessions                      → cookie terpasang (sekali per pengguna)
 POST /lessons/generate              → 202 { id, status: "queued" }
-GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → started → … → done
+GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → started → cv → planning → writing → saving → done
                                     → is_final: true → cek status:
-   succeeded → GET /lessons/{lesson_version_id}
-   needs_retake / failed → tampilkan error_message, tawarkan coba lagi / galeri
+   succeeded     → GET /lessons/{lesson_version_id}
+   needs_retake  → tampilkan error_message (photo_unusable / not_artwork), minta foto ulang atau tawarkan galeri
+   failed        → tampilkan error_message, tawarkan coba lagi / galeri
 ```
+
+Teks untuk layar "Membuat tutorial" per `progress.step`: `cv` = "Menganalisis foto", `planning` = "Membagi tahapan", `writing` = "Menulis instruksi", `saving` = "Menyimpan".
+
+Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
+
+### Form `POST /lessons/generate`
+
+| Field | Wajib | Isi |
+| --- | --- | --- |
+| `file` | ✅ | JPEG/PNG/WebP ≤10 MB |
+| `consent_ai_photo` | ✅ | `true` bila pengguna setuju foto dikirim ke penyedia AI. `false` → tutorial tetap dibuat, teks memakai templat |
+| `scope` | — | JSON string `{"x","y","w","h"}` pecahan 0–1 dari foto: area **satu figur** yang dilatih. Sangat dianjurkan untuk lukisan penuh tokoh |
+
+## Membaca `GET /lessons/{id}`
+
+- `image_width × image_height` = ruang koordinat **semua** lapisan, `bbox`, dan `focus_bbox`. Pakai satu `<svg viewBox="0 0 W H">`.
+- `layers[]`: `kind` = `grid`, `sketch`, `main_object` (bila ada), `regions`, `value` (hanya bila `use_shading`), `lineart` (PNG transparan), `original_photo` (JPEG). `url` adalah signed URL **30 menit** (koleksi: 60 menit) — panggil ulang `GET /lessons/{id}` bila kedaluwarsa.
+- `regions.svg` berisi satu `<path id="rNN">` per region. Tahap N menampilkan semua region dari `new_region_codes` tahap 1..N; region baru di tahap N diberi highlight.
+- `stages[]` urut `order_no`; `layers` = lapisan yang tampil di tahap itu; `is_checkpoint` = tahap yang meminta foto progres (versi awal: hanya tahap sketsa).
+- `focus_bbox` = area untuk tombol "Zoom ke area ini" pada foto asli.
+- `generated_automatically: true` → tampilkan label "dibuat otomatis".
+- `ai_text_status`: `ai`, `template`, atau `curated`.
+- `culture_claims[]`: tampilkan label berbeda untuk `type: "fakta"` (dengan `sources`) dan `"perkiraan"`.
+- `reflection` bisa `null` (hanya ada bila ada fakta bersumber).
 
 ## Kode error yang perlu ditangani di UI
 
@@ -49,11 +72,11 @@ GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → started → �
 | 400 | `idempotency_key_required` | Bug frontend: lupa header |
 | 409 | `idempotency_conflict` | Bug frontend: kunci dipakai ulang untuk file lain |
 | 413 | `file_too_large`, `image_too_large` | Minta foto lebih kecil |
-| 422 | `file_invalid`, `validation_error` | Minta JPG/PNG/WebP; `fields` berisi nama field yang salah |
+| 422 | `file_invalid`, `validation_error` | Minta JPG/PNG/WebP; `fields` berisi nama field yang salah (termasuk `scope` yang keluar dari foto) |
 | 429 | `quota_exceeded` | Batas 3 tutorial per sesi; arahkan ke galeri |
 | 500 | `internal_error` | Tampilkan pesan umum, boleh coba lagi |
 
-Daftar lengkap pesan ada di `core/errors.py`.
+Di status job (`error_code`): `photo_unusable`, `not_artwork` (needs_retake), `session_deleted`, `worker_timeout`, `internal_error` (failed). Daftar lengkap pesan ada di `core/errors.py`.
 
 ## Cookie di produksi
 

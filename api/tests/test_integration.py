@@ -195,13 +195,15 @@ def test_generate_quota(client_factory):
     assert res.status_code == 429 and res.json()["error"]["code"] == "quota_exceeded"
 
 
-def test_generate_job_reports_pipeline_not_ready(client_factory):
+def test_generate_job_with_plain_image_asks_for_retake(client_factory):
+    # Sejak Fase 3 pipeline nyata berjalan: gambar polos (bukan karya) → minta foto ulang, tanpa lesson.
     a = client_factory()
     job_id = _generate(a, make_image("PNG"), "key-pipeline-01").json()["id"]
     while process_one("pytest-worker", session_id=a.session_id):
         pass
     body = a.get(f"/jobs/{job_id}").json()
-    assert body["status"] == "failed" and body["error_code"] == "pipeline_not_ready"
+    assert body["status"] == "needs_retake" and body["error_code"] in ("photo_unusable", "not_artwork")
+    assert body["lesson_version_id"] is None
 
 
 # ---------- galeri ----------

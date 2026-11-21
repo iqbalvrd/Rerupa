@@ -60,4 +60,7 @@ def client_factory():
         paths = [u["raw_path"] for u in db.table("uploads").select("raw_path").eq("session_id", sid).execute().data if u["raw_path"]]
         if paths:
             db.storage.from_("uploads").remove(paths)
+        from services.storage import remove_prefix
+
+        remove_prefix("derived", sid)  # lapisan tutorial mode bebas
         db.table("practice_sessions").delete().eq("id", sid).execute()

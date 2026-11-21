@@ -203,7 +203,7 @@ def fake_sdk(monkeypatch):
     from types import SimpleNamespace as NS
 
     recorded = []
-    monkeypatch.setattr(oc, "_record_usage", lambda *a: recorded.append(a))
+    monkeypatch.setattr(oc, "_record_usage", lambda *a, **k: recorded.append(a))
     monkeypatch.setattr(oc, "get_settings", lambda: NS(openai_vision_model="model-uji", openai_price_input_per_m=1.0, openai_price_output_per_m=2.0))
 
     def install(behaviour):
@@ -228,7 +228,7 @@ def test_parse_sends_reasoning_effort_when_configured(monkeypatch):
     from types import SimpleNamespace as NS
 
     seen = []
-    monkeypatch.setattr(oc, "_record_usage", lambda *a: None)
+    monkeypatch.setattr(oc, "_record_usage", lambda *a, **k: None)
     monkeypatch.setattr(oc, "get_settings", lambda: NS(openai_vision_model="m", openai_price_input_per_m=1.0, openai_price_output_per_m=2.0, openai_reasoning_effort="low"))
     monkeypatch.setattr(oc, "_client", lambda: NS(responses=NS(parse=lambda **kw: seen.append(kw) or _Resp(parsed=good_output()))))
     _call()

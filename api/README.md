@@ -26,6 +26,7 @@ uv run pytest
 ```
 
 - `tests/test_unit.py` — tanpa jaringan.
+- Tes integrasi memakai database **dev/tes** dari `.env` (bukan produksi; lihat DEPLOY.md). Hentikan worker lokal dulu: worker yang berjalan ikut mengambil job tes.
 - `tests/test_integration.py` — memakai project Supabase dari `.env` (otomatis dilewati bila belum dikonfigurasi) dan membersihkan data ujinya sendiri.
 - `tests/test_cv.py` — pipeline CV dengan gambar sintetis. Tes model pretrained: `RUN_MODEL_TESTS=1 uv run --group cv pytest tests/test_cv.py` (unduh bobot ±350 MB sekali).
 

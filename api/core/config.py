@@ -1,5 +1,6 @@
 """Konfigurasi aplikasi dari environment (.env)."""
 
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -8,7 +9,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # .env = pengembangan & tes (database dev). Operasi ke produksi memakai file lain secara sengaja:
+    #   RERUPA_ENV_FILE=.env.prod uv run python scripts/import_collection.py …
+    # Di Railway tidak ada file .env: semua nilai dari variabel lingkungan.
+    model_config = SettingsConfigDict(env_file=os.environ.get("RERUPA_ENV_FILE", ".env"), env_file_encoding="utf-8", extra="ignore")
 
     # Supabase
     supabase_url: str = ""

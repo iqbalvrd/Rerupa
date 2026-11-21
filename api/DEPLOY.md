@@ -39,6 +39,15 @@ Dua service, **dua image**: `api` dari `Dockerfile.api` (ringan, tanpa torch) da
 | `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` | | ✅ | `60` bila `drainingSeconds` di `railway.worker.toml` tidak terbaca |
 | `LINEART_METHOD`, `MASK_MODEL` | | ✅ | `teed`, `u2net` |
 
+### Database produksi vs dev/tes
+
+| | Supabase | Dipakai oleh |
+| --- | --- | --- |
+| Produksi | Singapura `xcksxhiablzenpiwkkak` | Railway `api` + `worker` (variabel di Settings) |
+| Dev/tes | Tokyo `kwsdjpxlvmjxlqmvbylf` | `api/.env`: pytest, server & worker lokal |
+
+Tes tidak boleh menyentuh produksi: worker Railway akan mengambil job tes. `pytest` berhenti bila `ENVIRONMENT=production`. Operasi sengaja ke produksi (impor koleksi, storyline koleksi) memakai `RERUPA_ENV_FILE=.env.prod`. Migrasi baru diterapkan ke **kedua** project.
+
 ## 3. Batas biaya (dua lapis)
 
 1. **Dashboard OpenAI** (akun Xavier): Settings → Limits → set *monthly budget* + notifikasi email. Ini pengaman terakhir bila aplikasi salah hitung.

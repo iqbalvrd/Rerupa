@@ -1,6 +1,6 @@
 # Deploy backend Rerupa (Railway)
 
-Dua service dari **image yang sama** (`api/Dockerfile`): `api` (HTTP) dan `worker` (antrean job). Region **Singapura** (`asia-southeast1`) agar dekat pengguna dan Supabase (Tokyo).
+Dua service dari **image yang sama** (`api/Dockerfile`): `api` (HTTP) dan `worker` (antrean job). Region **Singapura** (`asia-southeast1`), sama dengan project Supabase (`ap-southeast-1`), supaya pengguna, API, worker, dan database berdekatan.
 
 > Belum pernah di-build di mesin pengembang (Docker tidak terpasang). Build pertama di Railway adalah uji Dockerfile-nya; perkiraan image ±2–2,5 GB (torch CPU + bobot model ±350 MB).
 

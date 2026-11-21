@@ -33,7 +33,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Bagian | Detail | Bukti |
 | --- | --- | --- |
 | Setup | Proyek `api/` (uv, Python 3.12), config `.env`, log JSON, error terstandar `{code, message}` | `GET /health` → Supabase ok |
-| Database | 13 migrasi diterapkan ke Supabase: 17 enum, 13 tabel, fungsi antrean, 3 bucket privat, indeks FK | `supabase/migrations/` |
+| Database | Project Supabase **Singapura** (`ap-southeast-1`, ref `xcksxhiablzenpiwkkak`) sejak 21 Nov; 14 migrasi diterapkan ke Supabase: 17 enum, 13 tabel, fungsi antrean, 3 bucket privat, indeks FK | `supabase/migrations/` |
 | Keamanan DB | RLS aktif di semua tabel tanpa policy publik; `anon`/`authenticated` tanpa hak tabel; hanya backend (service role) yang akses | Advisor keamanan Supabase bersih |
 | Sesi tamu | `POST/GET/PATCH/DELETE /sessions`; token di cookie httpOnly, DB simpan hash; sesi lain → 404; hapus sesi mencabut akses, membatalkan job antre, menghapus file foto | Tes integrasi |
 | Antrean job | Idempoten (`Idempotency-Key`), klaim atomik, job macet dicoba ulang lalu gagal, job sesi terhapus tidak diproses; `GET /jobs/{id}` | Tes integrasi |

@@ -58,3 +58,7 @@ Hasil di `checkpoint/out/` (tidak di-commit): `summary.md` + `<foto>_overlay.jpg
 
 - `api/scripts/measure_p95.py`: ≥20 putaran tutorial + feedback lewat API berjalan → tabel P95 vs target PRD. Hasil lokal: [P95_LOKAL.md](P95_LOKAL.md).
 - `api/scripts/report_ai.py`: tingkat lolos validator, penolakan, dan biaya per tutorial/feedback dari `ai_usage` + `jobs`.
+
+## Uji model OpenAI
+
+`run_models.py` membandingkan model untuk teks tahapan dan feedback pada materi koleksi (validator, retry, latensi, token, biaya, teks lengkap untuk ditinjau). Hasil dan keputusan: [HASIL_UJI_MODEL.md](HASIL_UJI_MODEL.md).

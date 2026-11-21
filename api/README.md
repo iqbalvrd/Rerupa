@@ -53,7 +53,11 @@ Migrasi database ada di `../supabase/migrations/` dan sudah diterapkan ke projec
 
 ## Yang belum ada (fase berikutnya)
 
-- **OpenAI belum dikonfigurasi** — semua tutorial memakai teks templat sampai `OPENAI_API_KEY`, `OPENAI_VISION_MODEL`, dan harga per token diisi. Jalur AI sudah diuji dengan respons tiruan, belum dengan API sungguhan; uji 2–3 model dilakukan setelah key ada.
+- **Model OpenAI**: `gpt-6.1-terra` untuk teks tahapan mode bebas dan feedback (hasil uji 3 model: [`../eval/HASIL_UJI_MODEL.md`](../eval/HASIL_UJI_MODEL.md)). Impor materi koleksi sebaiknya memakai `gpt-6.2-sol` (teks lebih spesifik, tidak ditunggu pengguna):
+  ```bash
+  OPENAI_VISION_MODEL=gpt-6.2-sol OPENAI_PRICE_INPUT_PER_M=2 OPENAI_PRICE_OUTPUT_PER_M=10 uv run --group cv python scripts/import_collection.py ../content/artworks/<slug>
+  ```
+- Basis pengetahuan budaya (`culture_entries`) masih kosong, jadi AI tidak menulis klaim budaya pada mode bebas (sesuai aturan: tidak menebak). Materi koleksi memakai klaim kurasi dari `meta.json`.
 - Palet yang aktif masih **palet referensi digital** (warna pigmen Mixbox), bukan cat fisik. Ganti dengan palet cat demo yang swatch-nya difoto (PRD §9), lalu tambahkan resep teruji ke `color_recipes`. Lisensi Mixbox CC BY-NC: aman untuk lomba, perlu lisensi untuk komersial.
 - Checkpoint (sketsa + tahap warna) baru dikalibrasi dengan foto sintetis (`tests/checkpoint_synth.py`); uji foto progres nyata lewat `../eval/run_checkpoint.py`, lalu sesuaikan ambang.
 - Deploy ke Railway belum dilakukan (butuh akun tim) — semua bahan siap, lihat [DEPLOY.md](DEPLOY.md). Dockerfile belum pernah di-build di laptop (tanpa Docker).

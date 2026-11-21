@@ -220,8 +220,9 @@ def _cap_regions(labels: np.ndarray, lab: np.ndarray, max_regions: int) -> np.nd
         lut = np.arange(n)
         used: set[int] = set()
         merged = 0
-        # Gabung paling banyak setengah kelebihan per putaran agar warna rata-rata diperbarui.
-        budget = max(1, (excess + 1) // 2)
+        # Saat kelebihan masih jauh, gabung sebanyak mungkin per putaran (cepat); mendekati target,
+        # gabung setengahnya saja agar warna rata-rata sempat diperbarui (lebih teliti).
+        budget = excess if excess > max_regions else max(1, (excess + 1) // 2)
         for idx in np.argsort(cost):
             a, b = int(p[idx]), int(q[idx])
             if a in used or b in used:

@@ -19,8 +19,10 @@ from cv.types import CvResult
 
 log = logging.getLogger("rerupa.cv")
 
-# Dari evaluasi foto nyata: Raden Saleh 0,89; lukisan Bali gaya Kamasan 0,51–0,54; bidang datar <0,2.
-SHADING_HINT_THRESHOLD = 0.7
+# Dari evaluasi foto nyata (setelah region digabung berdasarkan warna): Raden Saleh 0,63–0,87;
+# lukisan Bali gaya Kamasan ≤0,47; simulasi ≤0,45. Celahnya tipis → ini hanya saran; di Fase 3
+# use_shading diputuskan bersama AI, dan untuk materi koleksi ditetapkan manual.
+SHADING_HINT_THRESHOLD = 0.55
 
 
 @contextmanager

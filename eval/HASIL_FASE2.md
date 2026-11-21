@@ -43,15 +43,17 @@ Dua foto lain (Raden Saleh *Javanese Jungle*, Kamasan *Demonic Transformation*) 
 
 - **Masalah yang ditemukan:** batas ≤35 region dicapai dengan menggabungkan region *terkecil*, sehingga bidang yang warnanya berbeda (rok merah, kulit, latar) ikut tergabung jadi gumpalan acak.
 - **Perbaikan:** penggabungan memilih pasangan tetangga yang *warnanya paling mirip* (ΔE), region kecil sedikit diprioritaskan.
-- **Hasil setelah perbaikan:** pada potongan figur Kamasan, lengan, kaki (warna kulit), rok merah, dan latar terpisah mengikuti bentuk figur. Pada Raden Saleh, langit bergradasi, tanah, dan kelompok figur menjadi massa gelap-terang yang jelas. Waktu 2–4 s.
+- **Hasil setelah perbaikan:** pada potongan figur Kamasan, lengan, kaki (warna kulit), rok merah, dan latar terpisah mengikuti bentuk figur. Pada Raden Saleh, langit bergradasi, tanah, dan kelompok figur menjadi massa gelap-terang yang jelas.
+- **Waktu:** 2,2–7,2 s per foto. Versi pertama penggabungan warna sempat 15,7 s pada foto bertekstur kanvas; setelah penggabungan dipercepat saat kelebihan region masih banyak, turun ke 6,5 s.
 - **Batasan:** lukisan utuh yang berisi puluhan tokoh tetap terlalu rumit untuk 35 region. UI perlu **mengarahkan pemula memotong satu figur** (sesuai PRD: cakupan/potongan), dan peringatan `too_complex` perlu dipicu bukan hanya dari jumlah region.
 
 ### 4. Terang-gelap
 
 - **Masalah yang ditemukan:** pembagian tingkat per kuantil memecah latar polos jadi bercak; bintik tekstur tersisa.
 - **Perbaikan:** batas tingkat dibagi rata pada rentang kecerahan nyata + penggabungan bintik kecil.
-- `shading_hint`: Raden Saleh 0,89–1,0; Kamasan 0,21–0,55; bidang datar/simulasi <0,2.
-- **Keputusan:** ambang `use_shading` dinaikkan dari 0,5 ke **0,7** (di 0,5 lukisan Kamasan salah dianggap bervolume).
+- `shading_hint` setelah region digabung berdasarkan warna: Raden Saleh 0,63–0,87; Kamasan 0,17–0,47; simulasi 0,11–0,45.
+  (Sebelum perbaikan region angkanya berbeda — Raden Saleh 0,89–1,0, Kamasan sampai 0,55 — sehingga ambang 0,7 yang sempat dipilih membuat Raden Saleh utuh salah dianggap datar.)
+- **Keputusan:** ambang `use_shading` **0,55**. Celah antara kedua gaya tipis, jadi angka ini hanya saran: di Fase 3 `use_shading` diputuskan bersama AI, dan untuk materi koleksi ditetapkan manual.
 
 ### 5. Kualitas foto
 

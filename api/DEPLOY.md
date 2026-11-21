@@ -7,8 +7,8 @@ Dua service, **dua image**: `api` dari `Dockerfile.api` (ringan, tanpa torch) da
 ## 1. Sekali saja
 
 1. Railway → **New Project → Deploy from GitHub repo** → `iqbalvrd/Rerupa`.
-2. Service pertama (**api**): Settings → **Root Directory** = `api`. Railway membaca `api/railway.toml` (`Dockerfile.api` + healthcheck `/health`). Region Singapura. Settings → Networking → **Generate Domain**. Ukuran: 0,5 vCPU / 512 MB, **1 instance** (rate limit di memori).
-3. Service kedua (**worker**): New → GitHub repo yang sama, Root Directory `api`, Settings → Config-as-code → `/api/railway.worker.toml` (`Dockerfile.worker`, draining 60 s), tanpa domain publik. Ukuran: 2 vCPU / 3 GB (2 jalur pemroses). Bila build gagal karena Hugging Face membatasi unduhan, tambahkan variabel build `HF_TOKEN` (token baca gratis).
+2. Service pertama (**api**): Settings → **Root Directory** = `api`. Builder Dockerfile, path `Dockerfile.api`, healthcheck `/health` (diatur di Settings, tanpa config-as-code). Region Singapura. Settings → Networking → **Generate Domain**. Ukuran: 0,5 vCPU / 512 MB, **1 instance** (rate limit di memori).
+3. Service kedua (**worker**): New → GitHub repo yang sama, Root Directory `api`, Dockerfile path `Dockerfile.worker`, restart ALWAYS, draining 60 s (diatur di Settings), tanpa domain publik. Ukuran: 2 vCPU / 3 GB (2 jalur pemroses). Bila build gagal karena Hugging Face membatasi unduhan, tambahkan variabel build `HF_TOKEN` (token baca gratis).
 4. Isi variabel (Shared Variables untuk keduanya, tabel di bawah).
 5. Deploy. Cek `https://<domain-api>/health` → `status: ok`, `supabase: ok`, `environment: production`.
 6. Kirim domain API ke Xavier → Vercel `NEXT_PUBLIC_API_BASE_URL`.

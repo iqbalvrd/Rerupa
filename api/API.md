@@ -105,7 +105,7 @@ Kuota: per tahap checkpoint maks **2 feedback** (1 + 1 retry); foto ulang (`need
 ### Membaca hasil checkpoint
 
 - `summary`: 1 kalimat pembuka. `suggestions`: **0–2** saran `{region_code, observation, action, bbox}`. Tanpa saran = sketsa sudah sesuai.
-- `region_code` = kode region (`rNN`, sorot `<path id="rNN">` di `regions.svg`) atau `"main"` = siluet objek utama (sorot lapisan `main_object`).
+- `region_code` = kode region (`rNN`, sorot `<path id="rNN">` di `regions.svg`), `"main"` = siluet objek utama (sorot lapisan `main_object`), atau `"sketch"` = **seluruh sketsa bergeser** (sorot seluruh lapisan `sketch`; `bbox` = area semua garis). Saran `sketch` selalu di urutan pertama.
 - `bbox` `[x, y, w, h]` di ruang `image_width × image_height` lesson — dipakai untuk penanda di atas foto/panduan. Hanya ada bila penyelarasan berhasil.
 - `photo_url`: foto yang sudah diluruskan (rasio sama dengan lesson). Tampilkan di `<image width=W height=H>` pada `viewBox` lesson, lalu tumpuk lapisan `sketch`/`grid` untuk membandingkan. Signed URL 30 menit; `null` setelah foto dihapus (teks tetap ada).
 - `text_source`: `ai` atau `template`; `generated_automatically: true` → label "dibuat otomatis".

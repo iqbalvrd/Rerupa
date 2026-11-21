@@ -68,7 +68,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 - Materi koleksi yang diimpor sebelum Fase 7 (Raden Saleh v2) masih 1 checkpoint; impor ulang agar mendapat 2.
 - Saat seluruh sketsa bergeser ke satu arah, saran saat ini menyebut per bentuk (bisa dua saran mirip); bisa digabung jadi satu saran setelah uji nyata.
 - OpenAI aktif di lokal (`gpt-6.1-terra`). Key yang dipakai pernah ditempel di chat → **cabut dan ganti** sebelum deploy, lalu set batas pengeluaran di dashboard OpenAI. `DATABASE_URL` belum diisi (belum dibutuhkan).
-- Checkpoint pada tutorial nyata: sketsa yang bergeser seluruhnya kadang terbaca sebagai "sisi bidang lebih lebar/sempit", atau tidak terdeteksi pada batik/lanskap (lihat HASIL_UJI_MODEL.md). Perlu deteksi pergeseran global + uji foto progres nyata.
+- Checkpoint: deteksi "seluruh sketsa bergeser" (`region_code: "sketch"`) teruji pada 4 materi nyata dengan foto sintetis (20/20, [eval/HASIL_CHECKPOINT_NYATA.md](eval/HASIL_CHECKPOINT_NYATA.md)); uji dengan foto progres sungguhan tetap diperlukan.
 - CV: lukisan utuh yang penuh tokoh terlalu rumit untuk 35 region — **UI perlu mengarahkan pemula memotong satu figur**. Waktu CV mode bebas ±6–12 s di CPU laptop (target 8 s), perlu diukur di server.
 
 ### 2.4 Catatan untuk frontend dari Fase 2

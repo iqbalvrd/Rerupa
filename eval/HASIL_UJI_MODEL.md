@@ -46,7 +46,10 @@ Klaim budaya dari AI kosong di semua model: basis pengetahuan budaya (`culture_e
 
 Perkiraan biaya per pengguna (1 tutorial mode bebas + 2 feedback) dengan gpt-6.1-terra: **±$0,015**. Batas harian `DAILY_AI_BUDGET_USD=5` ≈ 330 tutorial per hari.
 
-## Temuan lain (perlu ditindaklanjuti)
+## Temuan lain
+
+> **Sudah diperbaiki** (lihat [HASIL_CHECKPOINT_NYATA.md](HASIL_CHECKPOINT_NYATA.md)): deteksi "seluruh sketsa bergeser" ditambahkan; pada 4 materi nyata 20/20 kasus sesuai harapan (sebelumnya 4/20).
+
 
 - **Kandidat checkpoint pada materi nyata belum sebaik pada gambar sintetis.** Sketsa yang digeser 7% ke kanan:
   - Diponegoro dan kain Bali: CV mengusulkan "sisi kanan bidang X lebih lebar/sempit", bukan "seluruh sketsa bergeser". Saran tetap menunjuk ke arah yang benar, tetapi kurang tepat.

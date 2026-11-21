@@ -44,8 +44,8 @@ Evaluasi CV pada foto nyata: lihat [`../eval/README.md`](../eval/README.md).
 | `cv/` | Pipeline CV: normalisasi, cek kualitas, mask (rembg), garis (model/TEED/XDoG/Canny), region k-means, terang-gelap, render SVG/PNG, `stage_planner` (pembagian region ke 6–8 tahap); checkpoint: `align` (tap 4 sudut → warp → ECC ke grid), `compare` (metrik + kandidat), `checkpoint` (orkestrasi + kualitas), `svgpath` (SVG lapisan → raster) |
 | `ai/` | Teks tutorial dan feedback checkpoint (`feedback.py`: maks 2 saran dari kandidat CV): skema keluaran, prompt, klien OpenAI (Responses API + structured output, catat biaya), validator aturan PRD, templat cadangan |
 | `color/` | Perkiraan campuran cat: Mixbox (model pigmen) + ΔE2000, 1–3 cat + campuran tint (putih banyak), resep teruji diutamakan |
-| `scripts/import_collection.py`, `scripts/import_palette.py`, `scripts/smoke.py` (uji alur lengkap ke API berjalan), `scripts/measure_p95.py` (ukur P95), `scripts/report_ai.py` (lolos validator + biaya) | Impor materi koleksi (`../content/artworks/<slug>/`) dan palet (`../content/palettes/*.json`) |
-| `story/` | P1 |
+| `scripts/generate_story.py` (cerita materi koleksi: draf → tinjau → `--publish`), `scripts/import_collection.py`, `scripts/import_palette.py`, `scripts/smoke.py` (uji alur lengkap ke API berjalan), `scripts/measure_p95.py` (ukur P95), `scripts/report_ai.py` (lolos validator + biaya) | Impor materi koleksi (`../content/artworks/<slug>/`) dan palet (`../content/palettes/*.json`) |
+| `story/` | Storyline (P1): `recognize` (pencocokan foto → koleksi, ORB + homografi), `sources` (kandidat identitas + web search, validasi sumber tepercaya), `storyboard` (+ validator, daftar terbatas `restricted.json`), `panels` (potongan asli / gambar OpenAI + pemeriksa), `service` (orkestrasi) |
 | `examples/` | Contoh respons JSON untuk frontend |
 | `tests/` | Tes unit dan integrasi |
 

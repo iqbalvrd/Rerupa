@@ -31,7 +31,12 @@ def process_one(worker_id: str, handlers: dict[str, Handler] = HANDLERS, session
 
     session_id membatasi ke satu sesi (dipakai tes); worker produksi memanggil tanpa filter.
     """
-    job = job_service.claim_job(worker_id, list(handlers), session_id)
+    # Feedback checkpoint didahulukan: cepat (±1–3 s CV) dan pengguna sedang menunggu di layar (P95 ≤30 s).
+    job = None
+    if "feedback" in handlers:
+        job = job_service.claim_job(worker_id, ["feedback"], session_id)
+    if job is None:
+        job = job_service.claim_job(worker_id, list(handlers), session_id)
     if job is None:
         return False
 

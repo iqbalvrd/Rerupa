@@ -109,6 +109,7 @@ def store_upload(
     clean: CleanImage,
     purpose: str,
     stage_id: str | None = None,
+    corners: list[int] | None = None,
 ) -> dict:
     """Simpan JPEG bersih ke Storage lalu catat di tabel uploads. Bila pencatatan gagal, file dihapus lagi."""
     if purpose not in ("reference", "progress"):
@@ -134,6 +135,7 @@ def store_upload(
                     "session_id": session_id,
                     "purpose": purpose,
                     "stage_id": stage_id,
+                    "corners": corners,
                     "raw_path": path,
                     "sha256": sha256_hex(original),
                     "mime": clean.source_mime,

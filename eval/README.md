@@ -35,3 +35,21 @@ Hasil:
 - **Region:** target ≤35 untuk pemula; bentuk besar harus utuh, tidak pecah jadi bintik.
 - **shading_hint:** ≥0,5 → karya bervolume (layer terang-gelap aktif); karya datar seharusnya rendah.
 - **RAM puncak:** menentukan ukuran server (rencana: ≥4 GB).
+
+## Checkpoint foto progres (Fase 5)
+
+`run_checkpoint.py` menguji pelurusan + metrik + kandidat pada foto progres **nyata** (sketsa pensil di kertas/kanvas, difoto HP). Format `eval/checkpoint/cases.json` ada di docstring skrip. Siapkan minimal 3–5 foto:
+
+| # | Isi | Harapan |
+| --- | --- | --- |
+| 1 | Sketsa sesuai panduan, grid terlihat | `ok` |
+| 2 | Sketsa dengan objek utama sengaja digeser / dilebarkan | `suggestion` |
+| 3 | Foto buram atau gelap | `retake` (`photo_unusable`) |
+| 4 | Tap sudut jauh meleset | `retake` (`alignment_failed`) |
+| 5 | Kertas kosong (hanya grid) | `retake` (`sketch_not_visible`) |
+
+```bash
+uv run --group cv python ../eval/run_checkpoint.py
+```
+
+Hasil di `checkpoint/out/` (tidak di-commit): `summary.md` + `<foto>_overlay.jpg` (garis panduan merah, kotak kandidat). Kalibrasi awal memakai foto sintetis (`api/tests/checkpoint_synth.py`); ambang di `cv/compare.py` dan `cv/checkpoint.py` disesuaikan lagi setelah uji foto nyata.

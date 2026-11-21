@@ -36,12 +36,12 @@ Evaluasi CV pada foto nyata: lihat [`../eval/README.md`](../eval/README.md).
 | Folder/file | Isi |
 | --- | --- |
 | `main.py` | Aplikasi FastAPI, CORS, batas ukuran request |
-| `worker.py`, `worker_handlers.py` | Worker antrean job dan handler per jenis job |
+| `worker.py`, `worker_handlers.py`, `worker_feedback.py` | Worker antrean job (feedback didahulukan) dan handler per jenis job |
 | `core/` | Config, error terstandar, sesi tamu, keamanan, log JSON, idempotency |
-| `routes/` | Endpoint: health, artworks, sessions, jobs, lessons, palettes (+ recipes) |
-| `services/` | Logika: jobs, uploads, storage (signed URL, retry), lessons (unggah lapisan + simpan atomik) |
-| `cv/` | Pipeline CV: normalisasi, cek kualitas, mask (rembg), garis (model/TEED/XDoG/Canny), region k-means, terang-gelap, render SVG/PNG, `stage_planner` (pembagian region ke 6–8 tahap) |
-| `ai/` | Teks tutorial: skema keluaran, prompt, klien OpenAI (Responses API + structured output, catat biaya), validator aturan PRD, templat cadangan |
+| `routes/` | Endpoint: health, artworks, sessions, jobs, lessons, palettes (+ recipes), progress (+ events), checkpoints |
+| `services/` | Logika: jobs, uploads, storage (signed URL, retry), lessons (unggah lapisan + simpan atomik), progress, events |
+| `cv/` | Pipeline CV: normalisasi, cek kualitas, mask (rembg), garis (model/TEED/XDoG/Canny), region k-means, terang-gelap, render SVG/PNG, `stage_planner` (pembagian region ke 6–8 tahap); checkpoint: `align` (tap 4 sudut → warp → ECC ke grid), `compare` (metrik + kandidat), `checkpoint` (orkestrasi + kualitas), `svgpath` (SVG lapisan → raster) |
+| `ai/` | Teks tutorial dan feedback checkpoint (`feedback.py`: maks 2 saran dari kandidat CV): skema keluaran, prompt, klien OpenAI (Responses API + structured output, catat biaya), validator aturan PRD, templat cadangan |
 | `color/` | Perkiraan campuran cat: Mixbox (model pigmen) + ΔE2000, 1–3 cat + campuran tint (putih banyak), resep teruji diutamakan |
 | `scripts/import_collection.py`, `scripts/import_palette.py` | Impor materi koleksi (`../content/artworks/<slug>/`) dan palet (`../content/palettes/*.json`) |
 | `story/` | P1 |
@@ -54,7 +54,7 @@ Migrasi database ada di `../supabase/migrations/` dan sudah diterapkan ke projec
 
 - **OpenAI belum dikonfigurasi** — semua tutorial memakai teks templat sampai `OPENAI_API_KEY`, `OPENAI_VISION_MODEL`, dan harga per token diisi. Jalur AI sudah diuji dengan respons tiruan, belum dengan API sungguhan; uji 2–3 model dilakukan setelah key ada.
 - Palet yang aktif masih **palet referensi digital** (warna pigmen Mixbox), bukan cat fisik. Ganti dengan palet cat demo yang swatch-nya difoto (PRD §9), lalu tambahkan resep teruji ke `color_recipes`. Lisensi Mixbox CC BY-NC: aman untuk lomba, perlu lisensi untuk komersial.
-- Checkpoint dan progres tahap (Fase 5).
+- Checkpoint baru dikalibrasi dengan foto sintetis (`tests/checkpoint_synth.py`); uji 3–5 foto progres nyata lewat `../eval/run_checkpoint.py`, lalu sesuaikan ambang. Checkpoint ke-2 (tahap warna, showcase) perlu diuji di Fase 7.
 - Rate limit per IP dan deploy (Fase 6).
 - Retensi otomatis (Fase 7): unggahan ≤24 jam **dan** folder lapisan `derived/<session_id>/` saat sesi kedaluwarsa. Saat sesi dihapus lewat API, keduanya sudah langsung dihapus.
 

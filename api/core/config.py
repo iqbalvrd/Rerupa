@@ -38,6 +38,11 @@ class Settings(BaseSettings):
 
     # Kuota & biaya
     generate_quota_per_session: int = 3
+    # PRD §17: satu retry per checkpoint → maks 2 feedback berhasil per tahap; foto ulang
+    # (needs_retake) tidak dihitung, tetapi total percobaan per tahap tetap dibatasi.
+    checkpoint_feedback_per_stage: int = 2
+    checkpoint_attempts_per_stage: int = 6
+    feedback_deadline_seconds: int = 45
     daily_ai_budget_usd: float = 5.0
 
     # Perilaku aplikasi

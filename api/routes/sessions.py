@@ -20,6 +20,7 @@ from core.session import (
     set_session_cookie,
 )
 from core.supabase_client import get_supabase
+from services import events
 from services.jobs import cancel_queued_jobs
 from services.uploads import purge_session_files
 
@@ -33,10 +34,12 @@ class SessionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     palette_id: UUID | None = None
     canvas_size: CanvasSize | None = None
+    lesson_version_id: UUID | None = Field(default=None, description="Materi koleksi terbit yang akan dilatih (dari GET /artworks)")
 
 
 class SessionUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    lesson_version_id: UUID | None = None
     palette_id: UUID | None = None
     canvas_size: CanvasSize | None = None
     current_stage_order: int | None = Field(default=None, ge=1, le=8)
@@ -56,6 +59,19 @@ def _out(row: dict) -> SessionOut:
     return SessionOut(**{k: row[k] for k in SessionOut.model_fields})
 
 
+def _check_lesson(lesson_id: UUID | None, session_id: str | None) -> None:
+    """Hanya materi koleksi terbit atau tutorial mode bebas milik sesi ini. Selain itu 404 (tidak membocorkan)."""
+    if lesson_id is None:
+        return
+    rows = get_supabase().table("lesson_versions").select("origin, status, owner_session_id").eq("id", str(lesson_id)).limit(1).execute().data
+    ok = bool(rows) and (
+        (rows[0]["origin"] == "collection" and rows[0]["status"] == "published")
+        or (rows[0]["origin"] == "free_mode" and session_id is not None and rows[0]["owner_session_id"] == session_id)
+    )
+    if not ok:
+        raise AppError("not_found", 404)
+
+
 def _check_palette(palette_id: UUID | None) -> None:
     if palette_id is None:
         return
@@ -67,6 +83,7 @@ def _check_palette(palette_id: UUID | None) -> None:
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=SessionOut)
 def create_session(body: SessionCreate, response: Response) -> SessionOut:
     _check_palette(body.palette_id)
+    _check_lesson(body.lesson_version_id, None)
     token = new_session_token()
     settings = get_settings()
     session_id = str(uuid4())  # acak; tidak pernah dipakai sebagai bukti akses
@@ -79,6 +96,7 @@ def create_session(body: SessionCreate, response: Response) -> SessionOut:
                 "id": session_id,
                 "token_hash": hash_token(token),
                 "palette_id": str(body.palette_id) if body.palette_id else None,
+                "lesson_version_id": str(body.lesson_version_id) if body.lesson_version_id else None,
                 "canvas_size": body.canvas_size,
                 "safety_id": safety_id_for(session_id),
                 "expires_at": (now_utc() + timedelta(days=settings.session_ttl_days)).isoformat(),
@@ -105,6 +123,12 @@ def update_session(session_id: UUID, body: SessionUpdate, session: dict = Depend
         return _out(session)
     if "palette_id" in changes:
         _check_palette(body.palette_id)
+    if "lesson_version_id" in changes:
+        if body.lesson_version_id is None:
+            raise AppError("validation_error", 422)
+        _check_lesson(body.lesson_version_id, session["id"])
+        if changes["lesson_version_id"] != session.get("lesson_version_id") and "current_stage_order" not in changes:
+            changes["current_stage_order"] = 1
     row = (
         get_supabase()
         .table("practice_sessions")
@@ -124,6 +148,7 @@ def delete_session(session_id: UUID, response: Response, session: dict = Depends
         "id", session["id"]
     ).execute()
     cancel_queued_jobs(session["id"])
+    events.record(session, "session_deleted")
     try:
         purge_session_files(session["id"])
     except Exception:

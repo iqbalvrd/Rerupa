@@ -236,22 +236,49 @@ AI tidak boleh menyebut region di luar kandidat. Penyelarasan gagal → `needs_r
 
 ### 4.8 Storyline cerita (P1)
 
+Storyline dibuat untuk **materi koleksi dan foto unggahan**. Yang membedakan adalah **dari mana kisahnya berasal**, dan itu selalu ditampilkan ke pengguna sebagai label.
+
 ```mermaid
 flowchart TD
-    A[Karya + region graph] --> B[OpenAI: kenali kisah + tulis storyboard]
-    B --> C{Validator storyboard}
-    C -- kisah tidak diketahui --> T[Lewati atau interpretasi berlabel]
-    C -- lolos --> D[OpenAI image: panel 1, referensi karya + potongan tokoh]
-    D --> E[OpenAI image: panel 2..n, referensi + panel sebelumnya]
-    E --> F[Simpan panel]
-    D -. gagal/ditolak .-> G[Storyboard teks]
+    S[Tutorial jadi] --> K{Materi koleksi?}
+    K -- ya --> KUR[Kisah kurasi: klaim meta.json + basis budaya, bersumber]
+    K -- tidak, foto unggahan --> M{A. Cocok dengan koleksi? pHash, dikonfirmasi pengguna}
+    M -- ya --> KUR
+    M -- tidak --> U[B. Isian opsional: judul / seniman / asal]
+    U --> AI[C. OpenAI: kandidat identitas dari foto + isian]
+    AI --> W[Web search OpenAI dari teks saja: judul + seniman]
+    W --> V{Sumber tepercaya mendukung?}
+    V -- ya --> F[Kisah bersumber + tautan]
+    V -- sebagian / dari isian --> I1[Berdasarkan info pengguna]
+    V -- tidak --> I2[Interpretasi AI, atau dilewati]
+    KUR --> SB[Storyboard terstruktur + validator]
+    F --> SB
+    I1 --> SB
+    I2 --> SB
+    SB -- tokoh/adegan terbatas --> T[Kartu teks saja]
+    SB -- lolos --> P[Panel gpt-image-2.6: referensi karya + potongan tokoh + panel sebelumnya]
+    P -. gagal/ditolak .-> T
 ```
 
-- Storyboard terstruktur: kisah (fakta/perkiraan/tidak diketahui + source_ids), `style_guide`, tokoh dengan deskripsi terkunci + `region_ids`, 4–6 panel (narasi ≤40 kata).
-- Draf dengan `gpt-image-2.6-flare`, aset final koleksi dengan `gpt-image-2.6-sunburst`.
+**Urutan sumber kisah (A → B → C):**
+
+| Lapis | Kapan | Hasil & label |
+| --- | --- | --- |
+| Koleksi | Materi galeri | Kisah dari klaim kurasi (`meta.json`) + basis budaya. Label **"Kisah bersumber"**. Panel dibuat sekali (`sunburst`), ditinjau, di-cache |
+| **A. Cocok koleksi** | Foto unggahan mirip materi koleksi (pHash di atas ambang terkalibrasi) **dan pengguna mengonfirmasi** "Apakah ini …?" | Memakai storyline koleksi yang sudah ditinjau. Tanpa biaya AI tambahan |
+| **B. Isian pengguna** | Tidak cocok koleksi | Isian opsional setelah unggah: "Tahu judul / seniman / asal karyanya?" Isian dianggap **petunjuk**, bukan fakta |
+| **C. Cari sumber** | Ada isian, atau AI mengenali kandidat dari foto | AI mengusulkan kandidat identitas; bila dari foto saja, **pengguna mengonfirmasi dulu**. Lalu tool *web search* OpenAI mencari sumber dengan **teks saja** (judul + seniman, foto tidak dikirim ke pencarian). Klaim jadi **fakta** hanya bila halaman sumber tepercaya (museum, arsip, ensiklopedia, Wikipedia) mendukungnya, lengkap dengan URL |
+| Tanpa sumber | Pencarian tidak menemukan dukungan | Cerita boleh dibuat dengan label **"Interpretasi AI"** di setiap panel, atau dilewati bila pengguna memilih. Tidak pernah disajikan sebagai fakta |
+
+**Storyboard dan panel:**
+- Storyboard terstruktur: kisah (setiap klaim bertipe fakta/perkiraan/tidak diketahui + `source_url` atau `source_id`), `story_basis` (`curated` | `sourced` | `user_hint` | `ai_interpretation`), `style_guide`, tokoh dengan deskripsi terkunci + `region_ids`, 4–6 panel (narasi ≤40 kata).
+- Validator: fakta wajib punya sumber yang ada di hasil pencarian atau basis budaya; domain sumber dari daftar tepercaya; label sesuai `story_basis`; tokoh/adegan dalam daftar terbatas tidak digenerate.
+- Draf dengan `gpt-image-2.6-flare`; aset final koleksi dengan `gpt-image-2.6-sunburst`.
 - Panel adegan yang ada di karya memakai **potongan karya asli**, tidak digenerate.
-- Label "Ilustrasi AI"; tokoh/adegan dalam daftar terbatas tidak digenerate; fallback teks.
+- Label "Ilustrasi AI" pada setiap panel; fallback kartu teks bila gambar gagal/ditolak.
 - Tokoh di panel bisa diketuk → lompat ke tahap yang membuka region tokoh itu.
+
+**Batas & biaya:** maks 1 storyline per tutorial, maks 3 pencarian web per storyline, 1 regenerasi per panel; semua tercatat di `ai_usage` dan ikut batas harian. Foto unggahan hanya dikirim ke OpenAI bila pengguna sudah setuju (`consent_ai_photo`).
 
 ---
 
@@ -286,7 +313,7 @@ Tidak ada training model. Data pengguna tidak dipakai untuk melatih model.
 | 5. Checkpoint | Checkpoint UI (1 checkpoint), tap 4 sudut | Pelurusan + metrik + feedback OpenAI | Feedback muncul atau meminta foto ulang dengan tepat |
 | 6. Rilis versi awal | Deploy, rekam video demo | Deploy backend, batas biaya harian | Definisi selesai versi awal (§8) terpenuhi |
 | 7. Penguatan showcase | Polishing, aksesibilitas | 2 checkpoint, retensi 24 jam, uji akses antar-sesi | Definisi selesai versi showcase (§8) terpenuhi |
-| 8. P1 (bila P0 stabil) | Storyline cerita UI | Storyline OpenAI image, ukur P95 | Storyline materi demo tampil dengan fallback teks |
+| 8. P1 (bila P0 stabil) | Storyline cerita UI (label sumber kisah, isian judul/seniman, konfirmasi "Apakah ini …?") | Pencocokan koleksi (pHash), pencarian sumber web, storyboard + validator, panel OpenAI image, ukur P95 | Storyline materi demo + 1 foto unggahan karya terkenal tampil dengan label sumber yang benar dan fallback teks |
 | 9. Demo | Demo live + cadangan video | Monitoring | Demo selesai tanpa gangguan |
 
 Pembagian backend antara Xavier dan Iqbal disepakati per modul (usul: Xavier memegang endpoint sesi dan progres; Iqbal memegang CV, AI, dan warna).

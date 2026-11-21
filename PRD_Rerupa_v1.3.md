@@ -9,6 +9,7 @@ Bahasa utama: Indonesia.
 Riwayat perubahan:
 - **v1.3** (revisi Xavier): nama Rerupa dan tim ditetapkan; konteks BUDAYA GO 2026; **OpenAI satu-satunya penyedia AI** (Claude, Gemini, dan DeepSeek sebagai penyedia utama dihapus; DeepSeek hanya opsi teks tanpa foto); storyline cerita turun ke **P1**; versi awal **1 checkpoint**; pencocokan otomatis ke koleksi jadi P1; **pembagian region per tahap oleh kode**, AI hanya menulis teks; tambah **model lineart**, **layer terang-gelap** (FR17), dan **toggle foto asli** (FR18); aturan sumber materi koleksi dan EBT; jadwal 48 jam diganti jadwal BUDAYA GO; demo diperbaiki.
 - v1.2: tambah storyline cerita visual 4–6 panel dengan image generation.
+- **Pembaruan 21 Nov (keputusan tim):** storyline (P1) juga untuk **foto unggahan**, bukan hanya materi koleksi. Sumber kisah berlapis: cocok koleksi → isian judul/seniman dari pengguna → pencarian sumber web; setiap storyline diberi label sumber kisah (FR16, §11.2).
 - v1.1: tutorial dibuat AI dari foto apa pun; konteks budaya fakta vs perkiraan.
 
 ## 0. Konteks lomba
@@ -112,7 +113,7 @@ P0 = wajib untuk demo yang utuh. P1 = ditambahkan setelah P0 stabil. P2 = roadma
 | F08 | Konteks budaya fakta vs perkiraan | P0 | 27 Nov |
 | F09 | Simpan progres, lanjutkan, hapus sesi | P0 | 27 Nov |
 | F10 | Refleksi budaya di akhir | P0 | showcase |
-| F15 | Storyline cerita panel ilustrasi | **P1** | showcase, kalau P0 stabil |
+| F15 | Storyline cerita panel ilustrasi, untuk materi koleksi **dan foto unggahan** (label sumber kisah) | **P1** | showcase, kalau P0 stabil |
 | F11 | Tanya per langkah | P1 | setelah showcase |
 | F12 | Durasi dan level menengah | P1 | setelah showcase |
 | F13, F14 | Pemindaian swatch, AR, medium lain | P2 | roadmap |
@@ -139,7 +140,9 @@ Kondisi alternatif:
 - Foto bebas tanpa identitas diketahui: tutorial tetap dibuat; judul/seniman tidak ditebak; konteks budaya ditandai perkiraan.
 - Gambar terlalu rumit: sistem menyarankan potongan atau versi sederhana.
 - Pembuatan tutorial gagal atau teks AI tidak lolos validasi: tahapan visual tetap tampil dengan instruksi templat; tawarkan coba lagi atau materi koleksi.
-- (P1) Kisah karya tidak diketahui: storyline tidak dibuat sebagai fakta; fitur dilewati atau ditandai "interpretasi AI".
+- (P1) Foto unggahan mirip materi koleksi: tawarkan "Apakah ini …?"; bila dikonfirmasi, pakai storyline koleksi yang sudah ditinjau.
+- (P1) Foto unggahan karya yang dikenal publik tetapi tidak ada di koleksi: pengguna boleh mengisi judul/seniman; sistem mencari sumber di web. Klaim hanya menjadi fakta bila sumber tepercaya mendukungnya (dengan tautan). Kandidat identitas yang dikenali AI dari foto harus dikonfirmasi pengguna lebih dulu.
+- (P1) Kisah karya tidak diketahui atau sumber tidak ditemukan: storyline tidak dibuat sebagai fakta; dilewati atau setiap panel diberi label "Interpretasi AI".
 - (P1) Image generation gagal atau ditolak: tampilkan storyboard teks saja.
 - (P1) Beberapa kandidat koleksi mirip: tampilkan pilihan dan minta konfirmasi.
 - Alat di luar palet: tampilkan kebutuhan minimum; rasio yang belum diuji tidak ditampilkan sebagai resep.
@@ -167,7 +170,7 @@ Kondisi alternatif:
 | FR13 | Progres dan penghapusan | Reload pada browser yang sama memulihkan sesi aktif. Foto yang telah kedaluwarsa diganti penanda, sementara teks feedback tetap tersedia sampai sesi berakhir. Hapus sesi menghilangkan akses segera dan menjadwalkan pembersihan sesuai kebijakan retensi. |
 | FR14 | Penutup latihan | Pengguna mendapat rangkuman langkah dan satu pertanyaan refleksi; hasil tidak disebut sertifikasi kemampuan. |
 | FR15 | Status dan kegagalan | Unggah, antrean, pemrosesan, berhasil, kualitas tidak cukup, dan gagal dibedakan. Retry tidak membuat pekerjaan atau biaya ganda. |
-| FR16 | Storyline cerita (P1) | Identifikasi kisah mengikuti aturan fakta bersumber vs perkiraan. Storyboard 4–6 panel, narasi ≤40 kata per panel, deskripsi tokoh dikunci. Panel dibuat dengan image generation OpenAI, berlabel "Ilustrasi AI", tidak disajikan sebagai karya asli. Tokoh/adegan dalam daftar terbatas narasumber tidak digenerate. Panel koleksi di-cache dan ditinjau sebelum terbit. |
+| FR16 | Storyline cerita (P1) | Berlaku untuk materi koleksi dan foto unggahan. Sumber kisah berurutan: kurasi koleksi → cocok koleksi (dikonfirmasi pengguna) → isian pengguna → pencarian sumber web; label sumber ("Kisah bersumber", "Berdasarkan info dari kamu", "Interpretasi AI") tampil di storyline. Identifikasi kisah mengikuti aturan fakta bersumber vs perkiraan. Storyboard 4–6 panel, narasi ≤40 kata per panel, deskripsi tokoh dikunci. Panel dibuat dengan image generation OpenAI, berlabel "Ilustrasi AI", tidak disajikan sebagai karya asli. Tokoh/adegan dalam daftar terbatas narasumber tidak digenerate. Panel koleksi di-cache dan ditinjau sebelum terbit. |
 | FR17 | Layer terang-gelap | Aktif hanya bila `use_shading: true` (mis. karya Raden Saleh). Grayscale dipecah 3–5 tingkat dengan koordinat yang sama dengan lapisan lain; dapat dinyalakan/dimatikan. Karya garis dan bidang datar (Kamasan, wayang) tidak mendapat layer ini. |
 | FR18 | Lihat foto asli | Toggle "Foto asli" tersedia di setiap tahap (wajib di tahap detail dan penyelesaian) dan bisa zoom ke area yang sedang dikerjakan. |
 
@@ -289,7 +292,9 @@ Usulan komposisi 3–5 materi:
 
 ### 11.2 Aturan storyline cerita (P1)
 
-- Kisah hanya disebut sebagai fakta jika tercatat di basis pengetahuan dengan sumber; selebihnya "perkiraan AI" atau "tidak diketahui".
+- Kisah hanya disebut sebagai fakta jika tercatat di basis pengetahuan dengan sumber **atau didukung halaman sumber tepercaya hasil pencarian web (museum, arsip, ensiklopedia, Wikipedia) dengan URL yang disimpan**; selebihnya "perkiraan AI" atau "tidak diketahui".
+- Isian judul/seniman dari pengguna adalah petunjuk, bukan fakta. Kandidat identitas yang dikenali AI dari foto wajib dikonfirmasi pengguna sebelum dipakai mencari sumber.
+- Pencarian web hanya memakai teks (judul, seniman, asal); foto tidak dikirim ke mesin pencari. Foto ke OpenAI hanya dengan persetujuan pengguna.
 - Ilustrasi mengikuti gaya tradisi, bukan gaya seniman hidup tertentu tanpa izin.
 - Tokoh suci, upacara, atau simbol dengan ketentuan budaya mengikuti arahan narasumber; ada daftar tokoh/adegan yang tidak digenerate.
 - Panel tidak boleh menambahkan detail budaya (pakaian, senjata, atribut) yang bertentangan dengan sumber; panel koleksi ditinjau sebelum terbit.
@@ -427,7 +432,7 @@ Sesi mengunci versi materi agar tahapan tidak berubah ketika katalog diperbarui.
 | GET /artworks | Daftar koleksi terbit |
 | POST /recognitions | (P1) Unggah referensi dan cari kandidat koleksi |
 | POST /lessons/generate | Buat tutorial dari foto mode bebas (pekerjaan latar) |
-| POST /lessons/:id/story | (P1) Buat storyline cerita dan panel (pekerjaan latar) |
+| POST /lessons/:id/story | (P1) Buat storyline cerita dan panel (pekerjaan latar); body opsional `{title_hint, artist_hint, origin_hint}` untuk foto unggahan |
 | GET /stories/:id | (P1) Storyboard dan status tiap panel |
 | GET /lessons/:id | Materi versi terbit dan lapisan |
 | POST /sessions | Mulai sesi dan simpan pilihan |
@@ -464,7 +469,7 @@ Angka berikut adalah target penerimaan awal, belum hasil pengujian.
 | Kontras teks utama | Target minimum 4,5:1 |
 | Penggunaan AI | Checkpoint per sesi: 1 (versi awal) / 2 (showcase); satu retry per checkpoint |
 | Pembatasan penyalahgunaan | Maksimal tiga pembuatan tutorial per sesi (dan tiga pencocokan bila P1 aktif); batas tambahan pada backend |
-| Image generation (P1) | Maksimal satu storyline per tutorial dan satu regenerasi per panel; panel koleksi di-cache |
+| Image generation (P1) | Maksimal satu storyline per tutorial, tiga pencarian web per storyline, dan satu regenerasi per panel; panel koleksi di-cache |
 | Batas pengeluaran | **Batas pengeluaran harian di dashboard OpenAI** ditetapkan sebelum uji pengguna |
 
 Ukur P95 dengan setidaknya 20 eksekusi per alur dan laporkan ukuran sampelnya. Waktu unggah dilaporkan terpisah karena dipengaruhi koneksi. Sistem memakai cache hasil identik dan pembatasan request.
@@ -551,6 +556,7 @@ Pisahkan pengujian demo singkat dari pengujian belajar nyata yang memberi waktu 
 | (P1) Foto karya dalam koleksi dengan sudut/cahaya bervariasi | Kandidat benar atau sistem menahan keputusan |
 | (P1) Storyline pada karya berkisah dikenal | Kisah bersumber, tokoh konsisten, label "Ilustrasi AI" tampil |
 | (P1) Storyline pada karya tanpa kisah diketahui | Tidak mengarang kisah sebagai fakta |
+| (P1) Storyline foto unggahan karya terkenal (bukan koleksi) | Identitas dikonfirmasi pengguna; fakta hanya dengan tautan sumber tepercaya; label sumber kisah benar |
 | (P1) Tokoh/adegan dalam daftar terbatas | Tidak digenerate; tampil penjelasan |
 | (P1) Image generation OpenAI gagal/timeout/`moderation_blocked` | Storyboard teks tampil; latihan tetap jalan |
 

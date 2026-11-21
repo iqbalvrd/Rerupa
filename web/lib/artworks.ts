@@ -4,6 +4,7 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { z } from "zod";
 import { ApiError, api, isApiError } from "./api";
+import { DEV_LESSON_ID, DEV_MOCK_API } from "./dev-mock";
 import { ArtworkCard, ArtworkDetail, CultureClaim } from "./schemas";
 
 /** A gallery card. Fixtures also know the image size, which avoids layout shift. */
@@ -23,7 +24,9 @@ export const GALLERY_SOURCE: "api" | "fixtures" =
 async function loadFixtures(signal: AbortSignal): Promise<GalleryArtwork[]> {
   const res = await fetch("/_dev/artworks.json", { signal });
   if (!res.ok) throw new Error("Data contoh belum dibuat. Jalankan `npm run fixtures`.");
-  return z.array(GalleryArtwork).parse(await res.json());
+  const cards = z.array(GalleryArtwork).parse(await res.json());
+  // With the dev API mock on, every sample artwork can be practised using the example lesson.
+  return DEV_MOCK_API ? cards.map((c) => ({ ...c, lesson_version_id: DEV_LESSON_ID })) : cards;
 }
 
 export function useArtworks() {
@@ -46,7 +49,8 @@ async function loadFixtureDetail(slug: string, signal: AbortSignal): Promise<Gal
   const res = await fetch(`/_dev/artworks/${encodeURIComponent(slug)}.json`, { signal });
   if (res.status === 404) throw new ApiError("not_found", "Karya tidak ditemukan.", { status: 404 });
   if (!res.ok) throw new Error("Data contoh belum dibuat. Jalankan `npm run fixtures`.");
-  return GalleryArtworkDetail.parse(await res.json());
+  const detail = GalleryArtworkDetail.parse(await res.json());
+  return DEV_MOCK_API ? { ...detail, lesson_version_id: DEV_LESSON_ID } : detail;
 }
 
 /** Shared by useArtwork and the gallery's prefetch, so a prefetched detail is a cache hit. */
@@ -61,8 +65,8 @@ export function artworkQuery(slug: string) {
   });
 }
 
-export function useArtwork(slug: string) {
-  return useQuery(artworkQuery(slug));
+export function useArtwork(slug: string, enabled = true) {
+  return useQuery({ ...artworkQuery(slug), enabled: enabled && Boolean(slug) });
 }
 
 /**

@@ -1,0 +1,40 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mockRequest } from "./dev-mock";
+import { Lesson, Palette, Session } from "./schemas";
+import { z } from "zod";
+
+const EXAMPLES = join(__dirname, "../../api/examples");
+
+// Serve api/examples the way public/_dev/api does in the browser.
+beforeEach(() => {
+  const store = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => store.set(k, v),
+    removeItem: (k: string) => store.delete(k),
+  });
+  vi.stubGlobal("fetch", async (url: string) => {
+    const name = url.replace("/_dev/api/", "");
+    return new Response(readFileSync(join(EXAMPLES, name), "utf8"), { status: 200 });
+  });
+});
+
+describe("dev API mock", () => {
+  it("answers with shapes that match the real contract", async () => {
+    expect(z.array(Palette).safeParse(await mockRequest("GET", "/palettes", undefined)).success).toBe(true);
+    expect(Lesson.safeParse(await mockRequest("GET", "/lessons/x", undefined)).success).toBe(true);
+  });
+
+  it("keeps a guest session across create, update and read", async () => {
+    const created = Session.parse(await mockRequest("POST", "/sessions", {}));
+    await mockRequest("PATCH", `/sessions/${created.id}`, { canvas_size: "A3", palette_id: null });
+    const read = Session.parse(await mockRequest("GET", `/sessions/${created.id}`, undefined));
+    expect(read.canvas_size).toBe("A3");
+  });
+
+  it("reports an unknown session like the API does", async () => {
+    await expect(mockRequest("GET", "/sessions/nope", undefined)).rejects.toMatchObject({ code: "session_required" });
+  });
+});

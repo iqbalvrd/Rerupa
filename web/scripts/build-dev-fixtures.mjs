@@ -76,4 +76,12 @@ for (const slug of (await readdir(contentDir)).sort()) {
 }
 
 await writeFile(path.join(outDir, "artworks.json"), JSON.stringify(cards, null, 2));
+
+// The backend's response examples, served to the dev API mock (NEXT_PUBLIC_API_MOCK=1).
+const examplesDir = path.resolve(root, "../api/examples");
+await mkdir(path.join(outDir, "api"), { recursive: true });
+for (const file of (await readdir(examplesDir)).filter((f) => f.endsWith(".json"))) {
+  await writeFile(path.join(outDir, "api", file), await readFile(path.join(examplesDir, file)));
+}
+console.log("copied api/examples to public/_dev/api/");
 console.log(`wrote ${cards.length} fixtures to public/_dev/`);

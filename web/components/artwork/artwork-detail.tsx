@@ -338,7 +338,7 @@ function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
     setError(null);
     try {
       await withSession((sessionId) => api.updateSession(sessionId, { lesson_version_id: lessonId }));
-      router.push("/persiapan");
+      router.push(`/persiapan?karya=${encodeURIComponent(artwork.slug)}`);
     } catch (err) {
       setError(isApiError(err) ? err.message : "Latihan belum bisa dimulai. Coba lagi.");
       setStarting(false);

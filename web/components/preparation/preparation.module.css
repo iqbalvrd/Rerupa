@@ -1,0 +1,393 @@
+/*
+ * Persiapan: the studio table before painting. Warm paper, three canvas sizes
+ * drawn to scale, palettes shown as paint swatches, and a tick-off list of
+ * what to lay out on the table.
+ */
+
+.page {
+  --paper: #f6efe2;
+  --card: #fffbf4;
+  --line: #e4d8c3;
+  --ink: #1f1b17;
+  --ink-soft: #5e554b;
+  --navy: #0f1b33;
+  --gold: #c99a45;
+  --gold-deep: #9c7029;
+
+  min-block-size: 100dvh;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, #fff8ea, transparent 70%),
+    var(--paper);
+  color: var(--ink);
+  accent-color: var(--gold-deep);
+}
+
+.topbar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block: max(0.5rem, env(safe-area-inset-top, 0px)) 0.5rem;
+  padding-inline: max(0.75rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px));
+  background: rgb(246 239 226 / 0.94);
+  border-block-end: 1px solid var(--line);
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-block-size: var(--target-size);
+  padding-inline: 0.5rem 0.8rem;
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.back:hover {
+  background: rgb(0 0 0 / 0.05);
+}
+
+.main {
+  max-inline-size: 40rem;
+  margin-inline: auto;
+  padding: 1.25rem 1.1rem calc(7rem + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.steps {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.steps li + li::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1px;
+  background: var(--line);
+}
+.stepDot {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.3rem;
+  block-size: 1.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.6875rem;
+}
+.steps [aria-current="step"] {
+  color: var(--navy);
+}
+.steps [aria-current="step"] .stepDot {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.thumb {
+  flex: none;
+  inline-size: 4.5rem;
+  block-size: 4.5rem;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  border: 3px solid #e7c47a;
+  box-shadow: 0 0.35rem 0.8rem rgb(60 40 20 / 0.25);
+}
+.title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 1.3rem + 1.2vw, 2.1rem);
+  line-height: 1.15;
+  color: var(--navy);
+}
+.title:focus {
+  outline: none;
+}
+.subtitle {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.section {
+  border: 0;
+  margin: 0;
+  padding: 1.1rem;
+  border-radius: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 0.2rem 0.6rem rgb(60 40 20 / 0.06);
+  min-inline-size: 0;
+}
+.legend {
+  float: left; /* lets the legend sit inside the padded box on all browsers */
+  inline-size: 100%;
+  margin-block-end: 0.25rem;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  color: var(--navy);
+}
+.legend + * {
+  clear: both;
+}
+.hint {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  margin-block-end: 0.85rem;
+}
+
+/* Canvas sizes, drawn to scale. */
+.sizes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  align-items: end;
+}
+.sizeOption {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.75rem 0.4rem 0.6rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+.sizeOption:has(input:checked) {
+  border-color: var(--gold-deep);
+  background: #fff7e8;
+  box-shadow: 0 0 0 3px rgb(201 154 69 / 0.25);
+}
+.sizeOption:has(input:focus-visible) {
+  outline: 3px solid #1f5fbf;
+  outline-offset: 2px;
+}
+.sizeOption input {
+  position: absolute;
+  inset-block-start: 0.45rem;
+  inset-inline-start: 0.45rem;
+  margin: 0;
+  min-block-size: auto;
+  min-inline-size: auto;
+}
+.paper {
+  display: block;
+  inline-size: calc(var(--w) * 0.11rem);
+  block-size: calc(var(--h) * 0.11rem);
+  border-radius: 2px;
+  background:
+    linear-gradient(to right, rgb(80 110 150 / 0.18) 1px, transparent 1px) 0 0 / calc(100% / var(--cols, 4)) 100%,
+    linear-gradient(to bottom, rgb(80 110 150 / 0.18) 1px, transparent 1px) 0 0 / 100% calc(100% / var(--rows, 6)),
+    #fffdf8;
+  border: 1px solid #d9cdb7;
+  box-shadow: 0 0.2rem 0.4rem rgb(60 40 20 / 0.12);
+}
+.sizeName {
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+.sizeDims {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+/* Palettes as swatch strips. */
+.palettes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.paletteOption {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.7rem;
+  align-items: start;
+  padding: 0.8rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+}
+.paletteOption:has(input:checked) {
+  border-color: var(--gold-deep);
+  background: #fff7e8;
+  box-shadow: 0 0 0 3px rgb(201 154 69 / 0.25);
+}
+.paletteOption:has(input:focus-visible) {
+  outline: 3px solid #1f5fbf;
+  outline-offset: 2px;
+}
+.paletteOption input {
+  margin: 0.2rem 0 0;
+  min-block-size: auto;
+  min-inline-size: auto;
+}
+.paletteName {
+  font-weight: 700;
+}
+.paletteMeta {
+  grid-column: 2;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+.swatches {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-block-start: 0.35rem;
+  padding: 0;
+  list-style: none;
+}
+.swatch {
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+  border-radius: 50% 45% 55% 50%;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  box-shadow: inset -2px -3px 0 rgb(0 0 0 / 0.12);
+}
+
+/* Tick-off list of what to lay out on the table. */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.checkItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-block-size: var(--target-size);
+  padding-block: 0.2rem;
+  cursor: pointer;
+}
+.checkItem input {
+  inline-size: 1.2rem;
+  block-size: 1.2rem;
+  min-block-size: auto;
+  min-inline-size: auto;
+  margin: 0;
+}
+.checkItem:has(input:checked) .checkText {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: var(--gold);
+}
+.dot {
+  flex: none;
+  inline-size: 0.9rem;
+  block-size: 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgb(0 0 0 / 0.15);
+}
+.progressNote {
+  margin-block-start: 0.6rem;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+/* ── Action bar ──────────────────────────────────────────────────────────── */
+
+.actionBar {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem max(1rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px))
+    max(1rem, env(safe-area-inset-left, 0px));
+  background: rgb(246 239 226 / 0.96);
+  border-block-start: 1px solid var(--line);
+}
+.actionBar > * {
+  inline-size: 100%;
+  max-inline-size: 40rem;
+  margin-inline: auto;
+}
+.submit {
+  min-block-size: 3rem;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(180deg, #e2b965, var(--gold));
+  color: #1a1206;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0.4rem 1.2rem rgb(201 154 69 / 0.3);
+}
+.submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.submit:focus-visible {
+  outline: 3px solid #1f5fbf;
+  outline-offset: 3px;
+}
+.note {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.error {
+  font-size: 0.8125rem;
+  color: #a1261b;
+  text-align: center;
+}
+.devBadge {
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #fff3c4;
+  color: #5c4700;
+  border: 1px solid #e8d48a;
+}
+
+.message {
+  max-inline-size: 30rem;
+  margin: 3rem auto;
+  padding-inline: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.message h1 {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  color: var(--navy);
+}
+
+@media (min-width: 48rem) {
+  .paper {
+    inline-size: calc(var(--w) * 0.14rem);
+    block-size: calc(var(--h) * 0.14rem);
+  }
+}

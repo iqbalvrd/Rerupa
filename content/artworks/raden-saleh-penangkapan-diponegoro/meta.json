@@ -1,0 +1,43 @@
+{
+  "slug": "raden-saleh-penangkapan-diponegoro",
+  "title": "Penangkapan Pangeran Diponegoro",
+  "artist": "Raden Saleh",
+  "artist_death_year": 1880,
+  "tradition": null,
+  "region_origin": "Jawa",
+  "license": "public_domain",
+  "license_note": "Domain publik — Raden Saleh wafat 1880. Berkas: Wikimedia Commons (diperkecil ke 4000 px).",
+  "rights_evidence_url": "https://commons.wikimedia.org/wiki/File:Raden_Saleh_-_Diponegoro_arrest.jpg",
+  "adaptation_scope": "Potongan sosok Pangeran Diponegoro (bersorban hijau) di tengah lukisan",
+  "image": "image.jpg",
+  "scope": { "x": 0.272, "y": 0.34, "w": 0.115, "h": 0.38 },
+  "canvas_size": "A4",
+  "use_shading": true,
+  "skill_goal": "Melatih proporsi satu figur berdiri dan gelap-terang kain pada lukisan bervolume.",
+  "culture_goal": "Mengenal lukisan sejarah Raden Saleh tentang akhir Perang Jawa.",
+  "reviewer": null,
+  "sources": [
+    {
+      "code": "wm_raden_saleh_diponegoro_1857",
+      "title": "Raden Saleh - Diponegoro arrest.jpg",
+      "publisher": "Wikimedia Commons",
+      "url": "https://commons.wikimedia.org/wiki/File:Raden_Saleh_-_Diponegoro_arrest.jpg",
+      "license": "public_domain",
+      "claim_note": "Seniman, tahun 1857, status domain publik, koleksi Istana Negara Jakarta"
+    },
+    {
+      "code": "idwiki_penangkapan_diponegoro",
+      "title": "Penangkapan Pangeran Diponegoro",
+      "publisher": "Wikipedia bahasa Indonesia",
+      "url": "https://id.wikipedia.org/wiki/Penangkapan_Pangeran_Diponegoro",
+      "license": "cc_by_sa",
+      "claim_note": "Peristiwa 28 Maret 1830, tokoh De Kock, perbandingan dengan lukisan Pieneman"
+    }
+  ],
+  "claims": [
+    { "text": "Lukisan ini dibuat Raden Saleh pada tahun 1857.", "type": "fakta", "source_codes": ["wm_raden_saleh_diponegoro_1857", "idwiki_penangkapan_diponegoro"] },
+    { "text": "Lukisan ini menggambarkan penangkapan Pangeran Diponegoro oleh Letnan Jenderal Hendrik Merkus de Kock pada 28 Maret 1830, di akhir Perang Jawa.", "type": "fakta", "source_codes": ["idwiki_penangkapan_diponegoro"] },
+    { "text": "Raden Saleh membuat versinya sendiri setelah pelukis Belanda Nicolaas Pieneman melukis peristiwa yang sama dari sudut pandang kolonial.", "type": "fakta", "source_codes": ["idwiki_penangkapan_diponegoro"] },
+    { "text": "Ekspresi sedih para pengikut di sekitar Diponegoro tampaknya sengaja ditonjolkan untuk membangun suasana duka.", "type": "perkiraan", "source_codes": [] }
+  ]
+}

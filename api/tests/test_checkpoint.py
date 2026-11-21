@@ -34,7 +34,7 @@ def sketch_photo(client, shift=(0, 0), draw_lines=True):
     lesson = client.lesson
     sketch = next(l for l in lesson["layers"] if l["kind"] == "sketch")
     grid = next(l for l in lesson["layers"] if l["kind"] == "grid")["meta"]
-    svg = httpx.get(sketch["url"]).text
+    svg = S.fetch_text(sketch["url"])
     paper = S.drawing_from_svg(svg, lesson["image_width"], lesson["image_height"], (grid["cols"], grid["rows"]), shift=shift, draw_lines=draw_lines)
     photo, corners = S.photograph_any(paper)
     return encode_jpeg(photo, 92), corners
@@ -181,6 +181,29 @@ def test_deleting_session_removes_progress_photos(lesson_client):
     listed = get_supabase().storage.from_("uploads").list(c.session_id)
     assert not [f for f in listed if f["name"].endswith(".jpg")]
     assert job["id"]
+
+
+def test_second_checkpoint_paint_stage_end_to_end(lesson_client):
+    import httpx
+
+    c = lesson_client
+    cps = [s for s in c.lesson["stages"] if s["is_checkpoint"]]
+    assert len(cps) == 2 and cps[0]["kind"] == "sketch"  # CHECKPOINT_COUNT=2 (showcase)
+    second = cps[1]
+    open_codes = {code for s in c.lesson["stages"] if s["order_no"] <= second["order_no"] for code in s["new_region_codes"]}
+    regions_svg = S.fetch_text(next(l for l in c.lesson["layers"] if l["kind"] == "regions")["url"])
+    opened = sorted((r for r in c.lesson["regions"] if r["code"] in open_codes and not r["is_background"]), key=lambda r: -r["area_pct"])
+    skip = {opened[0]["code"]} if opened else set()
+    paper = S.painting_from_svg(regions_svg, c.lesson["regions"], open_codes, c.lesson["image_width"], c.lesson["image_height"], skip=skip)
+    photo, corners = S.photograph_any(paper)
+    job = post_checkpoint(c, encode_jpeg(photo, 92), corners, "key-cp-paint-01", stage_code=second["code"]).json()
+    run_job(c)
+    fb = c.get(f"/sessions/{c.session_id}/checkpoints/{job['id']}").json()
+    assert fb["status"] == "succeeded", fb
+    assert fb["stage_code"] == second["code"] and fb["alignment"] == "confirmed"
+    if skip:
+        assert [s["region_code"] for s in fb["suggestions"]][:1] == list(skip)  # bidang terbesar yang sengaja belum dicat
+        assert "terisi" in fb["suggestions"][0]["observation"]
 
 
 # ---------------------------------------------------------------- event

@@ -53,3 +53,8 @@ uv run --group cv python ../eval/run_checkpoint.py
 ```
 
 Hasil di `checkpoint/out/` (tidak di-commit): `summary.md` + `<foto>_overlay.jpg` (garis panduan merah, kotak kandidat). Kalibrasi awal memakai foto sintetis (`api/tests/checkpoint_synth.py`); ambang di `cv/compare.py` dan `cv/checkpoint.py` disesuaikan lagi setelah uji foto nyata.
+
+## Ukur P95 dan laporan AI (Fase 7)
+
+- `api/scripts/measure_p95.py`: ≥20 putaran tutorial + feedback lewat API berjalan → tabel P95 vs target PRD. Hasil lokal: [P95_LOKAL.md](P95_LOKAL.md).
+- `api/scripts/report_ai.py`: tingkat lolos validator, penolakan, dan biaya per tutorial/feedback dari `ai_usage` + `jobs`.

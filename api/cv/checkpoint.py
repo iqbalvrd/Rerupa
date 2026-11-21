@@ -56,8 +56,21 @@ def _sharpness(gray: np.ndarray, strokes: np.ndarray) -> float | None:
     grad = cv2.magnitude(cv2.Sobel(g, cv2.CV_32F, 1, 0, ksize=3), cv2.Sobel(g, cv2.CV_32F, 0, 1, ksize=3)) / 8
     contrast = float(np.percentile(g[near], 95) - np.percentile(g[near], 5))
     if contrast < 10:
-        return None
+        return 0.0  # ada goresan tetapi nyaris tanpa kontras: ciri foto sangat buram
     return float(np.percentile(grad[near], 95) / contrast)
+
+
+FAINT_CONTENT_MIN = 0.03  # kalibrasi sintetis: kertas kosong ±0,014; sketsa sangat buram 0,04–0,10
+
+
+def _faint_content(rgb: np.ndarray) -> float:
+    """Seberapa gelap titik tergelap dibanding kertas di sekitarnya (0 = polos)."""
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    k = max(9, (min(gray.shape) // 40) | 1)
+    bg = cv2.GaussianBlur(cv2.morphologyEx(gray, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))), (0, 0), k / 2)
+    ratio = gray / np.maximum(bg, 1.0)
+    m = max(4, round(0.015 * max(ratio.shape)))
+    return 1 - float(np.percentile(ratio[m:-m, m:-m], 0.5))
 
 
 def _quality(rectified: np.ndarray, strokes: np.ndarray) -> tuple[list[str], dict]:
@@ -75,6 +88,22 @@ def _quality(rectified: np.ndarray, strokes: np.ndarray) -> tuple[list[str], dic
     if sharp is not None and sharp < SHARP_MIN:
         reasons.append("blurry")
     return reasons, {"brightness": round(brightness, 1), "glare_pct": round(glare, 2), "sharpness": None if sharp is None else round(sharp, 3)}
+
+
+PAPER_RGB = (240, 238, 232)
+
+
+def target_paint_image(labels: np.ndarray, regions: list[cmp.TargetRegion], open_codes: set[str]) -> np.ndarray:
+    """Seperti apa bidang seharusnya terlihat di tahap ini: region yang sudah dibuka berwarna, sisanya kertas."""
+    colors = np.array([[int(r.hex[i : i + 2], 16) for i in (1, 3, 5)] if r.code in open_codes else PAPER_RGB for r in regions] + [PAPER_RGB], dtype=np.uint8)
+    return colors[np.where(labels >= 0, labels, len(regions))]
+
+
+def _region_boundaries(labels: np.ndarray) -> np.ndarray:
+    b = np.zeros(labels.shape, np.uint8)
+    b[:, 1:] |= (labels[:, 1:] != labels[:, :-1]).astype(np.uint8)
+    b[1:, :] |= (labels[1:, :] != labels[:-1, :]).astype(np.uint8)
+    return b
 
 
 def overlay(rectified: np.ndarray, target_lines: np.ndarray, candidates: list[dict], scale: float) -> np.ndarray:
@@ -107,7 +136,10 @@ def run(photo: bytes, corners: list[float], target: TargetLesson, stage_kind: st
     target_lines = svgpath.stroke_map(target.sketch_svg, size, scale, thickness=2)
     lap("prepare")
 
-    a = al.align(small, corners, target.width, target.height, target_lines, target.grid)
+    codes = [r.code for r in target.regions]
+    labels = svgpath.region_labels(target.regions_svg, codes, size, scale)
+    target_rgb = None if stage_kind == "sketch" else target_paint_image(labels, target.regions, open_codes)
+    a = al.align(small, corners, target.width, target.height, target_lines, target.grid, target_rgb)
     lap("align")
     if a.reason in ("corners_invalid", "aspect_mismatch"):
         return CheckpointCV("usable", "failed", True, [a.reason], "alignment_failed", timings_ms=timings)
@@ -117,13 +149,18 @@ def run(photo: bytes, corners: list[float], target: TargetLesson, stage_kind: st
     if reasons:
         return CheckpointCV("poor", "not_checked", True, reasons, "photo_unusable", metrics={"quality": qmetrics}, timings_ms=timings)
     if not a.ok:
-        if qmetrics["sharpness"] is None or qmetrics["sharpness"] < SHARP_MIN * 1.3:
-            # Garis tidak terbaca jelas: kemungkinan besar buram, bukan salah tap sudut.
+        if qmetrics["sharpness"] is None and _faint_content(rectified) > FAINT_CONTENT_MIN:
+            # Goresan tidak terbaca, tetapi ada bayangan samar di bidang: ciri foto sangat buram.
+            return CheckpointCV("poor", "not_checked", True, ["blurry"], "photo_unusable", metrics={"quality": qmetrics}, timings_ms=timings)
+        if qmetrics["sharpness"] is None:
+            # Hampir tidak ada garis/goresan di bidang: kertas masih kosong, atau goresan terlalu tipis.
+            code = "sketch_not_visible" if stage_kind == "sketch" else "progress_not_visible"
+            return CheckpointCV("usable", "not_checked", True, [code], code, metrics={"quality": qmetrics}, timings_ms=timings)
+        if qmetrics["sharpness"] < SHARP_MIN * 1.3:
+            # Garis ada tetapi tidak tajam: kemungkinan besar buram, bukan salah tap sudut.
             return CheckpointCV("poor", "not_checked", True, ["blurry"], "photo_unusable", metrics={"quality": qmetrics}, timings_ms=timings)
         return CheckpointCV("usable", "failed", True, [a.reason or "not_aligned"], "alignment_failed", metrics={"quality": qmetrics}, timings_ms=timings)
 
-    codes = [r.code for r in target.regions]
-    labels = svgpath.region_labels(target.regions_svg, codes, size, scale)
     band = al.grid_band(size, *target.grid, half_width=max(3, round(0.006 * max(size))))
     main_mask = svgpath.filled_mask(target.main_object_svg, size, scale) if target.main_object_svg else None
     lap("target")
@@ -140,6 +177,6 @@ def run(photo: bytes, corners: list[float], target: TargetLesson, stage_kind: st
     return CheckpointCV(
         "usable", "confirmed", False, [], None, a.method, metrics, comp.candidates,
         rectified_jpeg=encode_jpeg(rectified, 85),
-        overlay_jpeg=encode_jpeg(overlay(rectified, target_lines, comp.candidates, scale), 85),
+        overlay_jpeg=encode_jpeg(overlay(rectified, target_lines if stage_kind == "sketch" else _region_boundaries(labels), comp.candidates, scale), 85),
         timings_ms=timings,
     )

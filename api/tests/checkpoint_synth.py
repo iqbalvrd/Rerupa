@@ -143,3 +143,34 @@ def photograph_any(paper: np.ndarray, blur: float = 0.8, seed: int = 0) -> tuple
     if blur > 0:
         photo = cv2.GaussianBlur(photo, (0, 0), blur)
     return photo, dst.reshape(-1).tolist()
+
+
+def painting_from_svg(regions_svg: str, regions: list[dict], open_codes: set[str], width: int, height: int, skip: set[str] = frozenset()) -> np.ndarray:
+    """Kertas dengan region yang sudah dibuka dicat sesuai warnanya (kecuali `skip`), untuk checkpoint tahap warna."""
+    from cv import svgpath
+
+    codes = [r["code"] for r in regions]
+    labels = svgpath.region_labels(regions_svg, codes, (width, height), 1.0)
+    paper = np.full((height, width, 3), 246, np.uint8)
+    for i, r in enumerate(regions):
+        if r["code"] in open_codes and r["code"] not in skip:
+            paper[labels == i] = [int(r["hex"][k : k + 2], 16) for k in (1, 3, 5)]
+    return paper
+
+
+def fetch_text(url: str, attempts: int = 3) -> str:
+    """Unduh lapisan SVG dari signed URL; tahan timeout koneksi sesaat (jaringan laptop ke Supabase)."""
+    import time
+
+    import httpx
+
+    for i in range(attempts):
+        try:
+            r = httpx.get(url, timeout=30)
+            r.raise_for_status()
+            return r.text
+        except httpx.HTTPError:
+            if i == attempts - 1:
+                raise
+            time.sleep(1 + i)
+    raise RuntimeError("unreachable")

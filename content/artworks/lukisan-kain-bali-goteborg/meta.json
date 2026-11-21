@@ -1,0 +1,42 @@
+{
+  "slug": "lukisan-kain-bali-goteborg",
+  "title": "Lukisan pada Kain dari Bali",
+  "artist": null,
+  "artist_death_year": null,
+  "tradition": "Lukisan wayang Bali",
+  "region_origin": "Bali",
+  "license": "ebt_pending",
+  "license_note": "Berkas berstatus domain publik di Wikimedia Commons (anonim, 1800–1950). Karya tradisional Bali = Ekspresi Budaya Tradisional (UU 28/2014 Pasal 38): menunggu konfirmasi panitia untuk pemakaian edukatif dengan atribusi.",
+  "rights_evidence_url": "https://commons.wikimedia.org/wiki/File:Painting_-_Google_Art_Project_(536269).jpg",
+  "adaptation_scope": "Potongan satu figur besar di bagian bawah tengah kain",
+  "image": "image.jpg",
+  "scope": { "x": 0.51, "y": 0.56, "w": 0.11, "h": 0.35 },
+  "canvas_size": "A4",
+  "use_shading": false,
+  "skill_goal": "Melatih garis kontur tegas dan pengisian bidang warna datar tanpa bayangan.",
+  "culture_goal": "Mengenal lukisan kain tradisional Bali dan ciri gaya wayangnya.",
+  "reviewer": null,
+  "sources": [
+    {
+      "code": "wm_bali_textile_painting_536269",
+      "title": "Painting - Google Art Project (536269).jpg",
+      "publisher": "Wikimedia Commons / Världskulturmuseerna (Göteborg), no. 1953.06.0001",
+      "url": "https://commons.wikimedia.org/wiki/File:Painting_-_Google_Art_Project_(536269).jpg",
+      "license": "public_domain",
+      "claim_note": "Asal Bali, pembuat tidak diketahui, rentang tahun 1800–1950, koleksi museum"
+    },
+    {
+      "code": "museum_smvk_103515",
+      "title": "Painting on textile from Bali (1953.06.0001)",
+      "publisher": "Statens museer för världskultur",
+      "url": "http://collections.smvk.se/carlotta-vkm/web/object/103515",
+      "license": null,
+      "claim_note": "Catatan koleksi museum"
+    }
+  ],
+  "claims": [
+    { "text": "Lukisan pada kain ini berasal dari Bali; pembuatnya tidak diketahui.", "type": "fakta", "source_codes": ["wm_bali_textile_painting_536269", "museum_smvk_103515"] },
+    { "text": "Museum mencatat lukisan ini dibuat antara tahun 1800 dan 1950, dan kini disimpan di Museum Kebudayaan Dunia, Göteborg, Swedia.", "type": "fakta", "source_codes": ["wm_bali_textile_painting_536269"] },
+    { "text": "Garis hitam yang tegas, warna yang datar, dan wajah yang digambar menyamping mirip gaya lukisan wayang Kamasan.", "type": "perkiraan", "source_codes": [] }
+  ]
+}

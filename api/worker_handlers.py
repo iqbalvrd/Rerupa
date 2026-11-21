@@ -102,6 +102,24 @@ def _cached_lesson(session_id: str, sha256: str, upload_id: str, scope: dict | N
     return None
 
 
+def _recognize(job: dict, image: bytes) -> dict | None:
+    """(A) Kandidat materi koleksi yang mirip foto ini. Hanya kandidat: frontend menanyakan "Apakah ini …?".
+    Gagal di sini tidak boleh menggagalkan tutorial."""
+    if not get_settings().feature_recognition:
+        return None
+    try:
+        from story import recognize
+
+        cand = recognize.best_match(image, recognize.published_references())
+        get_supabase().table("recognitions").insert({
+            "session_id": job["session_id"], "upload_id": job["upload_id"], "job_id": job["id"], "candidates": [cand] if cand else [],
+        }).execute()
+        return cand
+    except Exception:
+        log.exception("recognition_failed", extra={"job_id": job["id"]})
+        return None
+
+
 def handle_generate_lesson(job: dict) -> JobOutcome:
     settings = get_settings()
     db = get_supabase()
@@ -185,6 +203,7 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
         lesson_id = save_lesson(payload, layers)
         if source == "ai":
             db.table("uploads").update({"sent_to_ai": True}).eq("id", job["upload_id"]).execute()
+        recognition = _recognize(job, image)
 
     return JobOutcome(
         "succeeded",
@@ -197,13 +216,16 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
             "use_shading": cv.use_shading,
             "warnings": cv.warnings,
             "timings_ms": cv.timings_ms,
+            "recognition": recognition,
         },
     )
 
 
 from worker_feedback import handle_feedback  # noqa: E402  (setelah definisi di atas: hindari impor melingkar)
+from worker_story import handle_generate_story  # noqa: E402
 
 HANDLERS: dict[str, Handler] = {
     "feedback": handle_feedback,
     "generate_lesson": handle_generate_lesson,
+    "generate_story": handle_generate_story,
 }

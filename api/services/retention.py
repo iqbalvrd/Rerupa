@@ -56,6 +56,17 @@ def purge_expired_lesson_layers(limit: int = BATCH) -> int:
     return len(layers)
 
 
+def purge_expired_story_panels(limit: int = BATCH) -> int:
+    """Panel cerita mode bebas mengikuti retensi unggahan (PRD §17): file dihapus, narasi tetap."""
+    db = get_supabase()
+    panels = db.rpc("expired_story_panels", {"p_limit": limit}).execute().data or []
+    if not panels:
+        return 0
+    _remove("derived", [p["asset_path"] for p in panels])
+    db.table("story_panels").update({"purged_at": now_utc().isoformat()}).in_("id", [p["id"] for p in panels]).execute()
+    return len(panels)
+
+
 def cleanup_sessions(limit: int = 50) -> int:
     db = get_supabase()
     now = now_utc().isoformat()
@@ -73,7 +84,7 @@ def cleanup_sessions(limit: int = 50) -> int:
 
 
 def run() -> dict[str, int]:
-    out = {"uploads": purge_expired_uploads(), "lesson_layers": purge_expired_lesson_layers(), "sessions": cleanup_sessions()}
+    out = {"uploads": purge_expired_uploads(), "lesson_layers": purge_expired_lesson_layers(), "story_panels": purge_expired_story_panels(), "sessions": cleanup_sessions()}
     if any(out.values()):
         log.info("retention_done", extra=out)
     return out

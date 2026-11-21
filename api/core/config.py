@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # Usaha penalaran model (none|low|medium|high; kosong = bawaan model). "low" cukup untuk menulis
     # teks dari data terstruktur dan menjaga latensi/biaya (uji model: eval/HASIL_UJI_MODEL.md).
     openai_reasoning_effort: str = "low"
+    # Storyline (P1): panel gambar. Harga token gambar per 1 juta (halaman harga OpenAI 21 Nov 2026).
+    openai_image_model_draft: str = "gpt-image-2.6-flare"
+    openai_image_model_final: str = "gpt-image-2.6-sunburst"
+    openai_image_price_input_per_m: float = 8.0
+    openai_image_price_output_per_m: float = 30.0
 
     # Sesi tamu
     session_cookie_name: str = "rerupa_session"
@@ -61,8 +66,10 @@ class Settings(BaseSettings):
     # mis. ^https://rerupa-[a-z0-9-]+\.vercel\.app$ — kosong = tidak ada.
     frontend_origin: str = "http://localhost:3000"
     frontend_origin_regex: str = ""
+    # P1: storyline cerita & pencocokan foto ke koleksi (RENCANA §4.8)
     feature_story: bool = False
     feature_recognition: bool = False
+    story_max_web_searches: int = 3
 
     # Worker
     worker_poll_seconds: float = 0.5

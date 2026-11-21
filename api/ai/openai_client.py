@@ -6,7 +6,7 @@ Hanya modul ini yang berbicara ke OpenAI. Kunci API hanya dari env backend.
 import base64
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import TypeVar
 
@@ -34,6 +34,11 @@ class AIResult:
     input_tokens: int
     output_tokens: int
     latency_ms: int
+    citations: list[str] = field(default_factory=list)  # URL yang ditemukan/dikutip tool web search
+    web_searches: int = 0
+
+
+WEB_SEARCH_USD_PER_CALL = 0.01  # $10 / 1.000 panggilan (halaman harga OpenAI, 21 Nov 2026)
 
 
 @lru_cache(maxsize=1)
@@ -81,14 +86,16 @@ def parse(
     safety_id: str,
     job_id: str | None,
     max_output_tokens: int = 6000,
+    tools: list[dict] | None = None,
 ) -> AIResult:
-    """Satu panggilan terstruktur. Melempar AIUnavailable untuk semua kegagalan yang bisa ditangani."""
+    """Satu panggilan terstruktur. Melempar AIUnavailable untuk semua kegagalan yang bisa ditangani.
+    tools=[{"type": "web_search"}] → AI boleh mencari sumber; URL kutipan dikembalikan di `citations`."""
     from openai import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
 
     settings = get_settings()
     model = settings.openai_vision_model
     start = time.perf_counter()
-    outcome, usage_in, usage_out = "error", 0, 0
+    outcome, usage_in, usage_out, searches = "error", 0, 0, 0
     try:
         effort = getattr(settings, "openai_reasoning_effort", "")
         extra = {"reasoning": {"effort": effort}} if effort else {}
@@ -100,8 +107,12 @@ def parse(
             safety_identifier=safety_id,
             max_output_tokens=max_output_tokens,
             store=False,
+            # Daftar URL yang benar-benar ditemukan tool pencarian: dengan structured output, anotasi
+            # kutipan tidak ada (jawaban berupa JSON), jadi inilah bukti sumber yang dipakai validator.
+            **({"tools": tools, "include": ["web_search_call.action.sources"]} if tools else {}),
             **extra,
         )
+        searches = sum(1 for item in resp.output or [] if getattr(item, "type", "") == "web_search_call")
         if resp.usage:
             usage_in, usage_out = resp.usage.input_tokens, resp.usage.output_tokens
         if resp.status == "incomplete":
@@ -115,7 +126,20 @@ def parse(
             outcome = "schema_error"
             raise AIUnavailable("ai_unavailable")
         outcome = "ok"
-        return AIResult(parsed, model, usage_in, usage_out, int((time.perf_counter() - start) * 1000))
+        citations = [
+            a.url
+            for item in resp.output or []
+            for part in getattr(item, "content", None) or []
+            for a in getattr(part, "annotations", None) or []
+            if getattr(a, "url", None)
+        ] + [
+            src.url
+            for item in resp.output or []
+            if getattr(item, "type", "") == "web_search_call"
+            for src in getattr(getattr(item, "action", None), "sources", None) or []
+            if getattr(src, "url", None)
+        ]
+        return AIResult(parsed, model, usage_in, usage_out, int((time.perf_counter() - start) * 1000), citations, searches)
     except AIUnavailable:
         raise
     except APITimeoutError:
@@ -125,7 +149,54 @@ def parse(
         log.warning("openai_error", extra={"task": task, "error": type(exc).__name__})
         raise AIUnavailable("ai_unavailable") from None
     finally:
-        _record_usage(job_id, model, task, usage_in, usage_out, outcome, int((time.perf_counter() - start) * 1000))
+        _record_usage(job_id, model, task, usage_in, usage_out, outcome, int((time.perf_counter() - start) * 1000), extra_usd=searches * WEB_SEARCH_USD_PER_CALL)
+
+
+def edit_image(*, task: str, prompt: str, references: list[bytes], safety_id: str, job_id: str | None, model: str | None = None, quality: str = "medium") -> bytes:
+    """Gambar panel dari prompt + gambar referensi (karya, potongan tokoh, panel sebelumnya). Return PNG.
+    Biaya token gambar dicatat dengan harga OPENAI_IMAGE_PRICE_*; ikut batas biaya harian."""
+    import base64 as _b64
+
+    from openai import APIConnectionError, APIStatusError, APITimeoutError, BadRequestError, RateLimitError
+
+    settings = get_settings()
+    model = model or settings.openai_image_model_draft
+    start = time.perf_counter()
+    outcome, usage_in, usage_out = "error", 0, 0
+    try:
+        resp = _client().images.edit(
+            model=model,
+            image=[(f"ref{i}.png", data, "image/png") for i, data in enumerate(references)],
+            prompt=prompt,
+            size="1024x1024",
+            quality=quality,
+            n=1,
+            safety_identifier=safety_id,
+        )
+        if getattr(resp, "usage", None):
+            usage_in, usage_out = resp.usage.input_tokens, resp.usage.output_tokens
+        b64 = resp.data[0].b64_json if resp.data else None
+        if not b64:
+            outcome = "schema_error"
+            raise AIUnavailable("ai_unavailable")
+        outcome = "ok"
+        return _b64.b64decode(b64)
+    except AIUnavailable:
+        raise
+    except BadRequestError as exc:
+        # Termasuk moderation_blocked: panel jatuh ke kartu teks, bukan error pengguna.
+        outcome = "refusal"
+        log.warning("image_refused", extra={"task": task, "error": str(getattr(exc, "code", "")) or type(exc).__name__})
+        raise AIUnavailable("ai_refused") from None
+    except APITimeoutError:
+        outcome = "timeout"
+        raise AIUnavailable("ai_unavailable") from None
+    except (RateLimitError, APIConnectionError, APIStatusError) as exc:
+        log.warning("openai_error", extra={"task": task, "error": type(exc).__name__})
+        raise AIUnavailable("ai_unavailable") from None
+    finally:
+        _record_usage(job_id, model, task, usage_in, usage_out, outcome, int((time.perf_counter() - start) * 1000),
+                      price_in=settings.openai_image_price_input_per_m, price_out=settings.openai_image_price_output_per_m)
 
 
 def _refused(resp) -> bool:
@@ -136,9 +207,11 @@ def _refused(resp) -> bool:
     return False
 
 
-def _record_usage(job_id, model, task, tokens_in, tokens_out, outcome, latency_ms) -> None:
+def _record_usage(job_id, model, task, tokens_in, tokens_out, outcome, latency_ms, *, extra_usd: float = 0.0, price_in: float | None = None, price_out: float | None = None) -> None:
     settings = get_settings()
-    cost = tokens_in / 1e6 * settings.openai_price_input_per_m + tokens_out / 1e6 * settings.openai_price_output_per_m
+    pin = settings.openai_price_input_per_m if price_in is None else price_in
+    pout = settings.openai_price_output_per_m if price_out is None else price_out
+    cost = tokens_in / 1e6 * pin + tokens_out / 1e6 * pout + extra_usd
     try:
         get_supabase().table("ai_usage").insert(
             {

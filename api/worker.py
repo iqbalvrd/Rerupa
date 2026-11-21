@@ -8,7 +8,9 @@ Jalankan dari folder api/: uv run python worker.py
 
 import logging
 import os
+import signal
 import socket
+import threading
 import time
 import uuid
 
@@ -71,11 +73,70 @@ def process_one(worker_id: str, handlers: dict[str, Handler] = HANDLERS, session
     return True
 
 
+STOP = threading.Event()
+
+
+def request_stop(signum=None, frame=None) -> None:
+    """SIGTERM/SIGINT (mis. redeploy Railway): berhenti mengambil job baru, tetapi job yang sedang
+    berjalan diselesaikan dulu. Atur waktu draining platform ≥ batas job (60 s)."""
+    if not STOP.is_set():
+        log.info("worker_stopping", extra={"signal": signum})
+        STOP.set()
+
+
+def job_loop(worker_id: str, stop: threading.Event) -> None:
+    """Satu jalur pemroses. Saat antrean kosong, jeda polling naik bertahap (0,5 → 2 s) agar tidak
+    membebani database; begitu ada job, kembali cepat."""
+    settings = get_settings()
+    idle = settings.worker_poll_seconds
+    while not stop.is_set():
+        try:
+            did_work = process_one(worker_id)
+        except Exception:
+            # Gangguan jaringan/DB: tunggu sebentar lalu coba lagi, jangan matikan worker.
+            log.exception("worker_loop_error")
+            stop.wait(2)
+            continue
+        if did_work:
+            idle = settings.worker_poll_seconds
+        else:
+            stop.wait(idle)
+            idle = min(idle * 2, settings.worker_idle_max_seconds)
+
+
+def maintenance_loop(stop: threading.Event) -> None:
+    """Cadangan penyapu job (utamanya pg_cron `sweep_jobs` tiap 30 s) + retensi file tiap 15 menit."""
+    settings = get_settings()
+    last_retention = 0.0
+    while not stop.is_set():
+        try:
+            moved = job_service.requeue_stale(settings.worker_stale_after_seconds)
+            if moved:
+                log.warning("stale_jobs_requeued", extra={"count": moved})
+            overdue = job_service.fail_overdue(
+                {"generate_lesson": settings.generate_deadline_seconds, "feedback": settings.feedback_deadline_seconds},
+                settings.deadline_grace_seconds,
+            )
+            if overdue:
+                log.warning("overdue_jobs_failed", extra={"count": overdue})
+        except Exception:
+            log.exception("sweep_failed")
+        if time.monotonic() - last_retention > settings.retention_every_seconds:
+            last_retention = time.monotonic()
+            try:
+                from services import retention
+
+                retention.run()
+            except Exception:
+                log.exception("retention_failed")  # dicoba lagi di putaran berikutnya
+        stop.wait(REQUEUE_EVERY_SECONDS)
+
+
 def main() -> None:
     setup_logging()
     settings = get_settings()
     worker_id = make_worker_id()
-    log.info("worker_started", extra={"worker_id": worker_id, "types": list(HANDLERS)})
+    log.info("worker_started", extra={"worker_id": worker_id, "types": list(HANDLERS), "concurrency": settings.worker_concurrency})
     try:
         from cv.models import warm_up
 
@@ -84,41 +145,17 @@ def main() -> None:
         # Worker tetap jalan; pipeline punya cadangan XDoG bila model gagal dimuat.
         log.exception("model_warm_up_failed")
 
-    last_requeue = 0.0
-    last_retention = 0.0
-    try:
-        while True:
-            now = time.monotonic()
-            if now - last_requeue > REQUEUE_EVERY_SECONDS:
-                moved = job_service.requeue_stale(settings.worker_stale_after_seconds)
-                if moved:
-                    log.warning("stale_jobs_requeued", extra={"count": moved})
-                overdue = job_service.fail_overdue(
-                    {"generate_lesson": settings.generate_deadline_seconds, "feedback": settings.feedback_deadline_seconds},
-                    settings.deadline_grace_seconds,
-                )
-                if overdue:
-                    log.warning("overdue_jobs_failed", extra={"count": overdue})
-                last_requeue = now
-            if now - last_retention > settings.retention_every_seconds:
-                last_retention = now
-                try:
-                    from services import retention
-
-                    retention.run()
-                except Exception:
-                    log.exception("retention_failed")  # dicoba lagi di putaran berikutnya
-            try:
-                did_work = process_one(worker_id)
-            except Exception:
-                # Gangguan jaringan/DB: tunggu sebentar lalu coba lagi, jangan matikan worker.
-                log.exception("worker_loop_error")
-                did_work = False
-                time.sleep(2)
-            if not did_work:
-                time.sleep(settings.worker_poll_seconds)
-    except KeyboardInterrupt:
-        log.info("worker_stopped", extra={"worker_id": worker_id})
+    signal.signal(signal.SIGTERM, request_stop)
+    signal.signal(signal.SIGINT, request_stop)
+    # Beberapa jalur: saat satu job menunggu OpenAI (±18 s, I/O), jalur lain memakai CPU untuk CV.
+    threads = [threading.Thread(target=job_loop, args=(f"{worker_id}#{i}", STOP), name=f"job-{i}", daemon=True) for i in range(max(1, settings.worker_concurrency))]
+    threads.append(threading.Thread(target=maintenance_loop, args=(STOP,), name="maintenance", daemon=True))
+    for t in threads:
+        t.start()
+    while any(t.is_alive() for t in threads):
+        for t in threads:
+            t.join(timeout=1)  # timeout pendek: thread utama tetap bisa menerima sinyal
+    log.info("worker_stopped", extra={"worker_id": worker_id})
 
 
 if __name__ == "__main__":

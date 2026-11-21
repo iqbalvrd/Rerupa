@@ -2,6 +2,7 @@
 atomik lewat RPC create_lesson. Bila penyimpanan DB gagal, file yang sudah diunggah dihapus lagi."""
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
 from ai.schemas import LessonText
@@ -40,12 +41,15 @@ def upload_layers(cv: CvResult, bucket: str, prefix: str) -> list[dict]:
     if cv.value_svg:
         files.append(("value", "value.svg", cv.value_svg.encode(), "image/svg+xml", "svg", {"levels": 4}))
 
-    layers = []
-    for kind, name, data, mime, fmt, meta in files:
+    def put(item: tuple) -> dict:
+        kind, name, data, mime, fmt, meta = item
         path = f"{prefix}/{name}"
-        with_retry(lambda p=path, d=data, m=mime: storage.upload(p, d, {"content-type": m, "upsert": "true"}), "upload_layer", already_done=is_duplicate)
-        layers.append({"kind": kind, "bucket": bucket, "asset_path": path, "format": fmt, "meta": meta})
-    return layers
+        with_retry(lambda: storage.upload(path, data, {"content-type": mime, "upsert": "true"}), "upload_layer", already_done=is_duplicate)
+        return {"kind": kind, "bucket": bucket, "asset_path": path, "format": fmt, "meta": meta}
+
+    # Paralel: 6–7 berkas kecil; menunggu satu per satu menghabiskan beberapa detik untuk bolak-balik jaringan.
+    with ThreadPoolExecutor(max_workers=len(files)) as pool:
+        return list(pool.map(put, files))
 
 
 def remove_layers(layers: list[dict]) -> None:

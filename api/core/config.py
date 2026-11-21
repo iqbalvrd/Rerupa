@@ -66,6 +66,10 @@ class Settings(BaseSettings):
 
     # Worker
     worker_poll_seconds: float = 0.5
+    worker_idle_max_seconds: float = 2.0  # jeda polling maksimum saat antrean kosong
+    # Jalur pemroses paralel per worker. 2: satu job menunggu OpenAI sementara job lain memakai CPU.
+    # Memori puncak ±1,2 GB per jalur CV → worker 2 jalur butuh ±3 GB.
+    worker_concurrency: int = 2
     worker_stale_after_seconds: int = 120
     # PRD §16: batas tunggu analisis (sejak permintaan dibuat). Lewat batas + toleransi → failed/worker_timeout.
     generate_deadline_seconds: int = 60
@@ -80,10 +84,12 @@ class Settings(BaseSettings):
     expose_docs: bool = True  # /docs dan /openapi.json; produksi sebaiknya false
 
     # Rate limit (per proses API, jendela 60 s / 3600 s). 0 = nonaktif.
-    rate_limit_per_ip_minute: int = 120
+    # Per IP longgar: peserta uji di satu Wi-Fi berbagi IP (8 orang × polling 60/menit). Batas per sesi
+    # yang menahan satu pengguna yang berlebihan.
+    rate_limit_per_ip_minute: int = 600
     rate_limit_per_session_minute: int = 180  # polling /jobs tiap 1 s ≈ 60/menit
-    rate_limit_sessions_per_ip_hour: int = 30
-    rate_limit_uploads_per_ip_hour: int = 30  # generate + checkpoint
+    rate_limit_sessions_per_ip_hour: int = 60
+    rate_limit_uploads_per_ip_hour: int = 80  # generate + checkpoint (≈10 orang × 1 tutorial + 2 checkpoint, + ulang)
 
     @property
     def frontend_origins(self) -> list[str]:

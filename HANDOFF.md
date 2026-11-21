@@ -33,7 +33,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Bagian | Detail | Bukti |
 | --- | --- | --- |
 | Setup | Proyek `api/` (uv, Python 3.12), config `.env`, log JSON, error terstandar `{code, message}` | `GET /health` → Supabase ok |
-| Database | 13 migrasi diterapkan ke Supabase: 17 enum, 13 tabel, fungsi antrean, 3 bucket privat, indeks FK | `supabase/migrations/` |
+| Database | Project Supabase **Singapura** (`ap-southeast-1`, ref `xcksxhiablzenpiwkkak`) sejak 21 Nov; 14 migrasi diterapkan ke Supabase: 17 enum, 13 tabel, fungsi antrean, 3 bucket privat, indeks FK | `supabase/migrations/` |
 | Keamanan DB | RLS aktif di semua tabel tanpa policy publik; `anon`/`authenticated` tanpa hak tabel; hanya backend (service role) yang akses | Advisor keamanan Supabase bersih |
 | Sesi tamu | `POST/GET/PATCH/DELETE /sessions`; token di cookie httpOnly, DB simpan hash; sesi lain → 404; hapus sesi mencabut akses, membatalkan job antre, menghapus file foto | Tes integrasi |
 | Antrean job | Idempoten (`Idempotency-Key`), klaim atomik, job macet dicoba ulang lalu gagal, job sesi terhapus tidak diproses; `GET /jobs/{id}` | Tes integrasi |
@@ -48,6 +48,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Rilis (Fase 6) | Rate limit per IP/sesi/buat sesi/unggah (429 + `Retry-After`); cek origin untuk permintaan yang mengubah data; header keamanan; batas tunggu job 60/45 s → `worker_timeout` (tidak memakan kuota); cek konfigurasi produksi saat start; `/health` melaporkan antrean; alarm biaya 50/80/100%; Dockerfile (torch CPU, bobot model di-cache saat build) + `railway.toml` + [DEPLOY.md](api/DEPLOY.md); `scripts/smoke.py` alur lengkap lulus di lokal | Tes + smoke test |
 | Showcase (Fase 7) | 2 checkpoint (sketsa + bidang sedang; tahap warna diselaraskan dengan tepi bidang warna); retensi: worker tiap 15 menit hapus foto + lapisan turunan foto >24 jam dan sesi terhapus/kedaluwarsa, `pg_cron` untuk `events`/`ai_usage`; lapisan terhapus → `purged: true`; tes otomatis akses antar-sesi/hapus sesi/idempotensi/retensi; `scripts/measure_p95.py` + `scripts/report_ai.py` | P95 lokal (20 putaran): tutorial 29,0 s, feedback 15,0 s — [eval/P95_LOKAL.md](eval/P95_LOKAL.md) |
 | AI OpenAI | Uji 3 model pada 4 materi koleksi ([eval/HASIL_UJI_MODEL.md](eval/HASIL_UJI_MODEL.md)): **gpt-6.1-terra** dipilih untuk mode bebas + feedback (lolos validator 4/4, ±18 s, ±$0,012/tutorial), gpt-6.2-sol untuk impor koleksi; `reasoning.effort=low`; alur penuh dengan AI sungguhan terbukti (teks tahap + feedback, biaya tercatat di `ai_usage`) | Uji model + uji end-to-end |
+| Optimasi & bug | Penyapu job pg_cron (job tak lagi menggantung saat worker mati), SIGTERM worker, worker 2 jalur, unggah lapisan paralel, `GET /lessons` paralel + cache koleksi, API tanpa torch (dua image Docker), klien Supabase pool HTTP/1.1 (bug unggahan paralel: 56/80 gagal → 0/80) | P95 tutorial 14,4 → 9,9 s; 4 pengguna serentak 42,4 → 30,1 s — [eval/HASIL_OPTIMASI.md](eval/HASIL_OPTIMASI.md) |
 | Pipeline CV (Fase 2) | `api/cv/`: normalisasi, cek kualitas, mask (rembg u2net), garis (TEED untuk mode bebas, model lineart untuk koleksi, XDoG cadangan) dengan ambang adaptif, region k-means ≤35 yang digabung berdasarkan kemiripan warna, terang-gelap 3–5 tingkat, SVG + gambar region bernomor | 59 tes + evaluasi foto nyata ([eval/HASIL_FASE2.md](eval/HASIL_FASE2.md)) |
 
 ### 2.2 Berikutnya
@@ -161,7 +162,8 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | `feat/fase-5-checkpoint` | Fase 5: progres + checkpoint foto progres | Sudah di-merge ke `main` (PR #6) |
 | `feat/fase-6-rilis` | Fase 6: persiapan rilis + deploy | Sudah di-merge ke `main` (PR #7) |
 | `feat/fase-7-showcase` | Fase 7: penguatan showcase + 4 materi koleksi | Sudah di-merge ke `main` (PR #8) |
-| `feat/ai-model-openai` | Uji & aktivasi model OpenAI | Lokal, belum di-push |
+| `feat/ai-model-openai` | Uji & aktivasi model OpenAI | Sudah di-merge ke `main` (PR #9) |
+| `perf/latensi-dan-bug` | Pindah DB ke Singapura + optimasi latensi & perbaikan bug | Lokal, belum di-push |
 | `feat/web-…` | Frontend | Dibuat Xavier |
 
 ---

@@ -1,6 +1,8 @@
 """Tutorial: POST /lessons/generate (unggah foto → job latar) dan GET /lessons/{id}."""
 
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
@@ -198,16 +200,44 @@ def _optional_session(request: Request) -> dict | None:
         return None
 
 
+# Query dijalankan paralel: tiap query adalah satu bolak-balik jaringan ke Supabase; berurutan ±11×.
+_POOL = ThreadPoolExecutor(max_workers=16, thread_name_prefix="lesson-read")
+# Materi koleksi terbit tidak berubah per versi → respons di-cache (kunci: lesson + palet) sedikit lebih
+# pendek dari masa berlaku signed URL katalog, supaya URL di respons cache tidak pernah kedaluwarsa.
+_CACHE: dict[tuple[str, str | None], tuple[float, "LessonOut"]] = {}
+_CACHE_TTL = CATALOG_URL_TTL - 600
+_CACHE_MAX = 64
+_DEMO_CACHE: tuple[float, str | None] | None = None
+
+
+def _default_palette_id() -> str | None:
+    """Palet demo pertama, di-cache 5 menit (berubah hanya saat palet diimpor)."""
+    global _DEMO_CACHE
+    from color.palettes import demo_palettes
+
+    if _DEMO_CACHE is None or time.monotonic() - _DEMO_CACHE[0] > 300:
+        demos = demo_palettes()
+        _DEMO_CACHE = (time.monotonic(), demos[0]["id"] if demos else None)
+    return _DEMO_CACHE[1]
+
+
+def clear_lesson_cache() -> None:
+    global _DEMO_CACHE
+    _CACHE.clear()
+    _DEMO_CACHE = None
+
+
 @router.get("/{lesson_id}", response_model=LessonOut)
 def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Query(None, description="Palet untuk saran warna; bawaan: palet sesi, lalu palet demo pertama")) -> LessonOut:
     db = get_supabase()
-    rows = db.table("lesson_versions").select("*").eq("id", str(lesson_id)).limit(1).execute().data
+    f_lesson = _POOL.submit(lambda: db.table("lesson_versions").select("*").eq("id", str(lesson_id)).limit(1).execute().data)
+    f_session = _POOL.submit(_optional_session, request)
+    rows, session = f_lesson.result(), f_session.result()
     if not rows:
         raise AppError("not_found", 404)
     lesson = rows[0]
 
     # Akses: koleksi hanya bila terbit; mode bebas hanya untuk sesi pemiliknya. Selain itu 404.
-    session = _optional_session(request)
     if lesson["origin"] == "collection":
         if lesson["status"] != "published":
             raise AppError("not_found", 404)
@@ -215,19 +245,37 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
         raise AppError("not_found", 404)
 
     lid = lesson["id"]
-    layers = db.table("visual_layers").select("kind, bucket, asset_path, format, meta, purged_at").eq("lesson_version_id", lid).execute().data
-    regions = db.table("regions").select("id, code, hex, area_pct, bbox, centroid, is_main_object, is_background, value_level, label").eq("lesson_version_id", lid).order("code").execute().data
-    stages = db.table("stages").select("*, stage_regions(regions(code))").eq("lesson_version_id", lid).order("order_no").execute().data
-    claims = db.table("culture_claims").select("text, type, order_no, stage_id, culture_claim_sources(sources(code, title, url))").eq("lesson_version_id", lid).order("order_no").execute().data
-    refl = db.table("reflection_questions").select("question, options, correct_option, sources(code, title, url)").eq("lesson_version_id", lid).limit(1).execute().data
+    pid = str(palette_id) if palette_id else (session or {}).get("palette_id") or _default_palette_id()
+    cacheable = lesson["origin"] == "collection"
+    if cacheable:
+        hit = _CACHE.get((lid, pid))
+        if hit and time.monotonic() - hit[0] < _CACHE_TTL:
+            return hit[1]
 
+    q = {
+        "layers": lambda: db.table("visual_layers").select("kind, bucket, asset_path, format, meta, purged_at").eq("lesson_version_id", lid).execute().data,
+        "regions": lambda: db.table("regions").select("id, code, hex, area_pct, bbox, centroid, is_main_object, is_background, value_level, label").eq("lesson_version_id", lid).order("code").execute().data,
+        "stages": lambda: db.table("stages").select("*, stage_regions(regions(code))").eq("lesson_version_id", lid).order("order_no").execute().data,
+        "claims": lambda: db.table("culture_claims").select("text, type, order_no, stage_id, culture_claim_sources(sources(code, title, url))").eq("lesson_version_id", lid).order("order_no").execute().data,
+        "refl": lambda: db.table("reflection_questions").select("question, options, correct_option, sources(code, title, url)").eq("lesson_version_id", lid).limit(1).execute().data,
+        "colors": lambda: _color_rows(db, lid, pid),
+        "paints": lambda: db.table("paints").select("id, code, name, hex").eq("palette_id", pid).execute().data if pid else [],
+    }
+    futures = {k: _POOL.submit(f) for k, f in q.items()}
+    r = {k: f.result() for k, f in futures.items()}
+    layers, regions, stages, claims, refl = r["layers"], r["regions"], r["stages"], r["claims"], r["refl"]
+
+    by_bucket: dict[str, list[str]] = {}
+    for l in layers:
+        if not l["purged_at"]:
+            by_bucket.setdefault(l["bucket"], []).append(l["asset_path"])
+    url_futures = [_POOL.submit(signed_urls, b, paths, CATALOG_URL_TTL if b == "catalog" else PRIVATE_URL_TTL) for b, paths in by_bucket.items()]
     urls: dict[str, str] = {}
-    for bucket in {layer["bucket"] for layer in layers}:
-        ttl = CATALOG_URL_TTL if bucket == "catalog" else PRIVATE_URL_TTL
-        urls.update(signed_urls(bucket, [l["asset_path"] for l in layers if l["bucket"] == bucket and not l["purged_at"]], ttl))
+    for f in url_futures:
+        urls.update(f.result())
 
     stage_code_by_id = {s["id"]: s["code"] for s in stages}
-    return LessonOut(
+    out = LessonOut(
         id=lid,
         origin=lesson["origin"],
         artwork_id=lesson["artwork_id"],
@@ -243,7 +291,7 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
             LayerOut(kind=l["kind"], format=l["format"], url=None if l["purged_at"] else urls.get(l["asset_path"]), meta=l["meta"], purged=bool(l["purged_at"]))
             for l in layers
         ],
-        regions=[RegionOut(**{k: r[k] for k in RegionOut.model_fields}) for r in regions],
+        regions=[RegionOut(**{k: x[k] for k in RegionOut.model_fields}) for x in regions],
         stages=[
             StageOut(
                 **{k: s[k] for k in ("code", "order_no", "kind", "is_checkpoint", "layers", "title", "action", "tools", "done_when", "common_mistakes", "focus_bbox", "text_source")},
@@ -270,32 +318,32 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
             if refl
             else None
         ),
-        **_colors(db, regions, palette_id, session),
+        palette_id=pid,
+        region_colors=_region_colors(r["colors"], r["paints"]),
     )
+    if cacheable:
+        if len(_CACHE) >= _CACHE_MAX:
+            _CACHE.pop(min(_CACHE, key=lambda k: _CACHE[k][0]))
+        _CACHE[(lid, pid)] = (time.monotonic(), out)
+    return out
 
 
-def _colors(db, regions: list[dict], palette_id: UUID | None, session: dict | None) -> dict:
-    """Saran warna tiap region untuk satu palet. Angka berasal dari mixer/uji fisik, bukan AI."""
-    from color.palettes import demo_palettes
-
-    pid = str(palette_id) if palette_id else (session or {}).get("palette_id")
-    if pid is None:
-        demos = demo_palettes()
-        pid = demos[0]["id"] if demos else None
-    if pid is None or not regions:
-        return {"palette_id": pid, "region_colors": []}
-
-    code_of = {r["id"]: r["code"] for r in regions}
-    rows = (
+def _color_rows(db, lesson_id: str, pid: str | None) -> list[dict]:
+    if not pid:
+        return []
+    return (
         db.table("region_colors")
-        .select("region_id, palette_id, recipe_id, estimate, reachability, explanation, color_recipes(target_hex, delta_e, components)")
+        .select("palette_id, recipe_id, estimate, reachability, explanation, regions!inner(code, lesson_version_id), color_recipes(target_hex, delta_e, components)")
         .eq("palette_id", pid)
-        .in_("region_id", list(code_of))
+        .eq("regions.lesson_version_id", lesson_id)
         .execute()
         .data
     )
-    paints = {p["id"]: p for p in db.table("paints").select("id, code, name, hex").eq("palette_id", pid).execute().data}
 
+
+def _region_colors(rows: list[dict], paint_rows: list[dict]) -> list[RegionColorOut]:
+    """Saran warna tiap region untuk satu palet. Angka berasal dari mixer/uji fisik, bukan AI."""
+    paints = {p["id"]: p for p in paint_rows}
     out = []
     for row in rows:
         est = row.get("estimate") or {}
@@ -308,7 +356,7 @@ def _colors(db, regions: list[dict], palette_id: UUID | None, session: dict | No
         ]
         out.append(
             RegionColorOut(
-                region_code=code_of[row["region_id"]],
+                region_code=row["regions"]["code"],
                 palette_id=row["palette_id"],
                 reachability=row["reachability"],
                 label=REACH_LABEL[row["reachability"]],
@@ -320,4 +368,4 @@ def _colors(db, regions: list[dict], palette_id: UUID | None, session: dict | No
                 tips=est.get("tips") or [],
             )
         )
-    return {"palette_id": pid, "region_colors": sorted(out, key=lambda c: c.region_code)}
+    return sorted(out, key=lambda c: c.region_code)

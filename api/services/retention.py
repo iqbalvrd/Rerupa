@@ -11,7 +11,6 @@ Idempoten dan aman dijalankan beberapa worker sekaligus (hapus file yang sudah t
 """
 
 import logging
-from datetime import timedelta
 
 from core.session import now_utc
 from core.supabase_client import get_supabase
@@ -21,8 +20,6 @@ from services.uploads import BUCKET, purge_session_files
 log = logging.getLogger("rerupa.retention")
 
 BATCH = 100
-PHOTO_DERIVED_KINDS_KEEP = {"grid"}
-SESSION_MAX_DAYS = 8  # batas pencarian unggahan lama (sesi hidup ≤7 hari)
 
 
 def _remove(bucket: str, paths: list[str]) -> None:
@@ -49,35 +46,13 @@ def purge_expired_uploads(limit: int = BATCH) -> int:
 
 
 def purge_expired_lesson_layers(limit: int = BATCH) -> int:
+    """Lapisan turunan foto dari tutorial mode bebas yang fotonya sudah kedaluwarsa (RPC: aman untuk data besar)."""
     db = get_supabase()
-    now = now_utc()
-    expired = (
-        db.table("uploads")
-        .select("id")
-        .eq("purpose", "reference")
-        .lt("expires_at", now.isoformat())
-        .gt("created_at", (now - timedelta(days=SESSION_MAX_DAYS)).isoformat())
-        .execute()
-        .data
-    )
-    if not expired:
-        return 0
-    layers = (
-        db.table("visual_layers")
-        .select("id, kind, bucket, asset_path, lesson_versions!inner(origin, source_upload_id)")
-        .is_("purged_at", "null")
-        .eq("bucket", "derived")
-        .eq("lesson_versions.origin", "free_mode")
-        .in_("lesson_versions.source_upload_id", [u["id"] for u in expired])
-        .limit(limit)
-        .execute()
-        .data
-    )
-    layers = [l for l in layers if l["kind"] not in PHOTO_DERIVED_KINDS_KEEP]
+    layers = db.rpc("expired_lesson_layers", {"p_limit": limit}).execute().data or []
     if not layers:
         return 0
     _remove("derived", [l["asset_path"] for l in layers])
-    db.table("visual_layers").update({"purged_at": now.isoformat()}).in_("id", [l["id"] for l in layers]).execute()
+    db.table("visual_layers").update({"purged_at": now_utc().isoformat()}).in_("id", [l["id"] for l in layers]).execute()
     return len(layers)
 
 

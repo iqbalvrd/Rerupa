@@ -8,8 +8,8 @@ Setiap putaran memakai sesi baru: unggah foto → tunggu tutorial → unggah fot
 feedback → hapus sesi. Waktu dihitung seperti yang dirasakan pengguna: dari permintaan dikirim sampai
 polling melihat status final (termasuk antre). Sampel = jumlah putaran yang berhasil.
 
-Catatan: 1 putaran = 2 unggahan. Untuk 20 putaran dari satu IP, batas RATE_LIMIT_UPLOADS_PER_IP_HOUR
-di server harus ≥ 40 selama pengukuran (bawaan 30).
+Catatan: 1 putaran = 1 sesi + 2 unggahan. Untuk pengukuran dari satu IP, batas RATE_LIMIT_SESSIONS_PER_IP_HOUR dan RATE_LIMIT_UPLOADS_PER_IP_HOUR
+di server harus dinaikkan (atau 0 = nonaktif) selama pengukuran.
 """
 
 import argparse
@@ -53,12 +53,17 @@ def one_run(base: str, photo: bytes) -> dict:
         try:
             t = time.monotonic()
             job = c.post("/lessons/generate", files={"file": ("m.jpg", photo, "image/jpeg")}, data={"consent_ai_photo": "false"}, headers={"Idempotency-Key": str(uuid.uuid4())}).json()
+            if "id" not in job:  # mis. 429 rate limit: catat kodenya, jangan hentikan pengukuran
+                out["generate_status"] = "http:" + (job.get("error") or {}).get("code", "unknown")
+                return out
             done = wait(c, job["id"], 120)
             out["generate_s"] = time.monotonic() - t
             out["generate_status"] = done["status"]
             if done["status"] != "succeeded":
                 return out
+            t = time.monotonic()
             lesson = c.get(f"/lessons/{done['lesson_version_id']}").json()
+            out["lesson_s"] = time.monotonic() - t
             sketch = next(l for l in lesson["layers"] if l["kind"] == "sketch")
             grid = next(l for l in lesson["layers"] if l["kind"] == "grid")["meta"]
             paper = S.drawing_from_svg(S.fetch_text(sketch["url"]), lesson["image_width"], lesson["image_height"], (grid["cols"], grid["rows"]))
@@ -88,33 +93,40 @@ def main() -> None:
     ap.add_argument("--base-url", required=True)
     ap.add_argument("--runs", type=int, default=20)
     ap.add_argument("--out", default=None, help="tulis hasil Markdown ke file ini")
+    ap.add_argument("--parallel", type=int, default=1, help="jumlah pengguna serentak (simulasi uji pengguna)")
     args = ap.parse_args()
 
     from smoke import figure_jpeg
 
     photo = figure_jpeg()
     runs = []
-    for i in range(args.runs):
+    def safe_run(_):
         try:
-            r = one_run(args.base_url.rstrip("/"), photo)
-        except httpx.HTTPError as exc:
-            # Gangguan jaringan klien dicatat sebagai putaran gagal (dilaporkan), bukan menghentikan pengukuran.
-            r = {"generate_status": f"error:{type(exc).__name__}"}
-        runs.append(r)
-        print(f"[{i + 1}/{args.runs}] tutorial {r.get('generate_s', 0):.1f} s ({r.get('generate_status')}), feedback {r.get('feedback_s', 0):.1f} s ({r.get('feedback_status')})", flush=True)
+            return one_run(args.base_url.rstrip("/"), photo)
+        except Exception as exc:  # noqa: BLE001
+            # Gangguan jaringan/respons tak terduga dicatat sebagai putaran gagal, bukan menghentikan pengukuran.
+            return {"generate_status": f"error:{type(exc).__name__}"}
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
+        for i, r in enumerate(pool.map(safe_run, range(args.runs))):
+            runs.append(r)
+            print(f"[{i + 1}/{args.runs}] tutorial {r.get('generate_s', 0):.1f} s ({r.get('generate_status')}), feedback {r.get('feedback_s', 0):.1f} s ({r.get('feedback_status')})", flush=True)
 
     gen = [r["generate_s"] for r in runs if r.get("generate_status") == "succeeded"]
     fb = [r["feedback_s"] for r in runs if r.get("feedback_status") == "succeeded"]
     lines = [
         f"# Ukur P95 — {time.strftime('%Y-%m-%d %H:%M')}",
         "",
-        f"Server: `{args.base_url}` · putaran: {args.runs} · foto uji sintetis · tanpa AI (teks templat).",
+        f"Server: `{args.base_url}` · putaran: {args.runs} · serentak: {args.parallel} · foto uji sintetis · tanpa AI (teks templat).",
         "Waktu = dari permintaan dikirim sampai polling melihat status final (termasuk antre).",
         "",
         "| Alur | Sampel berhasil | Median | P95 | Maks | Min | Target PRD | Lolos |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
         summarize("Pembuatan tutorial (mode bebas)", gen, 60, args.runs),
         summarize("Feedback checkpoint", fb, 30, len([r for r in runs if r.get("generate_status") == "succeeded"])),
+        summarize("Baca tutorial (GET /lessons, mode bebas)", [r["lesson_s"] for r in runs if "lesson_s" in r], 2, args.runs),
         "",
         "Gagal: " + (", ".join(f"putaran {i + 1}: {r.get('generate_status')}/{r.get('feedback_status')}" for i, r in enumerate(runs) if r.get("generate_status") != "succeeded" or r.get("feedback_status") != "succeeded") or "tidak ada"),
     ]

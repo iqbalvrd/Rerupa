@@ -21,7 +21,7 @@ Status per Fase 7 backend (versi showcase; URL produksi menyusul). Dokumentasi i
 | `PATCH /sessions/{id}` | ✅ | ✅ | Body `{lesson_version_id?, palette_id?, canvas_size?, current_stage_order?}`. `lesson_version_id`: materi koleksi terbit (dari `GET /artworks`) atau tutorial mode bebas milik sesi ini |
 | `DELETE /sessions/{id}` | ✅ | ✅ | 204; akses langsung dicabut, foto dan lapisan tutorial dihapus |
 | `POST /lessons/generate` | ✅ | ✅ | multipart `file` + `consent_ai_photo` + `scope` (opsional) + header `Idempotency-Key` → 202 job |
-| `GET /jobs/{id}` | ✅ | ✅ | Polling tiap 1 detik sampai `is_final: true` |
+| `GET /jobs/{id}` | ✅ | ✅ | Polling tiap 1 s selama 10 s pertama, lalu tiap 2 s, sampai `is_final: true` |
 | `GET /lessons/{id}` | ✅ | hanya untuk mode bebas | Tutorial lengkap + saran warna. Query opsional `?palette_id=`. [contoh nyata](examples/lesson_detail.json) |
 | `GET /palettes` | ✅ | — | Palet yang bisa dipilih di layar Persiapan + daftar cat. [contoh](examples/palettes.json) |
 | `GET /recipes/{id}` | ✅ | — | Detail resep (teruji/perkiraan) bila `recipe_id` terisi |
@@ -37,7 +37,7 @@ Status per Fase 7 backend (versi showcase; URL produksi menyusul). Dokumentasi i
 ```
 POST /sessions                      → cookie terpasang (sekali per pengguna)
 POST /lessons/generate              → 202 { id, status: "queued" }
-GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → started → cv → planning → colors → writing → saving → done
+GET  /jobs/{id} (tiap 1 s selama 10 s pertama, lalu tiap 2 s) → progress.step: queued → started → cv → planning → colors → writing → saving → done
                                     → is_final: true → cek status:
    succeeded     → GET /lessons/{lesson_version_id}
    needs_retake  → tampilkan error_message (photo_unusable / not_artwork), minta foto ulang atau tawarkan galeri
@@ -84,7 +84,7 @@ Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 Tahap dengan is_checkpoint: true → panduan memotret (seluruh bidang terlihat, cahaya rata, tanpa bayangan tangan)
 → ambil/unggah foto → pengguna TAP 4 SUDUT bidang grid (kiri-atas, kanan-atas, kanan-bawah, kiri-bawah; urutan bebas)
 POST /sessions/{id}/checkpoints     → 202 { id, type: "feedback", status: "queued" }
-GET  /jobs/{id} (tiap 1 detik)      → progress.step: queued → cv → writing → saving → done
+GET  /jobs/{id} (1 s × 10, lalu 2 s)  → progress.step: queued → cv → writing → saving → done
    succeeded    → GET /sessions/{id}/checkpoints/{job_id} → tampilkan summary + suggestions
    needs_retake → tampilkan retake_message, minta foto/tap ulang (error_code: photo_unusable | alignment_failed | sketch_not_visible | progress_not_visible)
 ```

@@ -1,8 +1,7 @@
-# Config-as-code Railway untuk service API. Service worker memakai repo + Dockerfile yang sama;
-# di dashboard set Start Command = "python worker.py" dan hapus healthcheck (worker tanpa port).
+# Config-as-code Railway untuk service API (Root Directory = api).
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "Dockerfile.api"
 
 [deploy]
 healthcheckPath = "/health"

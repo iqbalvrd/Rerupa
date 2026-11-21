@@ -1,6 +1,4 @@
-# Image yang sama untuk dua service Railway/Fly:
-#   api    : perintah bawaan (uvicorn)
-#   worker : start command "python worker.py"
+# Image worker CV: torch CPU + rembg + controlnet-aux + bobot model tertanam.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -18,24 +16,22 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.18 /uv /usr/local/bin/uv
-
 WORKDIR /app
 
-# Dependensi dulu (lapisan cache), kode belakangan.
+# 1) Dependensi (berubah jarang)
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --group cv --no-group dev --no-install-project
 
-COPY . .
-
-# Bobot model diunduh saat build (bukan saat pengguna pertama datang): rembg u2net,
-# TEED, dan Informative Drawings (±350 MB). Setelah itu runtime tidak butuh Hugging Face.
-RUN uv run --no-sync python -c "from cv.models import warm_up; print(warm_up('teed', 'u2net')); print(warm_up('model', None))"
+# 2) Bobot model (±350 MB) — SEBELUM kode, supaya perubahan kode tidak mengunduh ulang model.
+#    Tetapkan HF_TOKEN sebagai build arg di Railway bila Hugging Face membatasi unduhan tanpa token.
+COPY scripts/fetch_models.py ./scripts/fetch_models.py
+RUN uv run --no-sync python scripts/fetch_models.py
 ENV HF_HUB_OFFLINE=1
 
+# 3) Kode aplikasi (berubah sering)
+COPY . .
 RUN useradd --create-home --uid 10001 rerupa && chown -R rerupa /app
 USER rerupa
-
 ENV PATH="/app/.venv/bin:$PATH"
-EXPOSE 8000
-# --proxy-headers: skema https dari proxy Railway; IP klien untuk rate limit dibaca di core/ratelimit.py
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*' --workers 1"]
+# SIGTERM ditangani worker: job berjalan diselesaikan dulu (atur draining Railway ≥60 s).
+CMD ["python", "worker.py"]

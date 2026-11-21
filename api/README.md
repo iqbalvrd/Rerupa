@@ -36,7 +36,7 @@ Evaluasi CV pada foto nyata: lihat [`../eval/README.md`](../eval/README.md).
 | Folder/file | Isi |
 | --- | --- |
 | `main.py` | Aplikasi FastAPI, CORS, cek origin, rate limit, header keamanan, batas ukuran request, cek konfigurasi produksi |
-| `Dockerfile`, `railway.toml`, [`DEPLOY.md`](DEPLOY.md) | Image deploy (torch CPU + bobot model di-cache saat build) untuk service `api` dan `worker` |
+| `Dockerfile.api`, `Dockerfile.worker`, `railway.toml`, `railway.worker.toml`, [`DEPLOY.md`](DEPLOY.md) | Dua image: API ringan (tanpa torch) dan worker CV (torch CPU + bobot model dipanggang sebelum kode) |
 | `worker.py`, `worker_handlers.py`, `worker_feedback.py` | Worker antrean job (feedback didahulukan) dan handler per jenis job |
 | `core/` | Config, error terstandar, sesi tamu, keamanan, log JSON, idempotency, rate limit |
 | `routes/` | Endpoint: health, artworks, sessions, jobs, lessons, palettes (+ recipes), progress (+ events), checkpoints |
@@ -74,5 +74,8 @@ Migrasi database ada di `../supabase/migrations/` dan sudah diterapkan ke projec
 Teks tahap, resep, dan teks feedback tetap tersedia sampai sesi berakhir.
 
 ## Worker
+
+Worker menjalankan `WORKER_CONCURRENCY` jalur (bawaan 2): saat satu job menunggu OpenAI, jalur lain memakai CPU. SIGTERM (redeploy) → berhenti mengambil job baru, job berjalan diselesaikan. Antrean kosong → jeda polling naik bertahap sampai 2 s. Job yang macet/terlambat juga disapu `pg_cron` (`sweep_jobs`) walau worker mati.
+
 
 Saat start, worker memuat model CV lebih dulu (±30 s) supaya job pertama pengguna tidak menunggu unduhan/pemuatan model. Job berikutnya ±10–15 s (laptop, CPU, tanpa AI). Selama job berjalan, worker mengirim heartbeat tiap 30 s agar job panjang tidak dianggap macet.

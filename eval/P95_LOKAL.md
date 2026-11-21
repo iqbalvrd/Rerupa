@@ -12,7 +12,7 @@ Gagal: tidak ada
 
 ## Catatan
 
-- Mesin: laptop pengembang (Windows, CPU, tanpa GPU), API + worker lokal, database & Storage Supabase Tokyo. Model sama dengan produksi: garis **TEED**, mask **u2net**, 2 checkpoint.
+- Mesin: laptop pengembang (Windows, CPU, tanpa GPU), API + worker lokal, database & Storage Supabase Tokyo (sebelum pindah ke Singapura; angka ini sedikit lebih lambat dari kondisi sekarang). Model sama dengan produksi: garis **TEED**, mask **u2net**, 2 checkpoint.
 - Ini **baseline lokal**, bukan angka produksi. Ulangi dengan `scripts/measure_p95.py` setelah deploy Railway (Singapura) dan laporkan keduanya.
 - Pencilan tutorial 49,5 s (putaran 19) dan 29,0 s: kemungkinan beban CPU laptop / jaringan saat itu; tetap di bawah batas 60 s. Bila di produksi P95 mendekati 60 s, opsi: worker CPU lebih besar, atau `LINEART_METHOD=xdog` (lebih cepat, garis lebih kasar).
 - Tanpa AI (key OpenAI belum ada): waktu AI teks (tutorial) dan feedback belum termasuk. Setelah model dipilih, ukur ulang; batas AI dimulai bila masih ≥20 s tersisa dari 45 s (feedback).

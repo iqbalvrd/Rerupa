@@ -32,6 +32,8 @@ MESSAGES: dict[str, str] = {
     "not_checkpoint": "Tahap ini tidak meminta foto progres.",
     "checkpoint_quota_exceeded": "Batas feedback untuk tahap ini tercapai. Lanjutkan ke tahap berikutnya.",
     "quota_exceeded": "Batas latihan sesi ini tercapai.",
+    "origin_not_allowed": "Permintaan ditolak karena berasal dari situs lain.",
+    "rate_limited": "Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.",
     "budget_exceeded": "Fitur AI sedang penuh. Coba materi dari galeri.",
     "ai_unavailable": "Instruksi otomatis belum tersedia. Tahapan tetap bisa dipakai.",
     "ai_refused": "Bagian ini tidak bisa dibuat otomatis.",

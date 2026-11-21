@@ -64,12 +64,14 @@ def create_job(session_id: str, job_type: str, key: str, payload_hash: str, **fi
 
 
 def count_jobs(session_id: str, job_type: str) -> int:
+    """Job yang dihitung untuk kuota: yang gagal karena sistem (timeout, error server) tidak memakan kuota."""
     res = (
         get_supabase()
         .table("jobs")
         .select("id", count="exact")
         .eq("session_id", session_id)
         .eq("type", job_type)
+        .neq("status", "failed")
         .execute()
     )
     return res.count or 0
@@ -121,6 +123,39 @@ def requeue_stale(stale_after_seconds: int) -> int:
         "requeue_stale_jobs", {"p_stale_after": f"{stale_after_seconds} seconds", "p_max_attempts": 2}
     ).execute()
     return int(res.data or 0)
+
+
+def fail_overdue(deadlines: dict[str, int], grace_seconds: int) -> int:
+    """PRD §16: job yang belum selesai melewati batas tunggu (dihitung sejak dibuat) → failed/worker_timeout.
+
+    Frontend menampilkan "Proses terlalu lama. Coba lagi." Bila worker yang lambat akhirnya selesai,
+    finish_job-nya tidak berlaku lagi (status sudah bukan processing).
+    """
+    from datetime import timedelta
+
+    total = 0
+    for job_type, seconds in deadlines.items():
+        cutoff = (now_utc() - timedelta(seconds=seconds + grace_seconds)).isoformat()
+        rows = (
+            get_supabase()
+            .table("jobs")
+            .update({"status": "failed", "error_code": "worker_timeout", "finished_at": now_utc().isoformat(), "progress": {"step": "done"}, "locked_by": None, "locked_at": None})
+            .eq("type", job_type)
+            .in_("status", ["queued", "processing"])
+            .lt("created_at", cutoff)
+            .execute()
+            .data
+        )
+        total += len(rows)
+    return total
+
+
+def still_mine(job_id: str, worker_id: str | None) -> bool:
+    """Job masih dipegang worker ini (belum dianggap macet/terlambat). Cek sebelum menyimpan hasil."""
+    q = get_supabase().table("jobs").select("id").eq("id", job_id).eq("status", "processing")
+    if worker_id:
+        q = q.eq("locked_by", worker_id)
+    return bool(q.limit(1).execute().data)
 
 
 def heartbeat(job_id: str, worker_id: str) -> bool:

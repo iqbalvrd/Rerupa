@@ -1,7 +1,13 @@
 """Fixture bersama. Tes integrasi memakai project Supabase dari .env dan membersihkan datanya sendiri."""
 
 import io
+import os
 import warnings
+
+# Rate limit dimatikan untuk tes alur (semua request tes datang dari satu "IP");
+# perilakunya diuji langsung di tests/test_release.py.
+for _k in ("RATE_LIMIT_PER_IP_MINUTE", "RATE_LIMIT_PER_SESSION_MINUTE", "RATE_LIMIT_SESSIONS_PER_IP_HOUR", "RATE_LIMIT_UPLOADS_PER_IP_HOUR"):
+    os.environ[_k] = "0"
 
 import pytest
 from PIL import Image

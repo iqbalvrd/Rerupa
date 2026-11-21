@@ -1,8 +1,15 @@
 """Membaca palet dari database dan menghitung saran warna untuk semua region sebuah tutorial."""
 
-from color.mixer import Paint, best_mix, mix_table
+from typing import TYPE_CHECKING
+
 from core.supabase_client import get_supabase
-from cv.types import Region
+
+if TYPE_CHECKING:
+    from color.mixer import Paint
+    from cv.types import Region
+
+# color.mixer (Mixbox + colour-science + scipy) diimpor di dalam fungsi: API hanya membaca daftar
+# palet dari DB, jadi tidak perlu memuat pustaka hitung warna (start API 7,3 s → ±3 s).
 
 
 def demo_palettes() -> list[dict]:
@@ -18,7 +25,9 @@ def demo_palettes() -> list[dict]:
     )
 
 
-def paints_of(palette: dict) -> tuple[Paint, ...]:
+def paints_of(palette: dict) -> "tuple[Paint, ...]":
+    from color.mixer import Paint
+
     return tuple(sorted((Paint(p["id"], p["code"], p["name"], p["hex"].upper()) for p in palette["paints"]), key=lambda p: p.code))
 
 
@@ -34,8 +43,10 @@ def tested_recipes(palette_id: str) -> list[dict]:
     )
 
 
-def region_colors_for(regions: list[Region]) -> list[dict]:
+def region_colors_for(regions: "list[Region]") -> list[dict]:
     """Saran warna tiap region untuk tiap palet demo → baris untuk create_lesson."""
+    from color.mixer import best_mix, mix_table
+
     rows = []
     for palette in demo_palettes():
         paints = paints_of(palette)

@@ -1,5 +1,7 @@
 # Analisa bug, optimasi, dan rencana deploy
 
+> **Status 21 Nov:** semua butir A1–A5, B1–B6, B8 sudah dikerjakan dan diukur — lihat [eval/HASIL_OPTIMASI.md](eval/HASIL_OPTIMASI.md). Uji serentak juga menemukan bug tambahan (klien Supabase HTTP/2 menjatuhkan unggahan paralel) yang sudah diperbaiki. Tersisa: B7 (bucket katalog publik + CDN).
+
 Tanggal: 21 Nov 2026 · cakupan: backend `api/` (API + worker) setelah Fase 1–7 + uji model OpenAI. **Fase 8 (storyline P1) belum dikerjakan.**
 
 ## Angka hasil ukur (laptop, sebagai patokan)

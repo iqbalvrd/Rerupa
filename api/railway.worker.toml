@@ -1,0 +1,10 @@
+# Config-as-code Railway untuk service worker (Root Directory = api,
+# Settings → Config-as-code → path file = /api/railway.worker.toml).
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.worker"
+
+[deploy]
+restartPolicyType = "ALWAYS"
+# Waktu bagi worker menyelesaikan job berjalan setelah SIGTERM saat redeploy.
+drainingSeconds = 60

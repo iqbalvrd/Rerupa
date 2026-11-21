@@ -1,14 +1,14 @@
 # Deploy backend Rerupa (Railway)
 
-Dua service dari **image yang sama** (`api/Dockerfile`): `api` (HTTP) dan `worker` (antrean job). Region **Singapura** (`asia-southeast1`), sama dengan project Supabase (`ap-southeast-1`), supaya pengguna, API, worker, dan database berdekatan.
+Dua service, **dua image**: `api` dari `Dockerfile.api` (ringan, tanpa torch) dan `worker` dari `Dockerfile.worker` (torch CPU + model tertanam). Region **Singapura** (`asia-southeast1`), sama dengan project Supabase (`ap-southeast-1`), supaya pengguna, API, worker, dan database berdekatan.
 
-> Belum pernah di-build di mesin pengembang (Docker tidak terpasang). Build pertama di Railway adalah uji Dockerfile-nya; perkiraan image ±2–2,5 GB (torch CPU + bobot model ±350 MB).
+> Belum pernah di-build di mesin pengembang (Docker tidak terpasang); build pertama di Railway adalah ujinya. Perkiraan ukuran: API ±250 MB, worker ±2–2,5 GB. Lapisan model worker dibangun sebelum kode disalin, jadi perubahan kode tidak mengunduh ulang model.
 
 ## 1. Sekali saja
 
 1. Railway → **New Project → Deploy from GitHub repo** → `iqbalvrd/Rerupa`.
-2. Service pertama (**api**): Settings → **Root Directory** = `api`. Railway membaca `api/railway.toml` (Dockerfile + healthcheck `/health`). Region Singapura. Settings → Networking → **Generate Domain**.
-3. Service kedua (**worker**): New → GitHub repo yang sama, Root Directory `api`, **Start Command** `python worker.py`, hapus healthcheck, tanpa domain publik.
+2. Service pertama (**api**): Settings → **Root Directory** = `api`. Railway membaca `api/railway.toml` (`Dockerfile.api` + healthcheck `/health`). Region Singapura. Settings → Networking → **Generate Domain**. Ukuran: 0,5 vCPU / 512 MB, **1 instance** (rate limit di memori).
+3. Service kedua (**worker**): New → GitHub repo yang sama, Root Directory `api`, Settings → Config-as-code → `/api/railway.worker.toml` (`Dockerfile.worker`, draining 60 s), tanpa domain publik. Ukuran: 2 vCPU / 3 GB (2 jalur pemroses). Bila build gagal karena Hugging Face membatasi unduhan, tambahkan variabel build `HF_TOKEN` (token baca gratis).
 4. Isi variabel (Shared Variables untuk keduanya, tabel di bawah).
 5. Deploy. Cek `https://<domain-api>/health` → `status: ok`, `supabase: ok`, `environment: production`.
 6. Kirim domain API ke Xavier → Vercel `NEXT_PUBLIC_API_BASE_URL`.
@@ -34,6 +34,8 @@ Dua service dari **image yang sama** (`api/Dockerfile`): `api` (HTTP) dan `worke
 | `OPENAI_REASONING_EFFORT` | ✅ | ✅ | `low` |
 | `DAILY_AI_BUDGET_USD` | ✅ | ✅ | `5` (atau sesuai kesepakatan tim) |
 | `CHECKPOINT_COUNT` | | ✅ | `2` (showcase; `1` = versi awal) |
+| `WORKER_CONCURRENCY` | | ✅ | `2` (jalur paralel; memori ±1,2 GB per jalur) |
+| `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` | | ✅ | `60` bila `drainingSeconds` di `railway.worker.toml` tidak terbaca |
 | `LINEART_METHOD`, `MASK_MODEL` | | ✅ | `teed`, `u2net` |
 
 ## 3. Batas biaya (dua lapis)
@@ -43,10 +45,11 @@ Dua service dari **image yang sama** (`api/Dockerfile`): `api` (HTTP) dan `worke
 
 ## 4. Yang dilindungi di produksi
 
-- Rate limit per IP (120/menit), per sesi (180/menit), buat sesi (30/jam/IP), unggah foto (30/jam/IP) → 429 `rate_limited` + `Retry-After`. Penghitung di memori proses API → **jalankan 1 instance API**; bila diskalakan, pindahkan ke Redis.
+- Rate limit per IP (600/menit, longgar untuk peserta di satu Wi-Fi), per sesi (180/menit), buat sesi (60/jam/IP), unggah foto (80/jam/IP) → 429 `rate_limited` + `Retry-After`. Penghitung di memori proses API → **jalankan 1 instance API**; bila diskalakan, pindahkan ke Redis.
 - Permintaan yang mengubah data dari origin selain `FRONTEND_ORIGIN` → 403.
 - Header `nosniff`, `no-referrer`, `DENY` frame, `no-store` untuk data sesi, HSTS.
-- Job melewati batas tunggu (tutorial 60 s, feedback 45 s, + 15 s) → `failed/worker_timeout`, tidak memakan kuota.
+- Job melewati batas tunggu (tutorial 60 s, feedback 45 s, + 15 s) → `failed/worker_timeout`, tidak memakan kuota. Penyapunya `pg_cron` (`sweep_jobs`, tiap 30 s), jadi tetap berjalan walau worker mati.
+- Redeploy worker: SIGTERM → berhenti mengambil job baru, job berjalan diselesaikan (draining 60 s).
 - `/health` melaporkan antrean: `oldest_queued_seconds > 30` → `degraded` (worker mati/kewalahan).
 
 ## 5. Sebelum uji pengguna / demo

@@ -6,8 +6,13 @@
  * Stylized after the renovated Museum Nasional galleries: cream walls with
  * pilasters on grey marble plinths, honey wood ceiling beams resting on the
  * pilasters, a black light track, high grey-framed windows, and a warm oak
- * plank floor. Same art direction as the landing: smooth solid materials,
- * warm light, no photo textures except the wood floor.
+ * plank floor.
+ *
+ * Shading follows the landing prototype (LANDING_SPEC §4): solid colours with
+ * a little roughness, rounded edges that catch the light, ACES tone mapping,
+ * a warm sun with soft PCF shadows, a hemisphere fill and a faint
+ * RoomEnvironment for highlights. N8AO adds the contact shading in corners and
+ * where parts meet, which is what keeps a clean scene from looking flat.
  *
  * Alignment contract with the HTML layer (gallery.module.css):
  * - The wall is the plane z = 0. One bay of wall is exactly one viewport wide,
@@ -20,7 +25,9 @@
  */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { RoundedBox, useTexture } from "@react-three/drei";
-import { Suspense, useEffect, useMemo, type RefObject } from "react";
+import { EffectComposer, N8AO, ToneMapping } from "@react-three/postprocessing";
+import { ToneMappingMode } from "postprocessing";
+import { Suspense, useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
@@ -35,17 +42,38 @@ const ROOM_H = CAM_Y + (0.5 - CEILING_FRAC) * VIEW_H; // wall top lands at CEILI
 
 // ── Palette (LANDING_SPEC §4.4 family) ──────────────────────────────────────
 const C = {
-  wall: "#f4efe5",
+  wall: "#f7f1e6",
   trim: "#fffbf3",
-  marble: "#c9c6c0",
-  marbleDark: "#a9a6a0",
-  rail: "#4a4d50",
-  beam: "#c08a52",
-  ceiling: "#f6f2ea",
-  windowFrame: "#5d656e",
-  glass: "#eef3f4",
-  track: "#1d1d1f",
+  marble: "#cfccc6",
+  marbleTop: "#b7b3ad",
+  rail: "#4d5156",
+  beam: "#c4884d",
+  ceiling: "#f8f4ec",
+  windowFrame: "#626a73",
+  glass: "#dde7ec",
+  track: "#222326",
 };
+
+/** Shared materials: one instance each, like the landing's `S(color, rough)` helper. */
+function useMaterials() {
+  return useMemo(() => {
+    const S = (color: string, roughness = 0.85, metalness = 0) =>
+      new THREE.MeshStandardMaterial({ color, roughness, metalness });
+    return {
+      wall: S(C.wall, 0.92),
+      trim: S(C.trim, 0.7),
+      marble: S(C.marble, 0.35, 0.02),
+      marbleTop: S(C.marbleTop, 0.4),
+      rail: S(C.rail, 0.5),
+      beam: S(C.beam, 0.62),
+      ceiling: S(C.ceiling, 0.95),
+      windowFrame: S(C.windowFrame, 0.55),
+      glass: S(C.glass, 0.12),
+      track: S(C.track, 0.45, 0.3),
+    };
+  }, []);
+}
+type Materials = ReturnType<typeof useMaterials>;
 
 type RoomProps = {
   trackRef: RefObject<HTMLDivElement | null>;
@@ -61,15 +89,16 @@ export default function Room3D({ trackRef, bayCount, onReady }: RoomProps) {
       dpr={[1, 1.5]}
       shadows="percentage"
       camera={{ fov: VFOV, near: 0.1, far: 60, position: [0, CAM_Y, CAM_DIST] }}
-      gl={{ antialias: true, powerPreference: "low-power" }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.0;
-      }}
+      gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
       style={{ position: "absolute", inset: 0 }}
     >
       <Suspense fallback={null}>
         <Scene trackRef={trackRef} bayCount={bayCount} />
+        <EffectComposer multisampling={4} enableNormalPass={false}>
+          {/* Contact shading in corners and joints. Half resolution keeps it light on phones. */}
+          <N8AO halfRes quality="performance" aoRadius={0.9} distanceFalloff={0.6} intensity={2.2} color="#3a2a1c" />
+          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        </EffectComposer>
         <ReadySignal onReady={onReady} />
       </Suspense>
     </Canvas>
@@ -90,13 +119,15 @@ function ReadySignal({ onReady }: { onReady?: () => void }) {
 function Scene({ trackRef, bayCount }: Omit<RoomProps, "onReady">) {
   const { size, camera, invalidate, gl, scene } = useThree();
   const bayW = (VIEW_H * size.width) / Math.max(size.height, 1);
+  const m = useMaterials();
+  const sun = useRef<THREE.DirectionalLight>(null);
 
-  // Soft image-based light so rounded edges and the floor catch highlights.
+  // Faint image-based light for highlights on rounded edges, glass and the floor.
   useEffect(() => {
     const pmrem = new THREE.PMREMGenerator(gl);
     const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = env;
-    scene.environmentIntensity = 0.45;
+    scene.environmentIntensity = 0.55;
     invalidate();
     return () => {
       env.dispose();
@@ -116,8 +147,15 @@ function Scene({ trackRef, bayCount }: Omit<RoomProps, "onReady">) {
   useFrame(() => {
     const track = trackRef.current;
     const walk = track && track.clientWidth ? track.scrollLeft / track.clientWidth : 0;
-    camera.position.set(walk * bayW, CAM_Y, CAM_DIST);
+    const x = walk * bayW;
+    camera.position.set(x, CAM_Y, CAM_DIST);
     camera.rotation.set(0, 0, 0);
+    // The sun follows the camera so a small, sharp shadow map always covers the view.
+    if (sun.current) {
+      sun.current.position.set(x - 7, ROOM_H + 4, 9);
+      sun.current.target.position.set(x, 1.5, 0);
+      sun.current.target.updateMatrixWorld();
+    }
   });
 
   const first = -1; // one extra bay on each side so the ends never show the void
@@ -128,196 +166,151 @@ function Scene({ trackRef, bayCount }: Omit<RoomProps, "onReady">) {
   const midX = (xMin + xMax) / 2;
   const bays = useMemo(() => Array.from({ length: last - first + 1 }, (_, k) => first + k), [first, last]);
   const boundaries = useMemo(() => Array.from({ length: last - first + 2 }, (_, k) => first - 0.5 + k), [first, last]);
+  const shadowHalf = Math.max(bayW, 4) * 0.75;
 
   return (
     <>
-      {/* Low, slightly cool fill so the warm key light has something to contrast with. */}
-      <hemisphereLight args={["#f3f1ff", "#8a6440", 0.5]} />
-      {/* Warm late-afternoon key from the windows' side (upper left), casting the pilaster shadows. */}
+      {/* Same recipe as the landing: hemisphere fill + warm sun with soft PCF shadows. */}
+      <hemisphereLight args={["#fff3e8", "#a88660", 1.15]} />
       <directionalLight
+        ref={sun}
         castShadow
-        color="#ffdcae"
-        intensity={2.6}
-        position={[midX - 5, ROOM_H + 2.5, 7]}
-        shadow-mapSize={[2048, 1024]}
-        shadow-camera-left={-span / 2}
-        shadow-camera-right={span / 2}
-        shadow-camera-top={ROOM_H + 2}
-        shadow-camera-bottom={-2}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.02}
-      >
-        <object3D attach="target" position={[midX, 0, 0]} />
-      </directionalLight>
-      {/* Cool bounce from the right, no shadows. */}
-      <directionalLight color="#cfdcff" intensity={0.35} position={[midX + 6, 2, 6]} />
-
-      <AmbientShading midX={midX} span={span} />
+        color="#ffe0bd"
+        intensity={2.1}
+        shadow-mapSize={[1024, 1024]}
+        shadow-camera-left={-shadowHalf}
+        shadow-camera-right={shadowHalf}
+        shadow-camera-top={ROOM_H + 1}
+        shadow-camera-bottom={-1}
+        shadow-camera-near={1}
+        shadow-camera-far={40}
+        shadow-bias={-0.0005}
+        shadow-normalBias={0.03}
+        shadow-radius={4}
+      />
 
       {/* Back wall */}
-      <mesh position={[midX, ROOM_H / 2, 0]} receiveShadow>
-        <planeGeometry args={[span, ROOM_H]} />
-        <meshStandardMaterial color={C.wall} roughness={0.9} />
+      <mesh position={[midX, ROOM_H / 2, -0.05]} material={m.wall} receiveShadow>
+        <boxGeometry args={[span, ROOM_H, 0.1]} />
       </mesh>
 
-      {/* Crown molding, dado rail, baseboard */}
-      <mesh position={[midX, ROOM_H - 0.16, 0.09]} castShadow receiveShadow>
-        <boxGeometry args={[span, 0.32, 0.18]} />
-        <meshStandardMaterial color={C.trim} roughness={0.7} />
-      </mesh>
-      <mesh position={[midX, 0.48, 0.04]} castShadow>
-        <boxGeometry args={[span, 0.07, 0.08]} />
-        <meshStandardMaterial color={C.rail} roughness={0.5} />
-      </mesh>
-      <mesh position={[midX, 0.11, 0.03]} receiveShadow>
-        <boxGeometry args={[span, 0.22, 0.06]} />
-        <meshStandardMaterial color={C.trim} roughness={0.7} />
-      </mesh>
+      {/* Crown molding: two stepped profiles */}
+      <RBox m={m.trim} size={[span, 0.3, 0.16]} at={[midX, ROOM_H - 0.15, 0.08]} r={0.04} />
+      <RBox m={m.trim} size={[span, 0.1, 0.26]} at={[midX, ROOM_H - 0.33, 0.13]} r={0.03} />
+      {/* Dark rail and baseboard near the floor, as in the reference */}
+      <RBox m={m.rail} size={[span, 0.07, 0.09]} at={[midX, 0.5, 0.045]} r={0.02} />
+      <RBox m={m.trim} size={[span, 0.24, 0.07]} at={[midX, 0.12, 0.035]} r={0.025} />
 
       {boundaries.map((b) => (
-        <Pilaster key={`p${b}`} x={b * bayW} />
+        <Pilaster key={`p${b}`} x={b * bayW} m={m} />
       ))}
       {bays.map((i) => (
-        <BayDetails key={`b${i}`} x={i * bayW} bayW={bayW} />
+        <Windows key={`w${i}`} x={i * bayW} bayW={bayW} m={m} />
       ))}
 
-      <Ceiling midX={midX} span={span} boundaries={boundaries} bayW={bayW} />
+      <Ceiling midX={midX} span={span} boundaries={boundaries} bays={bays} bayW={bayW} m={m} />
       <Floor midX={midX} span={span} />
     </>
   );
 }
 
-/**
- * Baked-looking soft shading (cheap stand-in for ambient occlusion): darker
- * under the crown molding and along the floor, so the wall reads as a lit
- * volume instead of a flat card.
- */
-function AmbientShading({ midX, span }: { midX: number; span: number }) {
-  const fade = useFadeTexture();
+function RBox({
+  m,
+  size,
+  at,
+  r = 0.05,
+  children,
+}: {
+  m: THREE.Material;
+  size: [number, number, number];
+  at: [number, number, number];
+  r?: number;
+  children?: ReactNode;
+}) {
+  const radius = Math.min(r, size[0] / 2 - 0.005, size[1] / 2 - 0.005, size[2] / 2 - 0.005);
   return (
-    <group>
-      {/* under the crown molding: opaque at the top, fading down */}
-      <mesh position={[midX, ROOM_H - 0.32 - 0.6, 0.004]}>
-        <planeGeometry args={[span, 1.2]} />
-        <meshBasicMaterial map={fade} transparent depthWrite={false} color="#4a3520" opacity={0.22} />
-      </mesh>
-      {/* above the baseboard: opaque at the bottom, fading up */}
-      <mesh position={[midX, 0.22 + 0.45, 0.004]} rotation={[0, 0, Math.PI]}>
-        <planeGeometry args={[span, 0.9]} />
-        <meshBasicMaterial map={fade} transparent depthWrite={false} color="#4a3520" opacity={0.16} />
-      </mesh>
+    <RoundedBox args={size} radius={radius} smoothness={2} position={at} material={m} castShadow receiveShadow>
+      {children}
+    </RoundedBox>
+  );
+}
+
+function Pilaster({ x, m }: { x: number; m: Materials }) {
+  const w = 0.52;
+  return (
+    <group position={[x, 0, 0]}>
+      <RBox m={m.trim} size={[w, ROOM_H, 0.24]} at={[0, ROOM_H / 2, 0.12]} r={0.05} />
+      {/* capital: two steps under the crown */}
+      <RBox m={m.trim} size={[w + 0.14, 0.18, 0.32]} at={[0, ROOM_H - 0.5, 0.16]} r={0.035} />
+      <RBox m={m.trim} size={[w + 0.06, 0.08, 0.28]} at={[0, ROOM_H - 0.63, 0.14]} r={0.025} />
+      {/* grey marble plinth with a darker cap */}
+      <RBox m={m.marble} size={[w + 0.16, 0.8, 0.36]} at={[0, 0.4, 0.18]} r={0.04} />
+      <RBox m={m.marbleTop} size={[w + 0.2, 0.06, 0.4]} at={[0, 0.83, 0.2]} r={0.02} />
     </group>
   );
 }
 
-function Pilaster({ x }: { x: number }) {
-  const w = 0.5;
-  const fade = useFadeTexture();
+/** Two high windows per bay, set into the wall with a sill, like the reference clerestory. */
+function Windows({ x, bayW, m }: { x: number; bayW: number; m: Materials }) {
+  const w = Math.min(0.62, bayW * 0.16);
+  const h = 0.48;
+  const y = ROOM_H - 0.66;
+  const bar = 0.045;
   return (
     <group position={[x, 0, 0]}>
-      {/* contact shading on the wall beside the pilaster */}
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * (w / 2 + 0.22), ROOM_H / 2, 0.003]} rotation={[0, 0, (side * Math.PI) / 2]}>
-          <planeGeometry args={[ROOM_H, 0.44]} />
-          <meshBasicMaterial map={fade} transparent depthWrite={false} color="#4a3520" opacity={0.14} />
-        </mesh>
-      ))}
-      <RoundedBox args={[w, ROOM_H, 0.24]} radius={0.03} smoothness={2} position={[0, ROOM_H / 2, 0.12]} castShadow receiveShadow>
-        <meshStandardMaterial color={C.trim} roughness={0.75} />
-      </RoundedBox>
-      {/* capital */}
-      <RoundedBox args={[w + 0.16, 0.22, 0.34]} radius={0.03} smoothness={2} position={[0, ROOM_H - 0.43, 0.17]} castShadow>
-        <meshStandardMaterial color={C.trim} roughness={0.7} />
-      </RoundedBox>
-      {/* grey marble plinth */}
-      <RoundedBox args={[w + 0.14, 0.78, 0.36]} radius={0.025} smoothness={2} position={[0, 0.39, 0.18]} castShadow receiveShadow>
-        <meshStandardMaterial color={C.marble} roughness={0.35} metalness={0.05} />
-      </RoundedBox>
-      <mesh position={[0, 0.8, 0.18]}>
-        <boxGeometry args={[w + 0.18, 0.05, 0.38]} />
-        <meshStandardMaterial color={C.marbleDark} roughness={0.4} />
-      </mesh>
-    </group>
-  );
-}
-
-function BayDetails({ x, bayW }: { x: number; bayW: number }) {
-  const spot = useSpotTexture();
-  const fade = useFadeTexture();
-  // Two high windows per bay, like the clerestory in the reference photo.
-  // They sit just under the crown molding so the artwork frame never covers them.
-  const winW = Math.min(0.62, bayW * 0.16);
-  const winH = 0.46;
-  const winY = ROOM_H - 0.64;
-  const offsets = [-0.3 * bayW, 0.3 * bayW];
-  return (
-    <group position={[x, 0, 0]}>
-      {/* warm pool of light from the track spot onto the wall around the frame */}
-      <mesh position={[0, CAM_Y + 0.9, 0.005]}>
-        <planeGeometry args={[Math.min(bayW * 0.95, 5), 4.6]} />
-        <meshBasicMaterial map={spot} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} opacity={0.45} color="#ffdcae" />
-      </mesh>
-      {/* the lit wall reflected softly in the polished floor */}
-      <mesh position={[0, 0.004, 1.3]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[Math.min(bayW * 0.7, 3.6), 2.4]} />
-        <meshBasicMaterial map={spot} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} opacity={0.14} color="#ffd29a" />
-      </mesh>
-      {offsets.map((ox) => (
-        <group key={ox} position={[ox, winY, 0.01]}>
-          {/* daylight falling from the window down the wall, slanted by the low sun */}
-          <mesh position={[0.32, -(winH / 2 + 1.15), -0.004]} rotation={[0, 0, -0.26]}>
-            <planeGeometry args={[winW * 1.1, 2.3]} />
-            <meshBasicMaterial map={fade} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} opacity={0.13} color="#ffe6c2" />
+      {[-0.3 * bayW, 0.3 * bayW].map((ox) => (
+        <group key={ox} position={[ox, y, 0.02]}>
+          <mesh material={m.glass} position={[0, 0, -0.01]}>
+            <planeGeometry args={[w, h]} />
           </mesh>
-          <mesh castShadow>
-            <boxGeometry args={[winW + 0.08, winH + 0.08, 0.06]} />
-            <meshStandardMaterial color={C.windowFrame} roughness={0.6} />
-          </mesh>
-          <mesh position={[0, 0, 0.032]}>
-            <planeGeometry args={[winW, winH]} />
-            <meshBasicMaterial color={C.glass} toneMapped={false} />
-          </mesh>
-          {/* mullions: 2 x 2 panes */}
-          <mesh position={[0, 0, 0.035]}>
-            <boxGeometry args={[0.025, winH, 0.01]} />
-            <meshStandardMaterial color={C.windowFrame} />
-          </mesh>
-          <mesh position={[0, 0, 0.035]}>
-            <boxGeometry args={[winW, 0.025, 0.01]} />
-            <meshStandardMaterial color={C.windowFrame} />
-          </mesh>
+          {/* frame */}
+          <RBox m={m.windowFrame} size={[w + bar * 2, bar, 0.07]} at={[0, h / 2 + bar / 2, 0.02]} r={0.015} />
+          <RBox m={m.windowFrame} size={[w + bar * 2, bar, 0.07]} at={[0, -h / 2 - bar / 2, 0.02]} r={0.015} />
+          <RBox m={m.windowFrame} size={[bar, h, 0.07]} at={[-w / 2 - bar / 2, 0, 0.02]} r={0.015} />
+          <RBox m={m.windowFrame} size={[bar, h, 0.07]} at={[w / 2 + bar / 2, 0, 0.02]} r={0.015} />
+          {/* mullions */}
+          <RBox m={m.windowFrame} size={[0.022, h, 0.03]} at={[0, 0, 0.005]} r={0.008} />
+          <RBox m={m.windowFrame} size={[w, 0.022, 0.03]} at={[0, 0, 0.005]} r={0.008} />
+          {/* sill */}
+          <RBox m={m.trim} size={[w + 0.2, 0.05, 0.12]} at={[0, -h / 2 - bar - 0.025, 0.06]} r={0.02} />
         </group>
       ))}
-      {/* spot fixture on the track, aimed at the frame */}
-      <group position={[0, ROOM_H - 0.1, 0.9]} rotation={[0.9, 0, 0]}>
-        <mesh>
-          <cylinderGeometry args={[0.045, 0.055, 0.16, 16]} />
-          <meshStandardMaterial color={C.track} roughness={0.4} metalness={0.3} />
-        </mesh>
-      </group>
     </group>
   );
 }
 
-function Ceiling({ midX, span, boundaries, bayW }: { midX: number; span: number; boundaries: number[]; bayW: number }) {
+function Ceiling({
+  midX,
+  span,
+  boundaries,
+  bays,
+  bayW,
+  m,
+}: {
+  midX: number;
+  span: number;
+  boundaries: number[];
+  bays: number[];
+  bayW: number;
+  m: Materials;
+}) {
   const depth = 12;
   return (
     <group>
-      <mesh position={[midX, ROOM_H, depth / 2]} rotation={[Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[span, depth]} />
-        <meshStandardMaterial color={C.ceiling} roughness={0.95} side={THREE.DoubleSide} />
+      <mesh position={[midX, ROOM_H + 0.05, depth / 2]} material={m.ceiling} receiveShadow>
+        <boxGeometry args={[span, 0.1, depth]} />
       </mesh>
       {/* wood beams resting on the pilasters, running toward the viewer */}
       {boundaries.map((b) => (
-        <RoundedBox key={b} args={[0.32, 0.36, depth]} radius={0.03} smoothness={2} position={[b * bayW, ROOM_H - 0.18, depth / 2]} castShadow>
-          <meshStandardMaterial color={C.beam} roughness={0.6} />
-        </RoundedBox>
+        <RBox key={b} m={m.beam} size={[0.34, 0.38, depth]} at={[b * bayW, ROOM_H - 0.19, depth / 2]} r={0.04} />
       ))}
-      {/* black light track along the wall */}
-      <mesh position={[midX, ROOM_H - 0.03, 0.9]}>
-        <boxGeometry args={[span, 0.05, 0.06]} />
-        <meshStandardMaterial color={C.track} roughness={0.5} />
-      </mesh>
+      {/* black light track along the wall, one small spot per bay */}
+      <RBox m={m.track} size={[span, 0.05, 0.07]} at={[midX, ROOM_H - 0.025, 0.95]} r={0.015} />
+      {bays.map((i) => (
+        <mesh key={i} material={m.track} position={[i * bayW, ROOM_H - 0.13, 0.95]} rotation={[0.85, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.045, 0.055, 0.16, 16]} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -325,7 +318,7 @@ function Ceiling({ midX, span, boundaries, bayW }: { midX: number; span: number;
 function Floor({ midX, span }: { midX: number; span: number }) {
   const depth = 14;
   const tex = useTexture("/gallery/floor-wood.webp");
-  const map = useMemo(() => {
+  const material = useMemo(() => {
     const t = tex.clone();
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.colorSpace = THREE.SRGBColorSpace;
@@ -333,59 +326,12 @@ function Floor({ midX, span }: { midX: number; span: number }) {
     const tile = 2.6; // meters per texture tile
     t.repeat.set(span / tile, depth / tile);
     t.needsUpdate = true;
-    return t;
+    // Lacquered oak: a soft sheen from the environment, not a mirror.
+    return new THREE.MeshStandardMaterial({ map: t, roughness: 0.4, metalness: 0, envMapIntensity: 1.1 });
   }, [tex, span]);
-  const shade = useFadeTexture();
   return (
-    <group>
-      <mesh position={[midX, 0, depth / 2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[span, depth]} />
-        {/* lacquered oak: low roughness so the warm key light leaves a soft sheen */}
-        <meshStandardMaterial map={map} roughness={0.34} metalness={0} envMapIntensity={1.2} />
-      </mesh>
-      {/* soft contact shadow where the floor meets the wall */}
-      <mesh position={[midX, 0.002, 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[span, 1]} />
-        <meshBasicMaterial map={shade} transparent depthWrite={false} color="#3a2412" opacity={0.45} />
-      </mesh>
-    </group>
+    <mesh position={[midX, 0, depth / 2]} rotation={[-Math.PI / 2, 0, 0]} material={material} receiveShadow>
+      <planeGeometry args={[span, depth]} />
+    </mesh>
   );
-}
-
-// ── Procedural textures (no extra downloads) ────────────────────────────────
-
-function useSpotTexture() {
-  return useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 256;
-    const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(128, 110, 0, 128, 128, 128);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.45, "rgba(255,255,255,0.45)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 256, 256);
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }, []);
-}
-
-/**
- * Fade for the floor strip at the wall. The canvas top maps to the strip's far
- * (wall) edge after the plane is laid flat, so: opaque at the top, clear below.
- */
-function useFadeTexture() {
-  return useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = 4;
-    c.height = 128;
-    const g = c.getContext("2d")!;
-    const grad = g.createLinearGradient(0, 0, 0, 128);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 4, 128);
-    return new THREE.CanvasTexture(c);
-  }, []);
 }

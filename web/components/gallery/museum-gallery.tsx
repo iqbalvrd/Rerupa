@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronLeft, ChevronRight, Camera } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import { GALLERY_SOURCE, artworkByline, licenseLabel, useArtworks, type GalleryArtwork } from "@/lib/artworks";
 import { DEFAULT_FRAME, FRAME_STYLES, type FrameStyleId } from "./frames";
 import styles from "./gallery.module.css";
@@ -159,7 +160,7 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
 
       <header className={styles.topbar}>
         <Link href="/" className={styles.brand}>
-          Rerupa
+          <Logo className="h-7 w-auto" priority />
         </Link>
         <span className={styles.roomLabel}>Ruang Galeri</span>
       </header>

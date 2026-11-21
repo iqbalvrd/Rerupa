@@ -330,13 +330,6 @@
   opacity: 0;
   transition: opacity 0.5s ease;
 }
-/* Soft warm vignette, like a camera lens, to give the room depth. */
-.room3d::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 85% 75% at 50% 45%, transparent 55%, rgb(70 45 20 / 0.22) 100%);
-}
 /* Once the 3D room has drawn, it replaces the CSS walls, ceiling and floor. */
 .scene[data-room="3d"] .room3d {
   opacity: 1;

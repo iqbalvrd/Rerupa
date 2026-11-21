@@ -61,8 +61,15 @@ def ensure_available() -> None:
     settings = get_settings()
     if not settings.openai_configured or not settings.openai_vision_model:
         raise AIUnavailable("ai_unavailable")
-    if settings.daily_ai_budget_usd > 0 and today_cost_usd() >= settings.daily_ai_budget_usd:
-        raise AIUnavailable("budget_exceeded")
+    if settings.daily_ai_budget_usd > 0:
+        spent = today_cost_usd()
+        ratio = spent / settings.daily_ai_budget_usd
+        if ratio >= 1:
+            log.error("ai_budget_exceeded", extra={"spent_usd": round(spent, 4), "budget_usd": settings.daily_ai_budget_usd})
+            raise AIUnavailable("budget_exceeded")
+        if ratio >= 0.5:
+            # Alarm 50% / 80% (SOLUSI_RISIKO §5): terlihat di log Railway.
+            log.warning("ai_budget_warning", extra={"level": "80%" if ratio >= 0.8 else "50%", "spent_usd": round(spent, 4), "budget_usd": settings.daily_ai_budget_usd})
 
 
 def parse(

@@ -21,6 +21,17 @@ dependencies = [
 [tool.uv]
 package = false
 
+# Image deploy (Linux) memakai torch versi CPU: tanpa pustaka CUDA, image jauh lebih kecil.
+# Windows/macOS tetap memakai wheel PyPI (sudah CPU).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
 [dependency-groups]
 cv = [
     "colour-science>=0.4.7",
@@ -33,6 +44,9 @@ cv = [
     "rembg[cpu]>=2.0.87",
     "scikit-image>=0.26.0",
     "scikit-learn>=1.9.1",
+    # Dinyatakan langsung (dipakai controlnet-aux) agar sumber pytorch-cpu di bawah berlaku.
+    "torch>=2.15.0",
+    "torchvision",
 ]
 dev = [
     "pytest>=9.2.0",

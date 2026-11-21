@@ -133,6 +133,8 @@ def handle_feedback(job: dict) -> JobOutcome:
         )
         if not _session_alive(job["session_id"]):
             return JobOutcome("failed", error_code="session_deleted")
+        if not job_service.still_mine(job["id"], job.get("locked_by")):
+            return JobOutcome("failed", error_code="worker_timeout")
 
         job_service.set_progress(job["id"], "saving")
         rect_path = f"{job['session_id']}/{job['upload_id']}_rectified.jpg"

@@ -2,7 +2,7 @@
 
 Dokumen hidup untuk melacak progres **backend (Iqbal)** dan **frontend (Xavier)**, serta titik serah-terima di antaranya. Perbarui setiap selesai satu bagian kerja.
 
-Terakhir diperbarui: setelah Fase 5 backend (checkpoint foto progres) selesai.
+Terakhir diperbarui: setelah Fase 6 backend (persiapan rilis) selesai.
 
 Legenda: ✅ selesai · 🟡 sedang dikerjakan · ⏳ belum mulai · ⛔ terhambat
 
@@ -19,7 +19,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | 3. Tahapan | ✅ (teks AI menunggu API key; templat jalan) | ⏳ |
 | 4. Mode bebas & warna | ✅ (palet masih referensi digital; resep teruji fisik menyusul) | ⏳ |
 | 5. Checkpoint | 🟡 end-to-end ✅ (foto sintetis); uji 3–5 foto progres nyata ⏳; feedback AI menunggu key | ⏳ |
-| 6. Rilis versi awal | ⏳ | ⏳ |
+| 6. Rilis versi awal | 🟡 siap deploy (Dockerfile, rate limit, batas biaya, smoke test) ✅; deploy Railway + batas OpenAI di dashboard ⏳ (butuh akun) | ⏳ |
 | 7. Penguatan showcase | ⏳ | ⏳ |
 | 8. P1 storyline | ⏳ | ⏳ |
 | 9. Demo | ⏳ | ⏳ |
@@ -45,6 +45,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Tahapan (Fase 3) | 9 tabel tutorial + fungsi `create_lesson` atomik; `stage_planner` (6–8 tahap, tiap region tepat sekali, ≤10 region per tahap bila muat, checkpoint di tahap sketsa); lapisan AI (prompt, structured output, validator aturan PRD, retry 1×, templat cadangan, catat biaya, batas harian); heartbeat worker + pemuatan model saat start; skrip impor koleksi + 1 contoh (Raden Saleh, draf) | 105 tes |
 | Warna (Fase 4) | `color/`: Mixbox + ΔE2000, 1–3 cat + campuran tint (putih 5–24 bagian), resep teruji diutamakan, tips koreksi; saran warna tiap region tersimpan atomik bersama lesson; `GET /palettes`, `GET /recipes/{id}`, `region_colors` di `GET /lessons/{id}`; cache foto identik per sesi; palet referensi digital (sementara) | 123 tes |
 | Checkpoint (Fase 5) | `PATCH/GET /sessions/{id}/progress` (melihat ≠ menyelesaikan), `POST/GET /sessions/{id}/checkpoints`; tap 4 sudut → warp → ECC ke **grid** (cadangan: ke garis target, translasi ≤3%) → metrik per bentuk (garis tergambar, geser, lebar/tinggi; tahap warna: % terisi, ΔL*) → maks 3 kandidat → maks 2 saran (AI dari kandidat saja, templat cadangan); foto buram/gelap/sudut salah/sketsa tak terlihat → `needs_retake` tanpa saran; kuota 1 retry per checkpoint; event analitik (`POST /events` + event server); materi koleksi bisa dipasang ke sesi (`lesson_version_id`) | 160 tes, job ±6–8 s |
+| Rilis (Fase 6) | Rate limit per IP/sesi/buat sesi/unggah (429 + `Retry-After`); cek origin untuk permintaan yang mengubah data; header keamanan; batas tunggu job 60/45 s → `worker_timeout` (tidak memakan kuota); cek konfigurasi produksi saat start; `/health` melaporkan antrean; alarm biaya 50/80/100%; Dockerfile (torch CPU, bobot model di-cache saat build) + `railway.toml` + [DEPLOY.md](api/DEPLOY.md); `scripts/smoke.py` alur lengkap lulus di lokal | Tes + smoke test |
 | Pipeline CV (Fase 2) | `api/cv/`: normalisasi, cek kualitas, mask (rembg u2net), garis (TEED untuk mode bebas, model lineart untuk koleksi, XDoG cadangan) dengan ambang adaptif, region k-means ≤35 yang digabung berdasarkan kemiripan warna, terang-gelap 3–5 tingkat, SVG + gambar region bernomor | 59 tes + evaluasi foto nyata ([eval/HASIL_FASE2.md](eval/HASIL_FASE2.md)) |
 
 ### 2.2 Berikutnya
@@ -57,7 +58,11 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 
 ### 2.3 Belum ada / catatan teknis
 
-- Rate limit per IP (Fase 6).
+- Deploy belum dilakukan; Dockerfile belum pernah di-build (Docker tidak ada di laptop). Build pertama di Railway = uji Dockerfile.
+- Worker butuh ±30–70 s memuat model saat start; job yang datang saat itu menunggu. Deploy minimal 2 menit sebelum uji/demo.
+- Rate limit di memori proses → jalankan 1 instance API.
+- iOS Safari bisa memblokir cookie lintas domain (Vercel ↔ Railway); bila terjadi, pakai subdomain yang sama untuk API.
+
 - Checkpoint dikalibrasi dengan foto sintetis; ambang (`cv/compare.py`, `cv/checkpoint.py`) perlu disesuaikan setelah uji foto progres nyata. Tahap warna (checkpoint ke-2, showcase) sudah ada metriknya tetapi pelurusannya masih memakai garis sketsa → perlu diuji di Fase 7.
 - Saat seluruh sketsa bergeser ke satu arah, saran saat ini menyebut per bentuk (bisa dua saran mirip); bisa digabung jadi satu saran setelah uji nyata.
 - Retensi otomatis 24 jam untuk foto yang sesinya tidak dihapus (Fase 7). Foto sesi yang dihapus sudah langsung dihapus.
@@ -113,7 +118,9 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | --- | --- | --- |
 | Backend → Frontend | Panduan API + contoh respons | ✅ `api/API.md`, `api/examples/` |
 | Backend → Frontend | `GET /lessons/{id}` nyata + SVG/PNG lapisan | ✅ Fase 3 |
-| Backend → Frontend | URL API produksi | ⏳ Fase 6 |
+| Backend → Frontend | URL API produksi | ⏳ setelah deploy Railway ([DEPLOY.md](api/DEPLOY.md)) |
+| Tim → Backend | Akun/proyek Railway (region Singapura) untuk deploy `api` + `worker` | ⏳ |
+| Xavier → Tim | Batas pengeluaran di dashboard OpenAI | ⏳ |
 | Frontend → Backend | Domain Vercel untuk `FRONTEND_ORIGIN` (CORS) | ⏳ |
 | Frontend → Backend | Masukan bentuk JSON lesson setelah mencoba draf | ⏳ |
 | Xavier → Iqbal | Undangan ke project OpenAI + akses Playground | ⏳ |
@@ -148,7 +155,8 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | `feat/fase-2-cv` | Fase 2: pipeline CV + evaluasi | Sudah di-merge ke `main` (PR #3) |
 | `feat/fase-3-tahapan` | Fase 3: tahapan tutorial end-to-end | Sudah di-merge ke `main` (PR #4) |
 | `feat/fase-4-warna` | Fase 4: saran campuran warna | Sudah di-merge ke `main` (PR #5) |
-| `feat/fase-5-checkpoint` | Fase 5: progres + checkpoint foto progres | Lokal, belum di-push |
+| `feat/fase-5-checkpoint` | Fase 5: progres + checkpoint foto progres | Sudah di-merge ke `main` (PR #6) |
+| `feat/fase-6-rilis` | Fase 6: persiapan rilis + deploy | Lokal, belum di-push |
 | `feat/web-…` | Frontend | Dibuat Xavier |
 
 ---
@@ -176,6 +184,7 @@ Dokumentasi interaktif: `http://localhost:8000/docs`
 | Bagian | Ringkasan |
 | --- | --- |
 | Backend Fase 1 | Skema DB + keamanan, sesi tamu, antrean job + worker, unggahan aman, galeri, 37 tes, panduan API |
+| Backend Fase 6 | Siap rilis: rate limit, cek origin, batas waktu job, cek konfigurasi produksi, image deploy + panduan Railway, smoke test |
 | Backend Fase 5 | Progres tahap, checkpoint foto progres (pelurusan grid + ECC, metrik sketsa/warna, maks 2 saran dari kandidat), event analitik, materi koleksi bisa dipasang ke sesi |
 | Backend Fase 4 | Saran campuran warna per region (Mixbox + ΔE2000 + tint), API palet & resep, cache foto identik, palet referensi digital, 123 tes |
 | Backend Fase 3 | Tutorial end-to-end (CV → tahapan → teks → simpan atomik → GET /lessons), lapisan AI siap pakai menunggu key, impor koleksi, 105 tes |

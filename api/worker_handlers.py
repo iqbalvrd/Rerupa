@@ -157,6 +157,9 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
         # Sesi dihapus selama proses → jangan simpan apa pun.
         if not _session_alive(job["session_id"]):
             return JobOutcome("failed", error_code="session_deleted")
+        # Melewati batas tunggu (sudah ditandai worker_timeout) → jangan simpan tutorial yang tak ditunggu lagi.
+        if not job_service.still_mine(job["id"], job.get("locked_by")):
+            return JobOutcome("failed", error_code="worker_timeout")
 
         job_service.set_progress(job["id"], "saving")
         prefix = f"{job['session_id']}/{uuid.uuid4()}"

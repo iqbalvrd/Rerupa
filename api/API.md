@@ -1,6 +1,6 @@
 # Rerupa API — Panduan untuk Frontend
 
-Status per Fase 5 backend. Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
+Status per Fase 6 backend (siap deploy; URL produksi menyusul). Dokumentasi interaktif lengkap: jalankan API lalu buka `http://localhost:8000/docs` (OpenAPI dibuat otomatis dari kode). Contoh respons ada di [`examples/`](examples/).
 
 ## Cara memanggil
 
@@ -128,10 +128,14 @@ Nama yang diterima dari UI: `lesson_viewed`, `recipe_opened`, `original_photo_op
 | 429 | `checkpoint_quota_exceeded` | Batas feedback tahap ini; ajak lanjut ke tahap berikutnya |
 | 409 | `lesson_required` | Sesi belum punya materi: pilih dari galeri atau buat tutorial |
 | 422 | `not_checkpoint` | Bug frontend: tahap ini tidak meminta foto |
+| 429 | `rate_limited` | Terlalu banyak permintaan; tunggu `Retry-After` detik (header) lalu coba lagi. Polling `/jobs` tiap 1 detik aman |
+| 403 | `origin_not_allowed` | Domain frontend belum didaftarkan di `FRONTEND_ORIGIN` backend |
 | 500 | `internal_error` | Tampilkan pesan umum, boleh coba lagi |
 
-Di status job (`error_code`): `photo_unusable`, `not_artwork`, `alignment_failed`, `sketch_not_visible` (needs_retake), `session_deleted`, `worker_timeout`, `internal_error` (failed). Daftar lengkap pesan ada di `core/errors.py`.
+Di status job (`error_code`): `photo_unusable`, `not_artwork`, `alignment_failed`, `sketch_not_visible` (needs_retake), `session_deleted`, `worker_timeout` (melewati batas tunggu: tutorial 60 s, feedback 45 s; tidak memakan kuota — tawarkan coba lagi), `internal_error` (failed). Daftar lengkap pesan ada di `core/errors.py`.
 
 ## Cookie di produksi
 
-Frontend (Vercel) dan API (Railway) beda domain, jadi cookie harus `SameSite=None; Secure`. Di backend produksi set `COOKIE_SAMESITE=none` dan `COOKIE_SECURE=true`, serta `FRONTEND_ORIGIN` = domain Vercel. Lokal tidak perlu diubah.
+Frontend (Vercel) dan API (Railway) beda domain, jadi cookie harus `SameSite=None; Secure`. Di backend produksi set `COOKIE_SAMESITE=none` dan `COOKIE_SECURE=true`, serta `FRONTEND_ORIGIN` = domain Vercel (preview Vercel lewat `FRONTEND_ORIGIN_REGEX`). Lokal tidak perlu diubah. Langkah deploy: [DEPLOY.md](DEPLOY.md).
+
+Catatan iOS Safari: cookie pihak ketiga bisa diblokir (ITP) bila domain frontend dan API berbeda. Bila sesi hilang di iPhone saat uji, solusinya domain API sebagai subdomain frontend (mis. `api.<domain>`), bukan `*.up.railway.app`.

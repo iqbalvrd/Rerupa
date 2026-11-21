@@ -19,7 +19,7 @@ from worker_handlers import HANDLERS, Handler
 
 log = logging.getLogger("rerupa.worker")
 
-REQUEUE_EVERY_SECONDS = 30
+REQUEUE_EVERY_SECONDS = 10  # juga memeriksa batas tunggu job (45/60 s), jadi cukup sering
 
 
 def make_worker_id() -> str:
@@ -92,6 +92,12 @@ def main() -> None:
                 moved = job_service.requeue_stale(settings.worker_stale_after_seconds)
                 if moved:
                     log.warning("stale_jobs_requeued", extra={"count": moved})
+                overdue = job_service.fail_overdue(
+                    {"generate_lesson": settings.generate_deadline_seconds, "feedback": settings.feedback_deadline_seconds},
+                    settings.deadline_grace_seconds,
+                )
+                if overdue:
+                    log.warning("overdue_jobs_failed", extra={"count": overdue})
                 last_requeue = now
             try:
                 did_work = process_one(worker_id)

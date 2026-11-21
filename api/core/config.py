@@ -53,13 +53,55 @@ class Settings(BaseSettings):
     lineart_method_collection: str = "model"
     # u2net 2–3× lebih cepat dari isnet dengan hasil hampir sama di foto uji.
     mask_model: str = "u2net"
+    # Satu atau beberapa origin dipisah koma (produksi: domain Vercel). Preview Vercel lewat regex,
+    # mis. ^https://rerupa-[a-z0-9-]+\.vercel\.app$ — kosong = tidak ada.
     frontend_origin: str = "http://localhost:3000"
+    frontend_origin_regex: str = ""
     feature_story: bool = False
     feature_recognition: bool = False
 
     # Worker
     worker_poll_seconds: float = 0.5
     worker_stale_after_seconds: int = 120
+    # PRD §16: batas tunggu analisis (sejak permintaan dibuat). Lewat batas + toleransi → failed/worker_timeout.
+    generate_deadline_seconds: int = 60
+    deadline_grace_seconds: int = 15
+
+    # Produksi
+    environment: Literal["development", "production"] = "development"
+    # Di belakang proxy Railway/Fly: IP klien dibaca dari X-Real-IP / X-Forwarded-For.
+    # Jangan aktifkan tanpa proxy — header itu bisa dipalsukan klien.
+    trust_proxy_headers: bool = False
+    expose_docs: bool = True  # /docs dan /openapi.json; produksi sebaiknya false
+
+    # Rate limit (per proses API, jendela 60 s / 3600 s). 0 = nonaktif.
+    rate_limit_per_ip_minute: int = 120
+    rate_limit_per_session_minute: int = 180  # polling /jobs tiap 1 s ≈ 60/menit
+    rate_limit_sessions_per_ip_hour: int = 30
+    rate_limit_uploads_per_ip_hour: int = 30  # generate + checkpoint
+
+    @property
+    def frontend_origins(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.frontend_origin.split(",") if o.strip()]
+
+    def production_problems(self) -> list[str]:
+        """Konfigurasi yang wajib benar sebelum melayani pengguna di produksi."""
+        problems = []
+        if self.environment != "production":
+            return problems
+        if not self.supabase_configured:
+            problems.append("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY kosong")
+        if not self.cookie_secure:
+            problems.append("COOKIE_SECURE harus true")
+        if any(o.startswith("http://") and "localhost" not in o for o in self.frontend_origins) or not self.frontend_origins:
+            problems.append("FRONTEND_ORIGIN harus domain https frontend")
+        if not self.trust_proxy_headers:
+            problems.append("TRUST_PROXY_HEADERS harus true di belakang proxy Railway/Fly (tanpa itu semua pengguna berbagi satu IP di rate limit)")
+        if self.openai_configured and self.daily_ai_budget_usd <= 0:
+            problems.append("DAILY_AI_BUDGET_USD harus > 0 bila OpenAI aktif")
+        if self.openai_configured and (self.openai_price_input_per_m <= 0 or self.openai_price_output_per_m <= 0):
+            problems.append("OPENAI_PRICE_INPUT_PER_M/OUTPUT_PER_M wajib diisi agar batas biaya bekerja")
+        return problems
 
     @property
     def supabase_configured(self) -> bool:

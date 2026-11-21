@@ -1,0 +1,43 @@
+{
+  "slug": "batik-sarung-buketan-cooper-hewitt",
+  "title": "Sarung Batik Motif Buketan",
+  "artist": null,
+  "artist_death_year": null,
+  "tradition": "Batik pesisir",
+  "region_origin": "Pesisir utara Jawa",
+  "license": "ebt_pending",
+  "license_note": "Berkas berstatus domain publik di Wikimedia Commons (anonim, abad ke-19, Cooper Hewitt). Motif batik tradisional = Ekspresi Budaya Tradisional (UU 28/2014 Pasal 38): menunggu konfirmasi panitia untuk pemakaian edukatif dengan atribusi.",
+  "rights_evidence_url": "https://commons.wikimedia.org/wiki/File:Sarong_(Indonesia),_19th_century_(CH_18444071).jpg",
+  "adaptation_scope": "Potongan bagian atas satu rangkaian bunga: burung, kupu-kupu, daun, dan bunga",
+  "image": "image.jpg",
+  "scope": { "x": 0.42, "y": 0.07, "w": 0.26, "h": 0.33 },
+  "canvas_size": "A4",
+  "use_shading": false,
+  "skill_goal": "Melatih menyusun motif bidang datar di atas latar terang: bentuk daun, bunga, burung, dan kupu-kupu.",
+  "culture_goal": "Mengenal motif buketan pada batik pesisir utara Jawa.",
+  "reviewer": null,
+  "sources": [
+    {
+      "code": "wm_cooperhewitt_sarong_18444071",
+      "title": "Sarong (Indonesia), 19th century (CH 18444071)",
+      "publisher": "Wikimedia Commons / Cooper Hewitt, Smithsonian Design Museum, 1962-233-11",
+      "url": "https://commons.wikimedia.org/wiki/File:Sarong_(Indonesia),_19th_century_(CH_18444071).jpg",
+      "license": "public_domain",
+      "claim_note": "Sarung batik katun abad ke-19; motif buketan; pinggiran bunga bergelombang khas pesisir utara Jawa; pengaruh Barat"
+    },
+    {
+      "code": "idwiki_batik_pesisir",
+      "title": "Batik pesisir",
+      "publisher": "Wikipedia bahasa Indonesia",
+      "url": "https://id.wikipedia.org/wiki/Batik_pesisir",
+      "license": "cc_by_sa",
+      "claim_note": "Batik pesisir: gaya khas pesisir utara Jawa (Cirebon, Pekalongan, Indramayu, Lasem, Madura)"
+    }
+  ],
+  "claims": [
+    { "text": "Kain ini adalah sarung batik katun dari abad ke-19 dengan motif buketan: rangkaian bunga besar dan kupu-kupu.", "type": "fakta", "source_codes": ["wm_cooperhewitt_sarong_18444071"] },
+    { "text": "Menurut catatan museum, pinggiran bunga yang bergelombang adalah inovasi batik pesisir utara Jawa, dan polanya memperlihatkan pengaruh Barat yang khas daerah itu.", "type": "fakta", "source_codes": ["wm_cooperhewitt_sarong_18444071"] },
+    { "text": "Batik pesisir adalah gaya batik dari pesisir utara Jawa, antara lain Cirebon, Pekalongan, Indramayu, dan Lasem.", "type": "fakta", "source_codes": ["idwiki_batik_pesisir"] },
+    { "text": "Nama buketan diduga berasal dari kata bouquet (rangkaian bunga) dalam bahasa Eropa.", "type": "perkiraan", "source_codes": [] }
+  ]
+}

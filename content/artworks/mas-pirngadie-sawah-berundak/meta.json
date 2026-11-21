@@ -1,0 +1,42 @@
+{
+  "slug": "mas-pirngadie-sawah-berundak",
+  "title": "Sawah Berundak",
+  "artist": "Mas Pirngadie",
+  "artist_death_year": 1936,
+  "tradition": "Mooi Indie (Hindia Molek)",
+  "region_origin": null,
+  "license": "public_domain",
+  "license_note": "Domain publik — Mas Pirngadie wafat 1936. Berkas: Wikimedia Commons (foto katalog lelang).",
+  "rights_evidence_url": "https://commons.wikimedia.org/wiki/File:Mas_Pirngadi_-_,_A_landscape_with_terraced_paddy_fields,_signed_and_dated_%27M_Pirngadie_1931%27_(lower_left),_oil_on_canvas,_47x65_cm.jpg",
+  "adaptation_scope": "Seluruh lukisan",
+  "image": "image.jpg",
+  "canvas_size": "A4",
+  "use_shading": true,
+  "skill_goal": "Melatih membagi lanskap menjadi bidang besar (langit, gunung, sawah) lalu menambah detail petak.",
+  "culture_goal": "Mengenal pelukis pribumi aliran Mooi Indie dan pemandangan sawah berundak.",
+  "reviewer": null,
+  "sources": [
+    {
+      "code": "wm_pirngadie_sawah_1931",
+      "title": "Mas Pirngadi - A landscape with terraced paddy fields (1931)",
+      "publisher": "Wikimedia Commons",
+      "url": "https://commons.wikimedia.org/wiki/File:Mas_Pirngadi_-_,_A_landscape_with_terraced_paddy_fields,_signed_and_dated_%27M_Pirngadie_1931%27_(lower_left),_oil_on_canvas,_47x65_cm.jpg",
+      "license": "public_domain",
+      "claim_note": "Ditandatangani dan bertanggal 1931, cat minyak di kanvas 47×65 cm"
+    },
+    {
+      "code": "idwiki_pirngadie",
+      "title": "Pirngadie",
+      "publisher": "Wikipedia bahasa Indonesia",
+      "url": "https://id.wikipedia.org/wiki/Pirngadie",
+      "license": "cc_by_sa",
+      "claim_note": "Riwayat pelukis (1875–1936), aliran Mooi Indie, bekerja di Bataviaasch Genootschap"
+    }
+  ],
+  "claims": [
+    { "text": "Lukisan cat minyak ini ditandatangani dan bertanggal 1931 oleh Mas Pirngadie.", "type": "fakta", "source_codes": ["wm_pirngadie_sawah_1931"] },
+    { "text": "Mas Pirngadie (1875–1936) adalah pelukis naturalis aliran Mooi Indie yang lahir di Purbalingga, Jawa Tengah.", "type": "fakta", "source_codes": ["idwiki_pirngadie"] },
+    { "text": "Pada tahun 1928 ia bekerja di Bataviaasch Genootschap, lembaga yang kini menjadi Museum Nasional Indonesia di Jakarta.", "type": "fakta", "source_codes": ["idwiki_pirngadie"] },
+    { "text": "Lokasi sawah dalam lukisan ini tidak disebutkan; kemungkinan pemandangan pegunungan di Jawa.", "type": "perkiraan", "source_codes": [] }
+  ]
+}

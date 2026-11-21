@@ -44,3 +44,5 @@ next-env.d.ts
 
 # dev-only gallery fixtures (npm run fixtures)
 /public/_dev/
+/.next-check/
+/.next-test/

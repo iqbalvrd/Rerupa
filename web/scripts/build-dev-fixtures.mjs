@@ -31,7 +31,7 @@ for (const slug of (await readdir(contentDir)).sort()) {
     .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
     .webp({ quality: 78 })
     .toFile(out);
-  cards.push({
+  const card = {
     id: fakeUuid(slug),
     slug,
     title: meta.title,
@@ -44,7 +44,34 @@ for (const slug of (await readdir(contentDir)).sort()) {
     lesson_version_id: null,
     width: info.width,
     height: info.height,
-  });
+  };
+  cards.push(card);
+  // Same shape as GET /artworks/{slug}, plus the team's claims (dev only), in
+  // the shape of lesson.culture_claims so the page can show them before import.
+  const sourceByCode = new Map((meta.sources ?? []).map((s) => [s.code, s]));
+  const claims = (meta.claims ?? []).map((c) => ({
+    stage_code: null,
+    text: c.text,
+    type: c.type,
+    sources: (c.source_codes ?? [])
+      .map((code) => sourceByCode.get(code))
+      .filter(Boolean)
+      .map((s) => ({ code: s.code, title: s.title, url: s.url ?? null })),
+  }));
+  const detail = {
+    claims,
+    ...card,
+    image_url: card.thumbnail_url,
+    adaptation_scope: meta.adaptation_scope ?? null,
+    sources: (meta.sources ?? []).map((s) => ({
+      code: s.code,
+      title: s.title,
+      publisher: s.publisher ?? null,
+      url: s.url ?? null,
+      claim_note: s.claim_note ?? null,
+    })),
+  };
+  await writeFile(path.join(outDir, "artworks", `${slug}.json`), JSON.stringify(detail, null, 2));
   console.log(`${slug}: ${info.width}x${info.height}, ${Math.round(info.size / 1024)} KB`);
 }
 

@@ -49,3 +49,25 @@ uv run --group cv python scripts/import_collection.py ../content/artworks/<slug>
 ```
 
 Impor ulang membuat versi lesson baru; sesi yang sudah berjalan tetap memakai versinya sendiri.
+
+## Palet: `palettes/<nama>.json`
+
+```json
+{
+  "brand": "Merek cat", "series": "Seri", "name": "Nama palet", "is_demo": true,
+  "paints": [
+    { "code": "titanium_white", "name": "Putih Titanium", "hex": "#FFFFFF", "pigment_code": "PW6", "measured_at": "2026-11-28" }
+  ]
+}
+```
+
+- `hex` untuk cat fisik diambil dari **foto swatch kering yang dikalibrasi dengan kartu abu-abu** (PRD §9), bukan dari gambar di kemasan.
+- `code` sebaiknya memakai nama pigmen dalam bahasa Inggris huruf kecil (`titanium_white`, `ivory_black`, …): kode yang mengandung `white`/`black` dipakai untuk saran koreksi terang-gelap dan campuran tint.
+- Hanya palet `is_demo: true` yang muncul di aplikasi dan dihitungkan saran warnanya.
+- `referensi_mixbox.json` adalah palet **sementara** (warna pigmen referensi Mixbox, bukan cat fisik). Setelah palet cat demo siap, set `is_demo: false` pada palet referensi dan `true` pada palet cat demo.
+
+Impor (dari folder `api/`):
+
+```bash
+uv run --group cv python scripts/import_palette.py ../content/palettes/<nama>.json
+```

@@ -3,7 +3,7 @@
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from core.config import get_settings
@@ -146,6 +146,29 @@ class ReflectionOut(BaseModel):
     source: SourceRef | None
 
 
+class ColorComponent(BaseModel):
+    paint_code: str
+    name: str
+    hex: str
+    parts: int
+
+
+class RegionColorOut(BaseModel):
+    region_code: str
+    palette_id: UUID
+    reachability: str  # recipe | estimate | hard
+    label: str
+    recipe_id: UUID | None
+    components: list[ColorComponent]
+    mixed_hex: str | None
+    delta_e: float | None
+    explanation: str | None
+    tips: list[str]
+
+
+REACH_LABEL = {"recipe": "Resep teruji", "estimate": "Perkiraan, uji sedikit dulu", "hard": "Sulit dicapai dengan palet ini"}
+
+
 class LessonOut(BaseModel):
     id: UUID
     origin: str
@@ -163,7 +186,8 @@ class LessonOut(BaseModel):
     stages: list[StageOut]
     culture_claims: list[ClaimOut]
     reflection: ReflectionOut | None
-    region_colors: list[dict]
+    palette_id: UUID | None
+    region_colors: list[RegionColorOut]
 
 
 def _optional_session(request: Request) -> dict | None:
@@ -174,7 +198,7 @@ def _optional_session(request: Request) -> dict | None:
 
 
 @router.get("/{lesson_id}", response_model=LessonOut)
-def get_lesson(lesson_id: UUID, request: Request) -> LessonOut:
+def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Query(None, description="Palet untuk saran warna; bawaan: palet sesi, lalu palet demo pertama")) -> LessonOut:
     db = get_supabase()
     rows = db.table("lesson_versions").select("*").eq("id", str(lesson_id)).limit(1).execute().data
     if not rows:
@@ -182,13 +206,12 @@ def get_lesson(lesson_id: UUID, request: Request) -> LessonOut:
     lesson = rows[0]
 
     # Akses: koleksi hanya bila terbit; mode bebas hanya untuk sesi pemiliknya. Selain itu 404.
+    session = _optional_session(request)
     if lesson["origin"] == "collection":
         if lesson["status"] != "published":
             raise AppError("not_found", 404)
-    else:
-        session = _optional_session(request)
-        if session is None or session["id"] != lesson["owner_session_id"]:
-            raise AppError("not_found", 404)
+    elif session is None or session["id"] != lesson["owner_session_id"]:
+        raise AppError("not_found", 404)
 
     lid = lesson["id"]
     layers = db.table("visual_layers").select("kind, bucket, asset_path, format, meta").eq("lesson_version_id", lid).execute().data
@@ -243,5 +266,54 @@ def get_lesson(lesson_id: UUID, request: Request) -> LessonOut:
             if refl
             else None
         ),
-        region_colors=[],  # Fase 4
+        **_colors(db, regions, palette_id, session),
     )
+
+
+def _colors(db, regions: list[dict], palette_id: UUID | None, session: dict | None) -> dict:
+    """Saran warna tiap region untuk satu palet. Angka berasal dari mixer/uji fisik, bukan AI."""
+    from color.palettes import demo_palettes
+
+    pid = str(palette_id) if palette_id else (session or {}).get("palette_id")
+    if pid is None:
+        demos = demo_palettes()
+        pid = demos[0]["id"] if demos else None
+    if pid is None or not regions:
+        return {"palette_id": pid, "region_colors": []}
+
+    code_of = {r["id"]: r["code"] for r in regions}
+    rows = (
+        db.table("region_colors")
+        .select("region_id, palette_id, recipe_id, estimate, reachability, explanation, color_recipes(target_hex, delta_e, components)")
+        .eq("palette_id", pid)
+        .in_("region_id", list(code_of))
+        .execute()
+        .data
+    )
+    paints = {p["id"]: p for p in db.table("paints").select("id, code, name, hex").eq("palette_id", pid).execute().data}
+
+    out = []
+    for row in rows:
+        est = row.get("estimate") or {}
+        rec = row.get("color_recipes") or {}
+        raw = est.get("components") or rec.get("components") or []
+        comps = [
+            ColorComponent(paint_code=paints[c["paint_id"]]["code"], name=paints[c["paint_id"]]["name"], hex=paints[c["paint_id"]]["hex"], parts=int(c["parts"]))
+            for c in raw
+            if c.get("paint_id") in paints
+        ]
+        out.append(
+            RegionColorOut(
+                region_code=code_of[row["region_id"]],
+                palette_id=row["palette_id"],
+                reachability=row["reachability"],
+                label=REACH_LABEL[row["reachability"]],
+                recipe_id=row["recipe_id"],
+                components=sorted(comps, key=lambda c: -c.parts),
+                mixed_hex=est.get("mixed_hex") or rec.get("target_hex"),
+                delta_e=est.get("delta_e", rec.get("delta_e")),
+                explanation=row["explanation"],
+                tips=est.get("tips") or [],
+            )
+        )
+    return {"palette_id": pid, "region_colors": sorted(out, key=lambda c: c.region_code)}

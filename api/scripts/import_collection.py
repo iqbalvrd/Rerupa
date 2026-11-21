@@ -23,6 +23,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from ai.lesson_text import PROMPT_VERSION, write_lesson_text  # noqa: E402
+from color.palettes import region_colors_for  # noqa: E402
 from core.config import get_settings  # noqa: E402
 from core.supabase_client import get_supabase  # noqa: E402
 from cv import pipeline  # noqa: E402
@@ -138,6 +139,7 @@ def main() -> None:
         },
         session_id=None,
         extra_claims=curated,
+        region_colors=region_colors_for(cv.regions),
     )
     lesson_id = save_lesson(payload, layers)
     print(json.dumps({

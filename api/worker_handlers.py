@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from ai.lesson_text import PROMPT_VERSION, write_lesson_text
+from color.palettes import region_colors_for
 from core.config import get_settings
 from core.session import now_utc
 from core.supabase_client import get_supabase
@@ -80,6 +81,27 @@ def _session_alive(session_id: str) -> bool:
     return bool(s and s["deleted_at"] is None and datetime.fromisoformat(s["expires_at"]) > now_utc())
 
 
+def _cached_lesson(session_id: str, sha256: str, upload_id: str, scope: dict | None) -> str | None:
+    """Lesson milik sesi yang sama dari foto identik (sha256) dengan cakupan yang sama."""
+    db = get_supabase()
+    same = [u["id"] for u in db.table("uploads").select("id").eq("session_id", session_id).eq("sha256", sha256).neq("id", upload_id).execute().data]
+    if not same:
+        return None
+    rows = (
+        db.table("lesson_versions")
+        .select("id, scope, created_at")
+        .eq("owner_session_id", session_id)
+        .in_("source_upload_id", same)
+        .order("created_at", desc=True)
+        .execute()
+        .data
+    )
+    for r in rows:
+        if (r["scope"] or None) == (scope or None):
+            return r["id"]
+    return None
+
+
 def handle_generate_lesson(job: dict) -> JobOutcome:
     settings = get_settings()
     db = get_supabase()
@@ -87,12 +109,17 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
     if session is None or session["deleted_at"] is not None:
         return JobOutcome("failed", error_code="session_deleted")
 
-    upload = db.table("uploads").select("id, raw_path").eq("id", job["upload_id"]).limit(1).execute().data
+    upload = db.table("uploads").select("id, raw_path, sha256").eq("id", job["upload_id"]).limit(1).execute().data
     if not upload or not upload[0]["raw_path"]:
         return JobOutcome("failed", error_code="file_invalid")
-    image = with_retry(lambda: db.storage.from_("uploads").download(upload[0]["raw_path"]), "download")
 
     params = job.get("params") or {}
+    cached = _cached_lesson(job["session_id"], upload[0]["sha256"], job["upload_id"], params.get("scope"))
+    if cached:
+        # Foto + cakupan yang sama sudah pernah diproses di sesi ini: pakai lagi, tanpa CV/AI/biaya ulang.
+        db.table("practice_sessions").update({"lesson_version_id": cached}).eq("id", job["session_id"]).execute()
+        return JobOutcome("succeeded", lesson_version_id=cached, result={"cached": True})
+    image = with_retry(lambda: db.storage.from_("uploads").download(upload[0]["raw_path"]), "download")
     with heartbeat(job):
         job_service.set_progress(job["id"], "cv")
         cv = pipeline.run(
@@ -113,6 +140,9 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
             checkpoint_count=settings.checkpoint_count,
             has_main_object_layer=cv.main_object_svg is not None,
         )
+
+        job_service.set_progress(job["id"], "colors")
+        colors = region_colors_for(cv.regions)
 
         job_service.set_progress(job["id"], "writing")
         text, source, notes = write_lesson_text(
@@ -147,6 +177,7 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
                 "status": "session_private",
             },
             session_id=job["session_id"],
+            region_colors=colors,
         )
         lesson_id = save_lesson(payload, layers)
         if source == "ai":

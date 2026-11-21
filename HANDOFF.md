@@ -2,7 +2,7 @@
 
 Dokumen hidup untuk melacak progres **backend (Iqbal)** dan **frontend (Xavier)**, serta titik serah-terima di antaranya. Perbarui setiap selesai satu bagian kerja.
 
-Terakhir diperbarui: setelah Fase 3 backend (tahapan tutorial end-to-end) selesai.
+Terakhir diperbarui: setelah Fase 4 backend (saran campuran warna) selesai.
 
 Legenda: ✅ selesai · 🟡 sedang dikerjakan · ⏳ belum mulai · ⛔ terhambat
 
@@ -17,7 +17,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | 1. Fondasi | ✅ | ⏳ |
 | 2. Galeri & CV | 🟡 galeri ✅, pipeline CV ✅, uji foto HP asli ⏳ | ⏳ |
 | 3. Tahapan | ✅ (teks AI menunggu API key; templat jalan) | ⏳ |
-| 4. Mode bebas & warna | 🟡 mode bebas end-to-end ✅, resep warna ⏳ | ⏳ |
+| 4. Mode bebas & warna | ✅ (palet masih referensi digital; resep teruji fisik menyusul) | ⏳ |
 | 5. Checkpoint | ⏳ | ⏳ |
 | 6. Rilis versi awal | ⏳ | ⏳ |
 | 7. Penguatan showcase | ⏳ | ⏳ |
@@ -43,6 +43,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Tes | 37 tes (unit + integrasi ke Supabase, data uji dibersihkan otomatis) | `uv run pytest` |
 | Serah-terima | `api/API.md` + `api/examples/*.json` (tervalidasi terhadap model respons) + draf bentuk tutorial | — |
 | Tahapan (Fase 3) | 9 tabel tutorial + fungsi `create_lesson` atomik; `stage_planner` (6–8 tahap, tiap region tepat sekali, ≤10 region per tahap bila muat, checkpoint di tahap sketsa); lapisan AI (prompt, structured output, validator aturan PRD, retry 1×, templat cadangan, catat biaya, batas harian); heartbeat worker + pemuatan model saat start; skrip impor koleksi + 1 contoh (Raden Saleh, draf) | 105 tes |
+| Warna (Fase 4) | `color/`: Mixbox + ΔE2000, 1–3 cat + campuran tint (putih 5–24 bagian), resep teruji diutamakan, tips koreksi; saran warna tiap region tersimpan atomik bersama lesson; `GET /palettes`, `GET /recipes/{id}`, `region_colors` di `GET /lessons/{id}`; cache foto identik per sesi; palet referensi digital (sementara) | 123 tes |
 | Pipeline CV (Fase 2) | `api/cv/`: normalisasi, cek kualitas, mask (rembg u2net), garis (TEED untuk mode bebas, model lineart untuk koleksi, XDoG cadangan) dengan ambang adaptif, region k-means ≤35 yang digabung berdasarkan kemiripan warna, terang-gelap 3–5 tingkat, SVG + gambar region bernomor | 59 tes + evaluasi foto nyata ([eval/HASIL_FASE2.md](eval/HASIL_FASE2.md)) |
 
 ### 2.2 Berikutnya
@@ -50,7 +51,6 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Prioritas | Pekerjaan | Fase | Membuka untuk frontend |
 | --- | --- | --- | --- |
 | 1 | Isi API key OpenAI + uji 2–3 model untuk teks tahap (lalu set `OPENAI_VISION_MODEL` dan harga) | 3 | Teks tahap dari AI |
-| 2 | Resep warna Mixbox (perkiraan) + `region_colors` | 4 | Kartu resep, `GET /recipes` |
 | 3 | Checkpoint: tap 4 sudut, ECC, metrik, feedback | 5 | `POST /sessions/{id}/checkpoints` |
 | 4 | Uji CV dengan foto HP sungguhan dari lukisan fisik | 2 | — |
 
@@ -89,13 +89,14 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Mulai/pulihkan/hapus sesi | `POST/GET/PATCH/DELETE /sessions` | ⏳ |
 | Layar unggah mode bebas + kamera + persetujuan kirim foto ke AI + **potong satu figur** (`scope`) | `POST /lessons/generate` (multipart, `Idempotency-Key`) | ⏳ |
 | Layar "Membuat tutorial" (polling tiap 1 detik, teks per `progress.step`) | `GET /jobs/{id}` | ⏳ |
+| Layar Persiapan: pilih palet | `GET /palettes` → `PATCH /sessions/{id}` `palette_id` | ⏳ |
+| Kartu resep warna per region (label perkiraan/sulit/teruji, swatch `mixed_hex`, cat + bagian, tips) | `region_colors` di `GET /lessons/{id}` | ⏳ |
 | `StageCanvas` SVG, slider, toggle lapisan, foto asli + zoom ke `focus_bbox` | **`GET /lessons/{id}` nyata** — [contoh](api/examples/lesson_detail.json), cara membaca di [API.md](api/API.md#membaca-get-lessonsid) | ⏳ |
 
 ### 3.3 Menunggu backend
 
 | Pekerjaan | Menunggu |
 | --- | --- |
-| Kartu resep warna | `GET /recipes/{id}` (Fase 4) |
 | Penanda tahap selesai | `PATCH /sessions/{id}/progress` (Fase 5) |
 | Checkpoint UI + tap 4 sudut | `POST /sessions/{id}/checkpoints` (Fase 5) |
 
@@ -114,6 +115,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Tim → Backend | Kesepakatan pembagian modul backend (usul: sesi & progres oleh Xavier) | ⏳ |
 | Konten → Backend | 1 materi koleksi + lisensi + 5–10 entri basis budaya + palet demo (format di [content/README.md](content/README.md); contoh Raden Saleh sudah ada sebagai draf) | ⏳ |
 | Konten → Backend | Tinjau contoh Raden Saleh lalu terbitkan (`--publish`) | ⏳ |
+| Konten → Backend | Palet cat demo asli: swatch kering difoto dengan kartu abu-abu → `content/palettes/*.json`; 3–5 resep teruji fisik | ⏳ |
 
 ---
 
@@ -139,7 +141,8 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | `chore/api-setup` | Setup `api/` | Di GitHub, PR belum dibuat |
 | `feat/db-schema` … `feat/api-artworks` | Fase 1 backend | Sudah di-merge ke `main` (PR #2) |
 | `feat/fase-2-cv` | Fase 2: pipeline CV + evaluasi | Sudah di-merge ke `main` (PR #3) |
-| `feat/fase-3-tahapan` | Fase 3: tahapan tutorial end-to-end | Lokal, belum di-push |
+| `feat/fase-3-tahapan` | Fase 3: tahapan tutorial end-to-end | Di GitHub, PR menunggu merge |
+| `feat/fase-4-warna` | Fase 4: saran campuran warna (dibuat dari `feat/fase-3-tahapan`) | Lokal, belum di-push |
 | `feat/web-…` | Frontend | Dibuat Xavier |
 
 ---
@@ -167,5 +170,6 @@ Dokumentasi interaktif: `http://localhost:8000/docs`
 | Bagian | Ringkasan |
 | --- | --- |
 | Backend Fase 1 | Skema DB + keamanan, sesi tamu, antrean job + worker, unggahan aman, galeri, 37 tes, panduan API |
+| Backend Fase 4 | Saran campuran warna per region (Mixbox + ΔE2000 + tint), API palet & resep, cache foto identik, palet referensi digital, 123 tes |
 | Backend Fase 3 | Tutorial end-to-end (CV → tahapan → teks → simpan atomik → GET /lessons), lapisan AI siap pakai menunggu key, impor koleksi, 105 tes |
 | Backend Fase 2 | Pipeline CV + evaluasi di foto nyata; metode dipilih (TEED/u2net), 4 perbaikan dari hasil uji, retry Storage, 59 tes |

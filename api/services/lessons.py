@@ -69,6 +69,7 @@ def build_payload(
     lesson: dict,
     session_id: str | None,
     extra_claims: list[dict] | None = None,
+    region_colors: list[dict] | None = None,
 ) -> dict:
     labels = {lbl.region_code: lbl.label for lbl in text.region_labels}
     texts = {t.stage_code: t for t in text.stages}
@@ -133,6 +134,7 @@ def build_payload(
         "stages": stage_rows,
         "claims": claims,
         "reflection": reflection,
+        "region_colors": region_colors or [],
         "session_id": session_id,
     }
 

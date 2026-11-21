@@ -49,10 +49,11 @@ function sessionRequired(): never {
 
 type MockJob = {
   id: string;
-  type: "feedback";
+  type: "feedback" | "generate_lesson";
   createdAt: number;
   stageCode: string;
   outcome: "succeeded" | "needs_retake";
+  errorCode: string | null;
   photoUrl: string | null;
 };
 const jobs = new Map<string, MockJob>();
@@ -65,22 +66,39 @@ const FEEDBACK_STEPS: [number, string][] = [
   [3400, "saving"],
 ];
 
+/** Lesson job timeline (API: ±10–15 s without AI on a laptop), sped up. */
+const LESSON_STEPS: [number, string][] = [
+  [700, "queued"],
+  [2200, "cv"],
+  [3300, "planning"],
+  [4300, "colors"],
+  [5600, "writing"],
+  [6200, "saving"],
+];
+
+const RETAKE_MESSAGES: Record<string, string> = {
+  photo_unusable: "Foto kurang jelas. Coba ambil ulang di tempat terang.",
+  not_artwork: "Sepertinya bukan karya lukis. Pilih dari galeri?",
+};
+
 function jobOut(job: MockJob) {
+  const steps = job.type === "feedback" ? FEEDBACK_STEPS : LESSON_STEPS;
   const elapsed = Date.now() - job.createdAt;
-  const step = FEEDBACK_STEPS.find(([until]) => elapsed < until)?.[1];
+  const step = steps.find(([until]) => elapsed < until)?.[1];
   const done = step === undefined;
+  const succeeded = done && job.outcome === "succeeded";
   return {
     id: job.id,
     type: job.type,
     status: done ? job.outcome : step === "queued" ? "queued" : "processing",
     is_final: done,
     progress: { step: done ? "done" : step },
-    result: null,
-    error_code: done && job.outcome === "needs_retake" ? "alignment_failed" : null,
-    error_message: null,
-    lesson_version_id: null,
+    result: succeeded && job.type === "generate_lesson" ? { text_source: "template" } : null,
+    error_code: done && job.outcome === "needs_retake" ? job.errorCode : null,
+    error_message: done && job.errorCode ? (RETAKE_MESSAGES[job.errorCode] ?? null) : null,
+    lesson_version_id: succeeded && job.type === "generate_lesson" ? DEV_LESSON_ID : null,
     created_at: new Date(job.createdAt).toISOString(),
-    finished_at: done ? new Date(job.createdAt + 3400).toISOString() : null,
+    finished_at: done ? new Date(job.createdAt + steps.at(-1)![0]).toISOString() : null,
   };
 }
 
@@ -130,9 +148,31 @@ export async function mockRequest(method: string, path: string, body: unknown, f
       createdAt: Date.now(),
       stageCode: String(form.get("stage_code")),
       outcome: corners.length === 8 && cornerArea(corners, w, h) >= 0.15 ? "succeeded" : "needs_retake",
+      errorCode: corners.length === 8 && cornerArea(corners, w, h) >= 0.15 ? null : "alignment_failed",
       photoUrl: file instanceof Blob ? URL.createObjectURL(file) : null,
     };
     jobs.set(job.id, job);
+    return jobOut(job);
+  }
+  // POST /lessons/generate → generate_lesson job; on success the lesson is
+  // attached to the session (API.md). A very small photo answers photo_unusable.
+  if (path === "/lessons/generate" && method === "POST" && form) {
+    const session = loadSession();
+    if (!session) sessionRequired();
+    const file = form.get("file");
+    const [w, h] = file instanceof Blob ? await imageSize(file) : [0, 0];
+    const usable = Math.max(w, h) >= 400;
+    const job: MockJob = {
+      id: crypto.randomUUID(),
+      type: "generate_lesson",
+      createdAt: Date.now(),
+      stageCode: "",
+      outcome: usable ? "succeeded" : "needs_retake",
+      errorCode: usable ? null : "photo_unusable",
+      photoUrl: null,
+    };
+    jobs.set(job.id, job);
+    if (usable) saveSession({ ...session, lesson_version_id: DEV_LESSON_ID, progress: {}, current_stage_order: 1 });
     return jobOut(job);
   }
   const jobMatch = path.match(/^\/jobs\/([^/]+)$/);

@@ -1,0 +1,159 @@
+/* Upload-specific pieces; shared studio styles come from checkpoint.module.css. */
+
+.cropStage {
+  display: grid;
+  place-items: center;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  background: #d9d1c4;
+}
+.cropFrame {
+  position: relative;
+  display: inline-block;
+  max-inline-size: 100%;
+  overflow: hidden; /* clips the dimming shadow to the photo */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.cropPhoto {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 56dvh;
+  inline-size: auto;
+  block-size: auto;
+}
+.cropBox {
+  position: absolute;
+  /* everything outside the box is dimmed */
+  box-shadow: 0 0 0 100vmax rgb(20 14 8 / 0.55);
+  outline: 2px solid #fff;
+  outline-offset: -1px;
+  background:
+    linear-gradient(to right, transparent calc(33.33% - 0.5px), rgb(255 255 255 / 0.45) calc(33.33% - 0.5px) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px) calc(66.66% - 0.5px), rgb(255 255 255 / 0.45) calc(66.66% - 0.5px) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(33.33% - 0.5px), rgb(255 255 255 / 0.45) calc(33.33% - 0.5px) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px) calc(66.66% - 0.5px), rgb(255 255 255 / 0.45) calc(66.66% - 0.5px) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px));
+}
+.moveArea {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: move;
+  touch-action: none;
+}
+.moveArea:focus-visible {
+  outline: 3px solid #8fb4ff;
+  outline-offset: -3px;
+}
+.cropHandle {
+  position: absolute;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  min-block-size: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  translate: -50% -50%;
+  touch-action: none;
+}
+.cropHandle::before {
+  content: "";
+  position: absolute;
+  inset: 0.85rem;
+  border-radius: 0.2rem;
+  background: #fff;
+  box-shadow:
+    0 0 0 2px #0f1b33,
+    0 0.15rem 0.4rem rgb(0 0 0 / 0.4);
+}
+.cropHandle:focus-visible {
+  outline: 3px solid #8fb4ff;
+  outline-offset: 0;
+  border-radius: 999px;
+}
+.nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.ne {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.se {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
+}
+.sw {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+.modes legend {
+  margin-block-end: 0.4rem;
+  font-weight: 700;
+}
+.mode {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.7rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid #ddd3c3;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.mode:has(input:checked) {
+  border-color: #9c7029;
+  background: #fff7e8;
+  box-shadow: 0 0 0 3px rgb(201 154 69 / 0.25);
+}
+.mode:has(input:focus-visible) {
+  outline: 3px solid #1f5fbf;
+  outline-offset: 2px;
+}
+.mode input {
+  margin: 0.15rem 0 0;
+  min-block-size: auto;
+  min-inline-size: auto;
+  flex: none;
+}
+.modeTitle {
+  display: block;
+  font-weight: 700;
+}
+
+.thumb {
+  inline-size: 100%;
+  max-block-size: 30dvh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  background: #d9d1c4;
+}
+.success {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.85rem;
+  border-radius: 0.6rem;
+  background: #e3f1e7;
+  color: #183f28;
+  font-weight: 600;
+}

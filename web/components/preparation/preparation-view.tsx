@@ -91,16 +91,26 @@ export function PreparationView() {
         </ol>
 
         <header className={styles.hero}>
-          {showArtwork && artwork.data.thumbnail_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className={styles.thumb} src={artwork.data.thumbnail_url} alt="" width={72} height={72} />
-          )}
+          {(() => {
+            // Collection artwork thumbnail, or the user's own photo in free mode.
+            const thumb = showArtwork
+              ? artwork.data.thumbnail_url
+              : lesson.data?.layers.find((l) => l.kind === "original_photo")?.url;
+            return thumb ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className={styles.thumb} src={thumb} alt="" width={72} height={72} />
+            ) : null;
+          })()}
           <div>
             <h1 ref={headingRef} tabIndex={-1} className={styles.title}>
               Siapkan alatmu
             </h1>
             <p className={styles.subtitle}>
-              {showArtwork ? artwork.data.title : "Pilih ukuran bidang dan palet sebelum mulai."}
+              {showArtwork
+                ? artwork.data.title
+                : lesson.data?.origin === "free_mode"
+                  ? "Tutorial dari fotomu sudah siap. Pilih ukuran bidang dan palet."
+                  : "Pilih ukuran bidang dan palet sebelum mulai."}
             </p>
           </div>
         </header>

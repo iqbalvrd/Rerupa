@@ -33,12 +33,31 @@ def with_retry(op: Callable[[], T], what: str, attempts: int = 3, already_done: 
     return None
 
 
+def remove_prefix(bucket: str, prefix: str) -> int:
+    """Hapus semua file di bawah folder prefix (rekursif). Return jumlah file yang dihapus."""
+    storage = get_supabase().storage.from_(bucket)
+    files: list[str] = []
+    stack = [prefix.strip("/")]
+    while stack:
+        folder = stack.pop()
+        for item in with_retry(lambda f=folder: storage.list(f, {"limit": 1000}), "list") or []:
+            path = f"{folder}/{item['name']}"
+            if item.get("id") is None:  # folder
+                stack.append(path)
+            else:
+                files.append(path)
+    for i in range(0, len(files), 100):
+        chunk = files[i : i + 100]
+        with_retry(lambda c=chunk: storage.remove(c), "remove_prefix")
+    return len(files)
+
+
 def is_duplicate(exc: Exception) -> bool:
     text = str(exc).lower()
     return "duplicate" in text or "already exists" in text or "409" in text
 
 CATALOG_URL_TTL = 3600  # aset terbit: 1 jam
-PRIVATE_URL_TTL = 300  # foto/turunan milik sesi: 5 menit
+PRIVATE_URL_TTL = 1800  # lapisan tutorial milik sesi: 30 menit (frontend memuat ulang GET /lessons bila kedaluwarsa)
 
 
 def signed_urls(bucket: str, paths: list[str], ttl: int) -> dict[str, str]:

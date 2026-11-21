@@ -123,6 +123,21 @@ def requeue_stale(stale_after_seconds: int) -> int:
     return int(res.data or 0)
 
 
+def heartbeat(job_id: str, worker_id: str) -> bool:
+    """Perbarui locked_at agar job yang berjalan lama tidak dianggap macet oleh requeue_stale_jobs."""
+    rows = (
+        get_supabase()
+        .table("jobs")
+        .update({"locked_at": now_utc().isoformat()})
+        .eq("id", job_id)
+        .eq("status", "processing")
+        .eq("locked_by", worker_id)
+        .execute()
+        .data
+    )
+    return bool(rows)
+
+
 def set_progress(job_id: str, step: str, **extra: Any) -> None:
     get_supabase().table("jobs").update({"progress": {"step": step, **extra}}).eq("id", job_id).execute()
 

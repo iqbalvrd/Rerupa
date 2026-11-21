@@ -1,0 +1,36 @@
+{
+  "slug": "raden-saleh-perburuan-singa",
+  "title": "Perburuan Singa (The Lion Hunt)",
+  "artist": "Raden Saleh",
+  "artist_death_year": 1880,
+  "tradition": null,
+  "region_origin": null,
+  "license": "public_domain",
+  "license_note": "Domain publik — Raden Saleh wafat 1880. Berkas: Wikimedia Commons.",
+  "rights_evidence_url": "https://commons.wikimedia.org/wiki/File:Raden_Saleh_-_The_Lion_hunt_(1841).jpg",
+  "adaptation_scope": "Potongan kelompok penunggang dan singa di tengah lukisan",
+  "image": "image.jpg",
+  "scope": { "x": 0.25, "y": 0.12, "w": 0.5, "h": 0.73 },
+  "canvas_size": "A4",
+  "use_shading": true,
+  "skill_goal": "Melatih membaca massa gelap-terang besar sebelum detail.",
+  "culture_goal": null,
+  "reviewer": null,
+  "sources": [
+    {
+      "code": "wm_raden_saleh_lion_hunt_1841",
+      "title": "Raden Saleh - The Lion hunt (1841).jpg",
+      "publisher": "Wikimedia Commons",
+      "url": "https://commons.wikimedia.org/wiki/File:Raden_Saleh_-_The_Lion_hunt_(1841).jpg",
+      "license": "public_domain",
+      "claim_note": "Judul, seniman, tahun pembuatan, status domain publik"
+    }
+  ],
+  "claims": [
+    {
+      "text": "Lukisan ini karya Raden Saleh dan dibuat pada tahun 1841.",
+      "type": "fakta",
+      "source_codes": ["wm_raden_saleh_lion_hunt_1841"]
+    }
+  ]
+}

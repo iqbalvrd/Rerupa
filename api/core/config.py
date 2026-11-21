@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     openai_text_model: str = ""
     openai_vision_model: str = ""
+    # Harga per 1 juta token untuk model terpilih (isi dari halaman harga OpenAI) — dipakai
+    # untuk mencatat biaya di ai_usage dan menegakkan DAILY_AI_BUDGET_USD.
+    openai_price_input_per_m: float = 0.0
+    openai_price_output_per_m: float = 0.0
 
     # Sesi tamu
     session_cookie_name: str = "rerupa_session"

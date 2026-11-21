@@ -71,6 +71,13 @@ def main() -> None:
     settings = get_settings()
     worker_id = make_worker_id()
     log.info("worker_started", extra={"worker_id": worker_id, "types": list(HANDLERS)})
+    try:
+        from cv.models import warm_up
+
+        log.info("models_warmed", extra=warm_up(settings.lineart_method, settings.mask_model))
+    except Exception:
+        # Worker tetap jalan; pipeline punya cadangan XDoG bila model gagal dimuat.
+        log.exception("model_warm_up_failed")
 
     last_requeue = 0.0
     try:

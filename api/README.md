@@ -39,9 +39,11 @@ Evaluasi CV pada foto nyata: lihat [`../eval/README.md`](../eval/README.md).
 | `worker.py`, `worker_handlers.py` | Worker antrean job dan handler per jenis job |
 | `core/` | Config, error terstandar, sesi tamu, keamanan, log JSON, idempotency |
 | `routes/` | Endpoint: health, artworks, sessions, jobs, lessons |
-| `services/` | Logika: jobs, uploads, storage (signed URL) |
-| `cv/` | Pipeline CV: normalisasi, cek kualitas, mask (rembg), garis (model/TEED/XDoG/Canny), region k-means, terang-gelap, render SVG/PNG |
-| `ai/`, `color/`, `story/` | Diisi di Fase 3–4 dan P1 |
+| `services/` | Logika: jobs, uploads, storage (signed URL, retry), lessons (unggah lapisan + simpan atomik) |
+| `cv/` | Pipeline CV: normalisasi, cek kualitas, mask (rembg), garis (model/TEED/XDoG/Canny), region k-means, terang-gelap, render SVG/PNG, `stage_planner` (pembagian region ke 6–8 tahap) |
+| `ai/` | Teks tutorial: skema keluaran, prompt, klien OpenAI (Responses API + structured output, catat biaya), validator aturan PRD, templat cadangan |
+| `scripts/import_collection.py` | Impor materi koleksi dari `../content/artworks/<slug>/` |
+| `color/`, `story/` | Diisi di Fase 4 dan P1 |
 | `examples/` | Contoh respons JSON untuk frontend |
 | `tests/` | Tes unit dan integrasi |
 
@@ -49,7 +51,12 @@ Migrasi database ada di `../supabase/migrations/` dan sudah diterapkan ke projec
 
 ## Yang belum ada (fase berikutnya)
 
-- `stage_planner`, teks OpenAI, resep warna (Fase 3–4). Pipeline CV sudah ada, tetapi belum disambungkan ke job — `generate_lesson` masih berakhir `pipeline_not_ready`.
+- **OpenAI belum dikonfigurasi** — semua tutorial memakai teks templat sampai `OPENAI_API_KEY`, `OPENAI_VISION_MODEL`, dan harga per token diisi. Jalur AI sudah diuji dengan respons tiruan, belum dengan API sungguhan; uji 2–3 model dilakukan setelah key ada.
+- Resep warna (Fase 4) — `region_colors` masih kosong.
 - Checkpoint dan progres tahap (Fase 5).
 - Rate limit per IP dan deploy (Fase 6).
-- Retensi otomatis 24 jam untuk unggahan yang sesinya tidak dihapus (Fase 7). Saat sesi dihapus, file foto sudah langsung dihapus.
+- Retensi otomatis (Fase 7): unggahan ≤24 jam **dan** folder lapisan `derived/<session_id>/` saat sesi kedaluwarsa. Saat sesi dihapus lewat API, keduanya sudah langsung dihapus.
+
+## Worker
+
+Saat start, worker memuat model CV lebih dulu (±30 s) supaya job pertama pengguna tidak menunggu unduhan/pemuatan model. Job berikutnya ±10–15 s (laptop, CPU, tanpa AI). Selama job berjalan, worker mengirim heartbeat tiap 30 s agar job panjang tidak dianggap macet.

@@ -27,6 +27,9 @@ uv run pytest
 
 - `tests/test_unit.py` — tanpa jaringan.
 - `tests/test_integration.py` — memakai project Supabase dari `.env` (otomatis dilewati bila belum dikonfigurasi) dan membersihkan data ujinya sendiri.
+- `tests/test_cv.py` — pipeline CV dengan gambar sintetis. Tes model pretrained: `RUN_MODEL_TESTS=1 uv run --group cv pytest tests/test_cv.py` (unduh bobot ±350 MB sekali).
+
+Evaluasi CV pada foto nyata: lihat [`../eval/README.md`](../eval/README.md).
 
 ## Struktur
 
@@ -37,7 +40,8 @@ uv run pytest
 | `core/` | Config, error terstandar, sesi tamu, keamanan, log JSON, idempotency |
 | `routes/` | Endpoint: health, artworks, sessions, jobs, lessons |
 | `services/` | Logika: jobs, uploads, storage (signed URL) |
-| `cv/`, `ai/`, `color/`, `story/` | Diisi di Fase 2–4 dan P1 |
+| `cv/` | Pipeline CV: normalisasi, cek kualitas, mask (rembg), garis (model/TEED/XDoG/Canny), region k-means, terang-gelap, render SVG/PNG |
+| `ai/`, `color/`, `story/` | Diisi di Fase 3–4 dan P1 |
 | `examples/` | Contoh respons JSON untuk frontend |
 | `tests/` | Tes unit dan integrasi |
 
@@ -45,7 +49,7 @@ Migrasi database ada di `../supabase/migrations/` dan sudah diterapkan ke projec
 
 ## Yang belum ada (fase berikutnya)
 
-- Pipeline CV, `stage_planner`, teks OpenAI, resep warna (Fase 2–4) — job `generate_lesson` saat ini berakhir `pipeline_not_ready`.
+- `stage_planner`, teks OpenAI, resep warna (Fase 3–4). Pipeline CV sudah ada, tetapi belum disambungkan ke job — `generate_lesson` masih berakhir `pipeline_not_ready`.
 - Checkpoint dan progres tahap (Fase 5).
 - Rate limit per IP dan deploy (Fase 6).
 - Retensi otomatis 24 jam untuk unggahan yang sesinya tidak dihapus (Fase 7). Saat sesi dihapus, file foto sudah langsung dihapus.

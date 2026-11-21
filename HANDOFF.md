@@ -2,7 +2,7 @@
 
 Dokumen hidup untuk melacak progres **backend (Iqbal)** dan **frontend (Xavier)**, serta titik serah-terima di antaranya. Perbarui setiap selesai satu bagian kerja.
 
-Terakhir diperbarui: setelah Fase 1 backend selesai.
+Terakhir diperbarui: setelah pipeline CV Fase 2 dibangun dan dievaluasi.
 
 Legenda: ✅ selesai · 🟡 sedang dikerjakan · ⏳ belum mulai · ⛔ terhambat
 
@@ -15,7 +15,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Fase | Backend (Iqbal) | Frontend (Xavier) |
 | --- | --- | --- |
 | 1. Fondasi | ✅ | ⏳ |
-| 2. Galeri & CV | 🟡 galeri ✅, CV ⏳ | ⏳ |
+| 2. Galeri & CV | 🟡 galeri ✅, pipeline CV ✅, uji foto HP asli ⏳ | ⏳ |
 | 3. Tahapan | ⏳ | ⏳ |
 | 4. Mode bebas & warna | 🟡 unggah + job ✅, pipeline ⏳ | ⏳ |
 | 5. Checkpoint | ⏳ | ⏳ |
@@ -42,13 +42,14 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Galeri | `GET /artworks`, `GET /artworks/{slug}`: hanya karya terbit, signed URL, sumber | Tes integrasi |
 | Tes | 37 tes (unit + integrasi ke Supabase, data uji dibersihkan otomatis) | `uv run pytest` |
 | Serah-terima | `api/API.md` + `api/examples/*.json` (tervalidasi terhadap model respons) + draf bentuk tutorial | — |
+| Pipeline CV (Fase 2) | `api/cv/`: normalisasi, cek kualitas, mask (rembg u2net), garis (TEED untuk mode bebas, model lineart untuk koleksi, XDoG cadangan) dengan ambang adaptif, region k-means ≤35 yang digabung berdasarkan kemiripan warna, terang-gelap 3–5 tingkat, SVG + gambar region bernomor | 59 tes + evaluasi foto nyata ([eval/HASIL_FASE2.md](eval/HASIL_FASE2.md)) |
 
 ### 2.2 Berikutnya
 
 | Prioritas | Pekerjaan | Fase | Membuka untuk frontend |
 | --- | --- | --- | --- |
-| 1 | Uji lineart (Informative Drawings vs TEED vs XDoG) + mask (isnet vs u2net) di 5 foto | 2 | — |
-| 2 | Pipeline CV: normalize, mask, lineart, region, terang-gelap, gambar region bernomor | 2 | Contoh lesson JSON + SVG nyata |
+| 1 | Uji CV dengan foto HP sungguhan dari lukisan fisik (menggantikan simulasi) | 2 | — |
+| 2 | Contoh lesson JSON + SVG nyata dari pipeline untuk Xavier | 2 | `StageCanvas` dengan data nyata |
 | 3 | Tabel lesson (`lesson_versions`, `regions`, `stages`, …) + `stage_planner` | 3 | `GET /lessons/{id}` nyata |
 | 4 | Integrasi OpenAI teks per tahap + validator + templat cadangan | 3 | Teks tahap nyata |
 | 5 | Impor materi koleksi pertama | 3 | Galeri berisi data nyata |
@@ -61,6 +62,12 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 - Retensi otomatis 24 jam untuk foto yang sesinya tidak dihapus (Fase 7). Foto sesi yang dihapus sudah langsung dihapus.
 - Handler AI yang berjalan >2 menit perlu heartbeat agar tidak dianggap macet (Fase 3).
 - OpenAI belum dikonfigurasi (`OPENAI_API_KEY` kosong); `DATABASE_URL` belum diisi (belum dibutuhkan).
+- CV: lukisan utuh yang penuh tokoh terlalu rumit untuk 35 region — **UI perlu mengarahkan pemula memotong satu figur**. Waktu CV mode bebas ±6–12 s di CPU laptop (target 8 s), perlu diukur di server.
+
+### 2.4 Catatan untuk frontend dari Fase 2
+
+- Layar unggah mode bebas sebaiknya punya langkah **potong area** (satu figur). Backend menerima `scope` sebagai pecahan `{x, y, w, h}` 0–1 dari foto.
+- Lapisan garis berupa **PNG transparan** (bukan SVG) seukuran gambar; region, sketsa, objek utama, dan terang-gelap berupa SVG. Semuanya memakai `viewBox` yang sama.
 
 ---
 
@@ -133,7 +140,8 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | --- | --- | --- |
 | `main` | Dokumen (PRD, rencana, ERD, arsitektur) | Di GitHub |
 | `chore/api-setup` | Setup `api/` | Di GitHub, PR belum dibuat |
-| `feat/db-schema` → `feat/api-sessions` → `feat/api-jobs` → `feat/api-uploads` → `feat/api-artworks` | Fase 1 backend (bertumpuk berurutan; `feat/api-artworks` berisi semuanya + dokumen ini) | Di GitHub, PR belum dibuat |
+| `feat/db-schema` … `feat/api-artworks` | Fase 1 backend | Sudah di-merge ke `main` (PR #2) |
+| `feat/fase-2-cv` | Fase 2: pipeline CV + evaluasi | Lokal, belum di-push |
 | `feat/web-…` | Frontend | Dibuat Xavier |
 
 ---
@@ -161,3 +169,4 @@ Dokumentasi interaktif: `http://localhost:8000/docs`
 | Bagian | Ringkasan |
 | --- | --- |
 | Backend Fase 1 | Skema DB + keamanan, sesi tamu, antrean job + worker, unggahan aman, galeri, 37 tes, panduan API |
+| Backend Fase 2 | Pipeline CV + evaluasi di foto nyata; metode dipilih (TEED/u2net), 4 perbaikan dari hasil uji, retry Storage, 59 tes |

@@ -38,7 +38,12 @@ class Settings(BaseSettings):
 
     # Perilaku aplikasi
     checkpoint_count: int = 1
-    lineart_method: str = "xdog"
+    # Hasil evaluasi Fase 2 (eval/HASIL_FASE2.md): TEED cukup cepat di CPU untuk mode bebas;
+    # "model" (Informative Drawings) lebih bersih tetapi 2–36 s di CPU → dipakai untuk materi koleksi.
+    lineart_method: str = "teed"
+    lineart_method_collection: str = "model"
+    # u2net 2–3× lebih cepat dari isnet dengan hasil hampir sama di foto uji.
+    mask_model: str = "u2net"
     frontend_origin: str = "http://localhost:3000"
     feature_story: bool = False
     feature_recognition: bool = False

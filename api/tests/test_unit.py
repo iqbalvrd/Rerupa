@@ -120,3 +120,39 @@ def test_every_error_code_has_indonesian_message():
     assert all(isinstance(v, str) and v for v in MESSAGES.values())
     assert message_for("kode_tidak_dikenal") == MESSAGES["internal_error"]
     assert message_for(None) is None
+
+
+# ---------- retry Storage ----------
+
+def test_with_retry_recovers_from_transient_error(monkeypatch):
+    import services.storage as st
+
+    monkeypatch.setattr(st.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise ConnectionError("putus sebentar")
+        return "ok"
+
+    assert st.with_retry(flaky, "uji") == "ok" and calls["n"] == 3
+
+
+def test_with_retry_treats_duplicate_as_done(monkeypatch):
+    import services.storage as st
+
+    monkeypatch.setattr(st.time, "sleep", lambda s: None)
+
+    def dup():
+        raise RuntimeError("The resource already exists (Duplicate)")
+
+    assert st.with_retry(dup, "uji", already_done=st.is_duplicate) is None
+
+
+def test_with_retry_gives_up(monkeypatch):
+    import services.storage as st
+
+    monkeypatch.setattr(st.time, "sleep", lambda s: None)
+    with pytest.raises(ConnectionError):
+        st.with_retry(lambda: (_ for _ in ()).throw(ConnectionError("mati")), "uji", attempts=2)

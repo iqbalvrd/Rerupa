@@ -24,6 +24,21 @@ echo "NEXT_PUBLIC_GALLERY_SOURCE=fixtures" >> .env.local
 
 Galeri lalu menampilkan label "Data contoh (dev), belum terbit". Hapus baris itu untuk kembali memakai `GET /artworks`.
 
+### Mock API (tanpa backend)
+
+Untuk mencoba alur sesi → Persiapan tanpa menjalankan `api/`:
+
+```bash
+npm run fixtures                                   # juga menyalin api/examples ke public/_dev/api/
+echo "NEXT_PUBLIC_API_MOCK=1" >> .env.local
+```
+
+Semua panggilan API dijawab dari contoh resmi di `api/examples` (`lib/dev-mock.ts`); sesi disimpan di localStorage browser. Hanya aktif di mode dev, tidak pernah di produksi. Hapus baris itu untuk memakai API sungguhan.
+
+### Build untuk cek
+
+Pakai `npm run build:check` (bukan `npm run build`) saat `npm run dev` sedang jalan: hasilnya ditulis ke `.next-check`, jadi server dev tidak terganggu.
+
 ## Perintah
 
 | Perintah | Isi |

@@ -28,6 +28,8 @@ import {
   type SessionCreate,
   type SessionUpdate,
 } from "./schemas";
+import { ApiError, isApiError } from "./api-error";
+import { DEV_MOCK_API, mockRequest } from "./dev-mock";
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(
   /\/+$/,
@@ -43,33 +45,7 @@ const NETWORK_MESSAGE = "Tidak bisa terhubung ke server. Periksa koneksi, lalu c
 const TIMEOUT_MESSAGE = "Server terlalu lama menjawab. Coba lagi sebentar lagi.";
 const GENERIC_MESSAGE = "Terjadi kesalahan. Coba lagi.";
 
-export class ApiError extends Error {
-  /** API error code (`session_required`, `quota_exceeded`, …) or a client code: `network`, `timeout`, `bad_response`. */
-  readonly code: string;
-  /** HTTP status, or 0 when no response arrived. */
-  readonly status: number;
-  /** Seconds from the `Retry-After` header on 429, when the browser can read it. */
-  readonly retryAfter: number | null;
-  /** Invalid field names on 422 `validation_error`. */
-  readonly fields: string[];
-
-  constructor(
-    code: string,
-    message: string,
-    opts: { status?: number; retryAfter?: number | null; fields?: string[]; cause?: unknown } = {},
-  ) {
-    super(message, { cause: opts.cause });
-    this.name = "ApiError";
-    this.code = code;
-    this.status = opts.status ?? 0;
-    this.retryAfter = opts.retryAfter ?? null;
-    this.fields = opts.fields ?? [];
-  }
-}
-
-export function isApiError(err: unknown, code?: string): err is ApiError {
-  return err instanceof ApiError && (code === undefined || err.code === code);
-}
+export { ApiError, isApiError };
 
 /** One key per user action. Reuse the same key when retrying that action. */
 export function newIdempotencyKey(): string {
@@ -87,6 +63,10 @@ type RequestOptions = {
 };
 
 async function request<T>(path: string, schema: z.ZodType<T> | null, opts: RequestOptions = {}): Promise<T> {
+  if (DEV_MOCK_API) {
+    const data = await mockRequest(opts.method ?? "GET", path, opts.json);
+    return (schema ? schema.parse(data) : undefined) as T;
+  }
   const url = new URL(API_BASE_URL + path);
   for (const [k, v] of Object.entries(opts.query ?? {})) {
     if (v !== undefined) url.searchParams.set(k, v);

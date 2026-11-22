@@ -159,6 +159,14 @@ const mockLesson = {
   _mock: true,
   regions,
   layers: lesson.layers.map((l) => ({ ...l, url: layerUrl[l.kind] ?? null, meta: { ...l.meta, _mock: true } })),
+  // Placeholder so the Selesai page's reflection can be built. Not a culture
+  // fact: the text says so, and there is no source (renders as "Perkiraan AI").
+  reflection: lesson.reflection ?? {
+    question: "[Mock dev] Contoh pertanyaan refleksi, bukan fakta. Pilih jawaban kedua.",
+    options: ["Jawaban contoh A", "Jawaban contoh B", "Jawaban contoh C"],
+    correct_option: 1,
+    source: null,
+  },
 };
 await writeFile(path.join(outDir, "api", "lesson_mock.json"), JSON.stringify(mockLesson, null, 2));
 console.log(`wrote synthetic lesson (${regions.length} regions) to public/_dev/api/`);

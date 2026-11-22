@@ -146,6 +146,8 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
             canvas_size=session["canvas_size"] or "A4",
             lineart_method=settings.lineart_method,
             mask_model=settings.mask_model,
+            max_colors=settings.cv_max_colors,
+            thin_lines=settings.line_thin,
         )
         if not cv.quality.usable:
             code = "not_artwork" if "low_contrast" in cv.quality.reasons and len(cv.regions) <= 2 else "photo_unusable"

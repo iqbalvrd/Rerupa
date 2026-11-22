@@ -25,8 +25,23 @@ log = logging.getLogger("rerupa.cv")
 SHADING_HINT_THRESHOLD = 0.55
 
 
+def _rss_mb() -> tuple[int, int] | None:
+    """(RSS sekarang, puncak) dalam MB — hanya Linux; dipakai untuk memantau batas RAM worker."""
+    try:
+        import resource
+
+        with open("/proc/self/statm") as f:
+            pages = int(f.read().split()[1])
+        return pages * resource.getpagesize() // 2**20, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024
+    except (OSError, ImportError, ValueError):
+        return None
+
+
 @contextmanager
 def _timer(timings: dict, key: str):
+    mem = _rss_mb()
+    if mem:  # dicatat SEBELUM tahap: bila proses dibunuh karena RAM, log terakhir menunjukkan tahapnya
+        log.info("cv_stage", extra={"stage": key, "rss_mb": mem[0], "peak_mb": mem[1]})
     start = time.perf_counter()
     yield
     timings[key] = int((time.perf_counter() - start) * 1000)
@@ -41,6 +56,8 @@ def run(
     mask_model: str | None = "isnet-general-use",
     use_shading: bool | None = None,
     value_levels: int = 4,
+    max_colors: int = 12,
+    thin_lines: bool = True,
 ) -> CvResult:
     """Jalankan pipeline. use_shading=None → ditentukan dari shading_hint (AI dapat menimpanya di Fase 3)."""
     t: dict[str, int] = {}
@@ -75,10 +92,11 @@ def run(
             warnings.append(f"lineart_{method}_failed_fallback_xdog")
             method = "xdog"
             edges = lineart_mod.edge_map(img, method)
-        lines = lineart_mod.clean_lines(edges)
+    with _timer(t, "lines_clean"):
+        lines = lineart_mod.clean_lines(edges, thin=thin_lines)
 
     with _timer(t, "regions"):
-        seg = segment(img, mask, canvas_size=canvas_size)
+        seg = segment(img, mask, canvas_size=canvas_size, max_colors=max_colors)
     if len(seg.regions) > 35:
         warnings.append("too_complex")
 

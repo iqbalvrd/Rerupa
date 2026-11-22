@@ -56,6 +56,8 @@ def run(
     mask_model: str | None = "isnet-general-use",
     use_shading: bool | None = None,
     value_levels: int = 4,
+    max_colors: int = 12,
+    thin_lines: bool = True,
 ) -> CvResult:
     """Jalankan pipeline. use_shading=None → ditentukan dari shading_hint (AI dapat menimpanya di Fase 3)."""
     t: dict[str, int] = {}
@@ -91,10 +93,10 @@ def run(
             method = "xdog"
             edges = lineart_mod.edge_map(img, method)
     with _timer(t, "lines_clean"):
-        lines = lineart_mod.clean_lines(edges)
+        lines = lineart_mod.clean_lines(edges, thin=thin_lines)
 
     with _timer(t, "regions"):
-        seg = segment(img, mask, canvas_size=canvas_size)
+        seg = segment(img, mask, canvas_size=canvas_size, max_colors=max_colors)
     if len(seg.regions) > 35:
         warnings.append("too_complex")
 

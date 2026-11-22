@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     lineart_method_collection: str = "model"
     # u2net 2–3× lebih cepat dari isnet dengan hasil hampir sama di foto uji.
     mask_model: str = "u2net"
+    # Kualitas bidang & garis (PR #23). Bisa diturunkan lewat variabel tanpa build ulang bila RAM worker mepet.
+    cv_max_colors: int = 12
+    line_thin: bool = True
     # Satu atau beberapa origin dipisah koma (produksi: domain Vercel). Preview Vercel lewat regex,
     # mis. ^https://rerupa-[a-z0-9-]+\.vercel\.app$ — kosong = tidak ada.
     frontend_origin: str = "http://localhost:3000"

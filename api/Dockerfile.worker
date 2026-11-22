@@ -8,7 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
     HF_HOME=/app/.cache/huggingface \
     U2NET_HOME=/app/.cache/u2net \
-    OMP_NUM_THREADS=2
+    OMP_NUM_THREADS=2 \
+    MALLOC_ARENA_MAX=2
 
 # libgomp1: onnxruntime/torch (CPU), libglib2.0-0: opencv
 RUN apt-get update \

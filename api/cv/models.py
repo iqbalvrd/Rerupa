@@ -17,10 +17,16 @@ MASK_MODELS = ("isnet-general-use", "u2net")
 def rembg_session(model: str = "isnet-general-use"):
     if model not in MASK_MODELS:
         raise ValueError(f"model mask tidak dikenal: {model}")
+    import onnxruntime as ort
     from rembg import new_session
 
+    # Tanpa arena memori: onnxruntime tidak menahan ratusan MB setelah inferensi (worker 1 GB).
+    opts = ort.SessionOptions()
+    opts.enable_cpu_mem_arena = False
+    opts.enable_mem_pattern = False
+    opts.intra_op_num_threads = 2
     with _lock:
-        return new_session(model)
+        return new_session(model, sess_opts=opts)
 
 
 @lru_cache(maxsize=1)

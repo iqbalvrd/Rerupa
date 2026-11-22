@@ -45,7 +45,7 @@ export const COLORS = {
   tympanum: "#eee7db",
   road: "#ece2d1",
   roadEdge: "#d2c6b2",
-  ground: "#6a9149",
+  ground: "#55733d",
   lampPost: "#2f2a26",
   lampBulb: "#fff0cf",
   cloud: "255,236,232",
@@ -169,16 +169,15 @@ export const STATUE = {
 } as const;
 
 export const GRASS = {
-  count: 40_000,
-  countLowEnd: 18_000,
-  bladeHeight: 0.62,
+  count: 68_000,
+  countLowEnd: 34_000,
+  bladeHeight: 0.44,
   areaHalfX: 35,
   zFrom: 20,
   zDepth: 48,
-  pathClearance: 3.3,
+  nearHalfX: 16,
+  nearDepth: 36,
   statueClearance: 3.6,
-  scaleMin: 0.55,
-  scaleRange: 0.5,
   fadeNear: 40,
   fadeFar: 120,
 } as const;

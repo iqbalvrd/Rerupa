@@ -4,7 +4,7 @@ import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { COLORS, PATH } from "./landing-config";
-import { canvasTexture, getRoadCurve, solid } from "./scene-utils";
+import { canvasTexture, getRoadCurve, seededRandom, solid } from "./scene-utils";
 
 /** Flat ribbon that follows `curve` on the ground, offset `offA..offB` to its side. */
 function ribbon(curve: THREE.Curve<THREE.Vector3>, offA: number, offB: number, y: number, vScale: number) {
@@ -84,31 +84,53 @@ export function Path() {
   );
 }
 
-/** Painted grass ground under everything (LANDING_SPEC §4.8). */
+/** A seamless layer of mottled turf and fine leaf marks under the blades. */
 export function Ground() {
+  const maxAniso = useThree((s) => s.gl.capabilities.getMaxAnisotropy());
   const built = useMemo(() => {
     const tex = canvasTexture(512, 512, (g, w, h) => {
       g.fillStyle = COLORS.ground;
       g.fillRect(0, 0, w, h);
-      // Seeded, so the ground looks the same on every visit.
-      let seed = 7;
-      const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-      for (let i = 0; i < 260; i++) {
-        const x = rnd() * w;
-        const y = rnd() * h;
-        const r = 20 + rnd() * 60;
-        const gr = g.createRadialGradient(x, y, 0, x, y, r);
-        const c = rnd() < 0.5 ? "104,140,72" : "150,184,98";
-        gr.addColorStop(0, `rgba(${c},0.35)`);
-        gr.addColorStop(1, `rgba(${c},0)`);
-        g.fillStyle = gr;
-        g.fillRect(x - r, y - r, r * 2, r * 2);
+      const rng = seededRandom(7);
+      const acrossTile = (x: number, y: number, radius: number, draw: (x: number, y: number) => void) => {
+        draw(x, y);
+        const dx = x < radius ? w : x > w - radius ? -w : 0;
+        const dy = y < radius ? h : y > h - radius ? -h : 0;
+        if (dx) draw(x + dx, y);
+        if (dy) draw(x, y + dy);
+        if (dx && dy) draw(x + dx, y + dy);
+      };
+      for (let i = 0; i < 120; i++) {
+        const radius = 12 + rng() * 46;
+        const tint = rng() < 0.55 ? "43,65,31" : "131,145,74";
+        acrossTile(rng() * w, rng() * h, radius, (x, y) => {
+          const spot = g.createRadialGradient(x, y, 0, x, y, radius);
+          spot.addColorStop(0, `rgba(${tint},0.34)`);
+          spot.addColorStop(1, `rgba(${tint},0)`);
+          g.fillStyle = spot;
+          g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        });
+      }
+      const leafColors = ["#364b2b", "#647b42", "#829453", "#a6a364", "#4c5c32"];
+      g.globalAlpha = 0.31;
+      g.lineWidth = 0.8;
+      for (let i = 0; i < 16_000; i++) {
+        g.strokeStyle = leafColors[Math.floor(rng() * leafColors.length)];
+        const angle = rng() * Math.PI * 2;
+        const length = 0.7 + rng() * 3.3;
+        acrossTile(rng() * w, rng() * h, length, (x, y) => {
+          g.beginPath();
+          g.moveTo(x, y);
+          g.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+          g.stroke();
+        });
       }
     });
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(40, 40);
+    tex.repeat.set(72, 72);
+    tex.anisotropy = maxAniso;
     return { tex, mat: new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }) };
-  }, []);
+  }, [maxAniso]);
   useEffect(
     () => () => {
       built.tex.dispose();

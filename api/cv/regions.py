@@ -21,6 +21,7 @@ from cv.types import Region
 
 WORK_MAX_SIDE = 800
 SIMILAR_COLOR_DELTA_E = 6.0  # CIE76; pusat cluster sedekat ini dianggap satu warna
+OBJECT_MERGE_MIN, OBJECT_MERGE_MAX = 0.6, 1.6  # pengali biaya gabung: latar → objek utama
 
 
 @dataclass
@@ -42,7 +43,7 @@ def segment(
     mask: np.ndarray | None,
     *,
     canvas_size: str | None = "A4",
-    max_colors: int = 8,
+    max_colors: int = 12,
     max_regions: int = 35,
     seed: int = 0,
 ) -> Segmentation:
@@ -59,19 +60,19 @@ def segment(
     clusters = _kmeans_labels(lab_smooth, max_colors, seed)
     labels = _components(clusters)
 
+    mask_small = None
+    if mask is not None:
+        mask_small = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST) > 0
+
     min_area = max(4, int(min_area_fraction(canvas_size) * h * w))
     labels = _merge_small(labels, lab_orig, min_area)
     labels = _mode_filter(labels, ksize=5)
     labels = _components(labels)
     labels = _merge_small(labels, lab_orig, min_area)
 
-    labels = _cap_regions(labels, lab_orig, max_regions)
+    labels = _cap_regions(labels, lab_orig, max_regions, mask_small)
 
-    mask_small = None
-    if mask is not None:
-        mask_small = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST) > 0
-
-    labels, regions = _describe(labels, lab_orig, mask_small, scale)
+    labels, regions = _describe(labels, lab_orig, mask_small, scale, clusters)
     return Segmentation(labels=labels, scale=scale, regions=regions, lab_small=lab_smooth)
 
 
@@ -190,7 +191,7 @@ def _merge_small(labels: np.ndarray, lab: np.ndarray, min_area: int) -> np.ndarr
     return _relabel(labels)
 
 
-def _cap_regions(labels: np.ndarray, lab: np.ndarray, max_regions: int) -> np.ndarray:
+def _cap_regions(labels: np.ndarray, lab: np.ndarray, max_regions: int, mask: np.ndarray | None = None) -> np.ndarray:
     """Jamin jumlah region ≤ max_regions dengan menggabungkan pasangan tetangga yang
     WARNANYA paling mirip (bukan sekadar yang terkecil), supaya bidang yang warnanya
     beda nyata — rok merah, kulit, latar — tetap terpisah.
@@ -216,6 +217,10 @@ def _cap_regions(labels: np.ndarray, lab: np.ndarray, max_regions: int) -> np.nd
         delta_e = np.linalg.norm(mean_lab[p] - mean_lab[q], axis=1)
         smaller = np.minimum(areas[p], areas[q]) / areas.sum()
         cost = delta_e * (0.5 + np.sqrt(smaller * 100))  # region kecil sedikit lebih murah
+        if mask is not None:
+            # Jatah region diarahkan ke objek utama: latar lebih murah digabung, objek lebih mahal.
+            inside = np.bincount(labels.ravel(), weights=mask.ravel().astype(np.float64), minlength=n) / np.maximum(areas, 1)
+            cost = cost * (OBJECT_MERGE_MIN + (OBJECT_MERGE_MAX - OBJECT_MERGE_MIN) * np.maximum(inside[p], inside[q]))
 
         lut = np.arange(n)
         used: set[int] = set()
@@ -259,7 +264,7 @@ def _mode_filter(labels: np.ndarray, ksize: int = 5) -> np.ndarray:
 
 
 def _describe(
-    labels: np.ndarray, lab: np.ndarray, mask_small: np.ndarray | None, scale: float
+    labels: np.ndarray, lab: np.ndarray, mask_small: np.ndarray | None, scale: float, clusters: np.ndarray | None = None
 ) -> tuple[np.ndarray, list[Region]]:
     h, w = labels.shape
     ids, areas = np.unique(labels, return_counts=True)
@@ -283,7 +288,7 @@ def _describe(
         sel = labels == i
         area = int(sel.sum())
         ys, xs = np.nonzero(sel)
-        mean_lab = lab[sel].mean(axis=0)
+        mean_lab = _region_color(lab, sel, clusters)
         overlap = float(mask_small[sel].mean()) if mask_small is not None else 0.0
         overlaps.append(overlap)
         regions.append(
@@ -316,6 +321,16 @@ def _describe(
                 r.is_main_object = True
                 break
     return labels, regions
+
+
+def _region_color(lab: np.ndarray, sel: np.ndarray, clusters: np.ndarray | None) -> np.ndarray:
+    """Warna region = rata-rata piksel dari kelompok warna (cluster) yang paling dominan di region itu.
+    Rata-rata semua piksel membuat warna keruh saat region berisi campuran (hijau + cokelat → zaitun)."""
+    if clusters is None:
+        return lab[sel].mean(axis=0)
+    inside = clusters[sel]
+    dominant = np.bincount(inside).argmax()
+    return lab[sel][inside == dominant].mean(axis=0)
 
 
 def _region_path(sel: np.ndarray, scale: float) -> str:

@@ -7,6 +7,7 @@ karena butuh unduhan bobot sekali (±200 MB).
 import io
 import os
 import re
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -174,10 +175,12 @@ def test_pipeline_forced_shading_builds_value_layer():
     assert all(r.value_level in (1, 2, 3) for r in res.regions)
 
 
-def test_gradient_image_suggests_shading():
-    y = np.linspace(0, 255, 800, dtype=np.float32)[:, None]
-    gradient = np.repeat(np.repeat(y, 600, axis=1)[..., None], 3, axis=2).astype(np.uint8)
-    res = pipeline.run(to_jpeg(gradient), mask_model=None)
+def test_volumetric_painting_suggests_shading():
+    # Gradien sintetis murni terpecah jadi pita polos oleh k-means (12 warna), jadi dipakai lukisan nyata.
+    photo = Path(__file__).resolve().parents[2] / "content/artworks/raden-saleh-penangkapan-diponegoro/image.jpg"
+    if not photo.exists():
+        pytest.skip("materi koleksi tidak tersedia")
+    res = pipeline.run(photo.read_bytes(), mask_model=None)
     flat = pipeline.run(to_jpeg(figure_image()), mask_model=None)
     assert res.shading_hint > flat.shading_hint
 

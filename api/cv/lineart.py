@@ -129,8 +129,9 @@ def adaptive_threshold(edges: np.ndarray, target_density_pct: float = TARGET_DEN
     return max(MIN_THRESHOLD, float(np.percentile(edges, 100 - target_density_pct)))
 
 
-def clean_lines(edges: np.ndarray, threshold: float | None = None, min_length_px: int | None = None) -> np.ndarray:
-    """Ambang (adaptif bila None) lalu buang komponen garis kecil (bintik tekstur). Return biner uint8 0/255."""
+def clean_lines(edges: np.ndarray, threshold: float | None = None, min_length_px: int | None = None, thin: bool = True) -> np.ndarray:
+    """Ambang (adaptif bila None), buang komponen garis kecil (bintik tekstur), lalu tipiskan.
+    Return biner uint8 0/255."""
     h, w = edges.shape
     if min_length_px is None:
         min_length_px = max(12, round(max(h, w) * 0.012))  # ±20 px pada 1600 px
@@ -143,7 +144,26 @@ def clean_lines(edges: np.ndarray, threshold: float | None = None, min_length_px
         bw, bh = stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
         if max(bw, bh) >= min_length_px:
             keep[i] = True
-    return (keep[labels] * 255).astype(np.uint8)
+    binary = keep[labels].astype(np.uint8)
+    if thin:
+        binary = thin_lines(binary)
+    return binary * 255
+
+
+def stroke_width(h: int, w: int) -> int:
+    """Tebal garis seragam: 3 px pada foto 1600 px, minimal 2 px (tetap terlihat saat diperkecil di HP)."""
+    return max(2, round(max(h, w) / 600))
+
+
+def thin_lines(binary: np.ndarray) -> np.ndarray:
+    """Garis tebal/menggumpal (khas TEED di mata, tangan) → kerangka 1 px → dipertebal seragam.
+    Detail tetap, tetapi tidak lagi tampak seperti coretan spidol."""
+    from skimage.morphology import skeletonize
+
+    skeleton = skeletonize(binary > 0).astype(np.uint8)
+    width = stroke_width(*binary.shape)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (width, width))
+    return cv2.dilate(skeleton, kernel)
 
 
 def lines_png(binary: np.ndarray) -> np.ndarray:

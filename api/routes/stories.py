@@ -4,7 +4,7 @@ Alur untuk frontend (lihat API.md):
 - Materi koleksi → cerita kurasi yang sudah ditinjau (200, langsung) atau 404 story_not_available.
 - Foto unggahan:
   - `confirm_artwork_id` (dari "Apakah ini …?" hasil pencocokan) → pakai cerita koleksi (200, langsung).
-  - Selain itu → job `generate_story` (202). Hasil job: `kind` = story | needs_identity | unknown.
+  - Selain itu → job `generate_story` (202). Hasil job: `kind` = story. Foto unggahan diriset otomatis (kenali → sumber web → keyakinan), tanpa bertanya ke pengguna.
 """
 
 from uuid import UUID
@@ -33,6 +33,22 @@ BASIS_NOTE = {
     "user_hint": "Kisah disusun dari judul/seniman yang kamu isi; belum ada sumber yang menguatkan.",
     "ai_interpretation": "Kisah ini tafsiran AI, bukan fakta sejarah.",
 }
+
+
+CONFIDENCE_LABEL = {"high": "tinggi", "medium": "sedang", "low": "rendah"}
+
+
+def basis_note(basis: str, identity: dict) -> str:
+    """Catatan dasar kisah; untuk hasil agen riset disebut kandidat karya dan tingkat keyakinannya."""
+    if identity.get("source") != "ai_research" or not identity.get("confidence"):
+        return BASIS_NOTE[basis]
+    name = " – ".join(v for v in (identity.get("title"), identity.get("artist")) if v) or identity.get("origin") or ""
+    level = CONFIDENCE_LABEL.get(identity["confidence"], identity["confidence"])
+    if basis == "sourced":
+        return f"AI mengenali karya ini sebagai {name} lalu memeriksanya ke sumber web tepercaya (keyakinan {level}); tautan sumber tercantum."
+    if name:
+        return f"AI menduga karya ini {name} (keyakinan {level}), tetapi belum ada sumber yang menguatkan. Kisah ini tafsiran AI."
+    return BASIS_NOTE[basis]
 
 
 class StoryRequest(BaseModel):
@@ -195,10 +211,10 @@ def get_story(story_id: UUID, request: Request) -> StoryOut:
         status=s["status"],
         story_basis=s["story_basis"],
         basis_label=BASIS_LABEL[s["story_basis"]],
-        basis_note=BASIS_NOTE[s["story_basis"]],
+        basis_note=basis_note(s["story_basis"], s["identity"] or {}),
         title=s["title"],
         summary=s["summary"],
-        identity={k: v for k, v in (s["identity"] or {}).items() if k in ("title", "artist", "origin")},
+        identity={k: v for k, v in (s["identity"] or {}).items() if k in ("title", "artist", "origin", "confidence", "source", "reason")},
         claims=[StoryClaim(text=c["text"], type=c["type"], source_urls=c.get("source_urls") or []) for c in s["claims"] or []],
         sources=[StorySource(**x) for x in s["sources"] or []],
         characters=[StoryCharacter(**{k: c.get(k) for k in ("code", "name", "description", "region_codes")}) for c in s["characters"] or []],

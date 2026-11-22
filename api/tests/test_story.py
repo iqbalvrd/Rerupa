@@ -129,22 +129,67 @@ def test_consistent_panel_ready_and_refusal_falls_back(monkeypatch):
 
 # ---------------------------------------------------------------- dasar kisah (tanpa DB)
 
+def test_research_confidence_scoring():
+    rc = sources.research_confidence
+    assert rc("high", True, 2) == "high"  # dikenali + diverifikasi sumber
+    assert rc("high", False, 0) == "medium"  # dikenali, belum ada sumber
+    assert rc("medium", True, 1) == "medium"
+    assert rc("low", True, 1) == "low"  # tebakan lemah tidak diselamatkan satu sumber
+    assert rc(None, True, 2, from_user=True) == "high"
+    assert rc(None, False, 0, from_user=True) == "low"
+
+
+FACT = ([{"text": "Dilukis 1857.", "type": "fakta", "source_urls": ["https://id.wikipedia.org/x"], "source_codes": []},
+         {"text": "Koleksi negara.", "type": "fakta", "source_urls": ["https://id.wikipedia.org/x"], "source_codes": []}],
+        [{"url": "https://id.wikipedia.org/x", "title": "x", "domain": "id.wikipedia.org"}])
+NO_FACT = ([{"text": "Mungkin abad 19.", "type": "perkiraan", "source_urls": [], "source_codes": []}], [])
+
+
+def _identify(conf: str, identified: bool = True):
+    return lambda *a, **k: Identity(identified=identified, title="Penangkapan Pangeran Diponegoro", artist="Raden Saleh", origin="Jawa", confidence=conf, reason="ciri")
+
+
 def test_decide_basis_paths(monkeypatch):
     from story import service
 
     lesson = {"origin": "free_mode", "original_jpeg": jpeg(), "id": "x"}
     assert service.decide_basis(lesson, {"interpretation_only": True}, safety_id="s", job_id=None)[0] == "ai_interpretation"
-    assert service.decide_basis(lesson, {}, safety_id="s", job_id=None).unknown  # tanpa izin foto & tanpa isian
+    # Tanpa izin foto & tanpa isian: tidak ada yang bisa diriset → interpretasi, tanpa bertanya.
+    assert service.decide_basis(lesson, {}, safety_id="s", job_id=None)[0] == "ai_interpretation"
 
-    monkeypatch.setattr(sources, "identify", lambda *a, **k: Identity(identified=True, title="Penangkapan Pangeran Diponegoro", artist="Raden Saleh", origin="Jawa", confidence="high", reason="ciri"))
-    out = service.decide_basis(lesson, {"consent_ai_photo": True}, safety_id="s", job_id=None)
-    assert out.needs_identity["artist"] == "Raden Saleh"  # kandidat dari foto → wajib dikonfirmasi
+    # Foto dikenali + diverifikasi sumber → bersumber, keyakinan tinggi, tanpa konfirmasi pengguna.
+    monkeypatch.setattr(sources, "identify", _identify("high"))
+    monkeypatch.setattr(sources, "search", lambda *a, **k: FACT)
+    basis, identity, claims, srcs = service.decide_basis(lesson, {"consent_ai_photo": True}, safety_id="s", job_id=None)
+    assert basis == "sourced" and identity["artist"] == "Raden Saleh" and identity["confidence"] == "high"
+    assert identity["source"] == "ai_research" and identity["confirmed_by_user"] is False and srcs
 
-    monkeypatch.setattr(sources, "search", lambda *a, **k: ([{"text": "Dilukis 1857.", "type": "fakta", "source_urls": ["https://id.wikipedia.org/x"], "source_codes": []}], [{"url": "https://id.wikipedia.org/x", "title": "x", "domain": "id.wikipedia.org"}]))
-    basis, identity, claims, _ = service.decide_basis(lesson, {"title_hint": "Penangkapan Pangeran Diponegoro"}, safety_id="s", job_id=None)
+    # Dikenali tetapi sumber tidak ketemu → dugaan (medium), klaim web tidak dipakai sebagai fakta.
+    monkeypatch.setattr(sources, "search", lambda *a, **k: NO_FACT)
+    basis, identity, claims, srcs = service.decide_basis(lesson, {"consent_ai_photo": True}, safety_id="s", job_id=None)
+    assert basis == "ai_interpretation" and identity["confidence"] == "medium" and not srcs
+    assert all(c["type"] == "perkiraan" for c in claims)
+
+    # Tebakan lemah → nama karya tidak dipakai sama sekali.
+    monkeypatch.setattr(sources, "identify", _identify("low"))
+    basis, identity, claims, _ = service.decide_basis(lesson, {"consent_ai_photo": True}, safety_id="s", job_id=None)
+    assert basis == "ai_interpretation" and "artist" not in identity and claims == []
+
+    # Isian pengguna tetap jalur sumber.
+    monkeypatch.setattr(sources, "search", lambda *a, **k: FACT)
+    basis, identity, _, _ = service.decide_basis(lesson, {"title_hint": "Penangkapan Pangeran Diponegoro"}, safety_id="s", job_id=None)
     assert basis == "sourced" and identity["confirmed_by_user"] is True
-    monkeypatch.setattr(sources, "search", lambda *a, **k: ([{"text": "Mungkin abad 19.", "type": "perkiraan", "source_urls": [], "source_codes": []}], []))
+    monkeypatch.setattr(sources, "search", lambda *a, **k: NO_FACT)
     assert service.decide_basis(lesson, {"artist_hint": "X"}, safety_id="s", job_id=None)[0] == "user_hint"
+
+
+def test_basis_note_mentions_research_confidence():
+    from routes.stories import basis_note
+
+    ident = {"title": "Karya Uji", "artist": "Pelukis Uji", "source": "ai_research", "confidence": "high"}
+    assert "keyakinan tinggi" in basis_note("sourced", ident)
+    assert "dugaan" not in basis_note("sourced", ident) and "menduga" in basis_note("ai_interpretation", {**ident, "confidence": "medium"})
+    assert basis_note("user_hint", {"source": "user"}).startswith("Kisah disusun dari judul")
 
 
 # ---------------------------------------------------------------- integrasi (DB, OpenAI tiruan)
@@ -212,19 +257,20 @@ def test_free_mode_story_with_hints_end_to_end(client_factory, story_ai):
 
 
 @integration
-def test_unknown_photo_asks_for_confirmation_first(client_factory, story_ai):
+def test_photo_without_hints_is_researched_not_asked(client_factory, story_ai):
     from test_lessons import fast_cv, run_job  # noqa: F401
 
     c = _free_lesson(client_factory)
     r = _post_story(c, "key-story-0003", consent_ai_photo=True)
     run_job(c)
     job = c.get(f"/jobs/{r.json()['job']['id']}").json()
-    assert job["result"]["kind"] == "needs_identity" and job["result"]["candidate"]["artist"] == "Pelukis Uji"
+    assert job["result"]["kind"] == "story"  # langsung jadi cerita, tanpa "Apakah ini …?"
+    s = c.get(f"/stories/{job['result']['story_id']}").json()
+    assert s["story_basis"] == "sourced" and s["identity"]["artist"] == "Pelukis Uji"
+    assert s["identity"]["source"] == "ai_research" and s["identity"]["confidence"] in ("high", "medium")
+    assert "keyakinan" in s["basis_note"]
     r = _post_story(c, "key-story-0004", interpretation_only=True)
-    run_job(c)
-    sid = c.get(f"/jobs/{r.json()['job']['id']}").json()["result"]["story_id"]
-    s = c.get(f"/stories/{sid}").json()
-    assert s["story_basis"] == "ai_interpretation" and s["basis_label"] == "Interpretasi AI" and s["claims"] == []
+    assert r.status_code == 200  # cerita sesi ini sudah ada → dipakai lagi
 
 
 @integration

@@ -11,5 +11,6 @@ Isi:
 - sources: daftar halaman yang dipakai (url, title).
 
 Aturan:
+- Identitas yang diberikan bisa berupa DUGAAN dari pengenalan foto. found=true hanya bila sumber jelas membahas karya dengan judul/seniman/asal yang sama; bila sumber membahas karya lain atau tidak cocok, found=false.
 - Jangan mengarang tahun, nama, atau peristiwa. Bila tidak ketemu, found=false dan claims kosong.
 - Jangan memakai blog/forum/marketplace sebagai dasar fakta.

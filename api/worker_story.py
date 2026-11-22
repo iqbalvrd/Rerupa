@@ -36,9 +36,5 @@ def handle_generate_story(job: dict) -> JobOutcome:
 
     if not _session_alive(job["session_id"]):
         return JobOutcome("failed", error_code="session_deleted")
-    if out.needs_identity:
-        return JobOutcome("succeeded", result={"kind": "needs_identity", "candidate": out.needs_identity})
-    if out.unknown:
-        return JobOutcome("succeeded", result={"kind": "unknown"})
     get_supabase().table("jobs").update({"story_id": out.story_id}).eq("id", job["id"]).execute()
     return JobOutcome("succeeded", result={"kind": "story", "story_id": out.story_id})

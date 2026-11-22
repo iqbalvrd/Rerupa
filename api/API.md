@@ -133,18 +133,18 @@ Foto unggahan:
   1. Setelah tutorial jadi, cek GET /jobs/{generate}.result.recognition (bila FEATURE_RECOGNITION aktif)
      ada → tanya "Apakah ini <title> karya <artist>?"
        ya    → POST …/story {confirm_artwork_id} → 200 {story_id} (cerita koleksi yang sudah ditinjau)
-  2. Selain itu tawarkan isian opsional "Tahu judul / seniman / asal karyanya?"
+  2. Selain itu isian "Tahu judul / seniman / asal karyanya?" opsional (boleh dilewati):
        diisi → POST …/story {title_hint, artist_hint, origin_hint, consent_ai_photo} → 202 {job}
-       kosong + izin foto → POST …/story {consent_ai_photo: true} → 202 {job}
-  3. Polling GET /jobs/{job.id}; result.kind:
-       story          → GET /stories/{result.story_id}
-       needs_identity → tampilkan result.candidate ("Apakah ini …?"); ya → kirim ulang dengan title_hint/artist_hint = kandidat
-       unknown        → minta isian, atau POST …/story {interpretation_only: true}
+       kosong → POST …/story {consent_ai_photo: true} → 202 {job}
+     Agen riset di worker: kenali karya dari foto → cari sumber web tepercaya → skor keyakinan.
+     TIDAK ada pertanyaan "Apakah ini …?"; keyakinan rendah → kisah jadi interpretasi tanpa nama karya.
+  3. Polling GET /jobs/{job.id}; result.kind = story → GET /stories/{result.story_id}
 ```
 
 ### Membaca `GET /stories/{id}`
 
-- `basis_label` (tampilkan di atas cerita): **"Kisah bersumber"** (`curated`/`sourced`), **"Berdasarkan info dari kamu"** (`user_hint`), atau **"Interpretasi AI"** (`ai_interpretation`). `basis_note` berisi satu kalimat penjelasan.
+- `basis_label` (tampilkan di atas cerita): **"Kisah bersumber"** (`curated`/`sourced`), **"Berdasarkan info dari kamu"** (`user_hint`), atau **"Interpretasi AI"** (`ai_interpretation`). `basis_note` berisi satu kalimat penjelasan; untuk hasil agen riset menyebut kandidat karya dan tingkat keyakinannya.
+- `identity`: `title`, `artist`, `origin`, `source` (`user` | `ai_research`), `confidence` (`high` | `medium` | `low`), `reason`. Tampilkan keyakinan sebagai badge bila `source = ai_research`.
 - `claims[]`: `type` `fakta` (punya `source_urls`; tampilkan tautan) atau `perkiraan`. `sources[]` adalah daftar tautan sumber.
 - `panels[]`: `narration` (≤40 kata), `image_url` (signed URL), `image_label`: **"Ilustrasi AI"** (wajib tampil di panel gambar AI) atau **"Potongan karya asli"**. `kind: "text"` / `status: "text_only"` → tampilkan kartu teks (gambar gagal atau ditolak pemeriksa).
 - `character_codes` + `characters[].region_codes`: ketuk tokoh → lompat ke tahap yang membuka region itu (`new_region_codes` di `GET /lessons/{id}`).

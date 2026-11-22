@@ -1,15 +1,17 @@
 /**
  * Guest session state.
  *
- * The session token lives in the httpOnly `rerupa_session` cookie, which this
- * code never sees. We only remember the session *id* (needed in URLs such as
- * `/sessions/{id}/progress`) so a reload can restore the practice. The id is
- * not a credential: the API authorizes every call against the cookie.
+ * The session token lives in the httpOnly `rerupa_session` cookie. Browsers that
+ * block that cross-site cookie (Safari iOS) use the copy kept by `session-token.ts`,
+ * sent as `X-Session-Token`. We also remember the session *id* (needed in URLs such
+ * as `/sessions/{id}/progress`) so a reload can restore the practice. The id is
+ * not a credential: the API authorizes every call against the cookie or token.
  */
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import { api, isApiError } from "./api";
 import type { Session } from "./schemas";
+import { setSessionToken } from "./session-token";
 
 /** localStorage can be missing or throw (private mode, blocked storage). Never let that break the app. */
 const safeLocalStorage: StateStorage = {
@@ -45,7 +47,10 @@ export const useSessionStore = create<SessionState>()(
   persist(
     (set) => ({
       sessionId: null,
-      setSessionId: (sessionId) => set({ sessionId }),
+      setSessionId: (sessionId) => {
+        if (!sessionId) setSessionToken(null); // the token belongs to the forgotten session
+        set({ sessionId });
+      },
     }),
     {
       name: "rerupa-session",
@@ -81,6 +86,7 @@ export function ensureSession(): Promise<Session> {
       }
     }
     const created = await api.createSession();
+    setSessionToken(created.session_token);
     setSessionId(created.id);
     return created;
   })().finally(() => {

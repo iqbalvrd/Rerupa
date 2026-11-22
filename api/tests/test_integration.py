@@ -73,6 +73,22 @@ def test_missing_or_forged_cookie_rejected(client_factory):
     assert forged.get(f"/sessions/{a.session_id}").status_code == 401
 
 
+def test_session_token_header_works_without_cookie():
+    """Safari iOS memblokir cookie lintas situs: token dari POST /sessions dikirim ulang lewat header."""
+    from fastapi.testclient import TestClient
+
+    from main import app
+
+    created = TestClient(app).post("/sessions", json={})
+    assert created.status_code == 201
+    token, sid = created.json()["session_token"], created.json()["id"]
+    assert token
+    no_cookie = TestClient(app)  # klien baru: tanpa cookie sama sekali
+    assert no_cookie.get(f"/sessions/{sid}", headers={"X-Session-Token": token}).status_code == 200
+    assert no_cookie.get(f"/sessions/{sid}", headers={"X-Session-Token": "x" * 43}).status_code == 401
+    assert no_cookie.get(f"/sessions/{sid}", headers={"X-Session-Token": token}).json().get("session_token") is None  # hanya saat dibuat
+
+
 # ---------- job ----------
 
 def test_job_idempotency_and_conflict(client_factory):

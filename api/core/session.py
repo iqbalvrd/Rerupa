@@ -1,4 +1,9 @@
-"""Dependency sesi tamu: membaca cookie, memverifikasi hash di DB, dan menolak sesi kedaluwarsa/terhapus."""
+"""Dependency sesi tamu: membaca cookie (atau header cadangan), memverifikasi hash di DB, dan menolak sesi
+kedaluwarsa/terhapus.
+
+Header `X-Session-Token` adalah cadangan untuk browser yang memblokir cookie lintas situs (Safari iOS,
+mode privat): frontend di *.vercel.app dan API di *.up.railway.app berbeda situs, jadi cookie sesi
+dianggap cookie pihak ketiga. Token yang sama dikirim di respons POST /sessions."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -15,6 +20,9 @@ SESSION_COLUMNS = (
 )
 
 
+SESSION_HEADER = "X-Session-Token"
+
+
 def now_utc() -> datetime:
     return datetime.now(UTC)
 
@@ -22,7 +30,7 @@ def now_utc() -> datetime:
 def current_session(request: Request) -> dict:
     """Sesi milik pemegang cookie. Selalu dipakai sebagai sumber session_id — bukan ID di URL."""
     settings = get_settings()
-    token = request.cookies.get(settings.session_cookie_name)
+    token = request.cookies.get(settings.session_cookie_name) or request.headers.get(SESSION_HEADER)
     if not token or len(token) > 128:
         raise AppError("session_required", 401)
 

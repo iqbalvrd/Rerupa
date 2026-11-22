@@ -1,7 +1,8 @@
 /**
  * Rerupa API client. Contract: `api/API.md`.
  *
- * - Every request sends the httpOnly session cookie (`credentials: "include"`).
+ * - Every request sends the httpOnly session cookie (`credentials: "include"`) and, as a
+ *   fallback for browsers that block that cross-site cookie, the `X-Session-Token` header.
  * - Endpoints that create a job take an `idempotencyKey`: one new UUID per user
  *   action, reused when retrying that same action (see `newIdempotencyKey`).
  * - Errors are always `{ error: { code, message } }` and surface as `ApiError`.
@@ -29,6 +30,7 @@ import {
   type SessionUpdate,
 } from "./schemas";
 import { ApiError, isApiError } from "./api-error";
+import { getSessionToken } from "./session-token";
 import { DEV_MOCK_API, mockRequest } from "./dev-mock";
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(
@@ -81,6 +83,8 @@ async function request<T>(path: string, schema: z.ZodType<T> | null, opts: Reque
     body = opts.form; // the browser sets the multipart boundary
   }
   if (opts.idempotencyKey) headers.set("Idempotency-Key", opts.idempotencyKey);
+  const sessionToken = typeof window === "undefined" ? null : getSessionToken();
+  if (sessionToken) headers.set("X-Session-Token", sessionToken);
 
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;

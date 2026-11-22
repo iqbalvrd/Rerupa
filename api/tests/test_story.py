@@ -27,13 +27,17 @@ def jpeg(color=(200, 180, 150), size=(400, 300)) -> bytes:
     return buf.getvalue()
 
 
+BEATS = {4: ["inspirasi", "kisah", "kisah", "makna"], 5: ["seniman", "inspirasi", "kisah", "kisah", "makna"], 6: ["seniman", "inspirasi", "kisah", "kisah", "kisah", "makna"]}
+
+
 def board(n=4, narration="Sang tokoh berdiri tenang di tangga saat fajar.", regions=("r01",), crop_first=True) -> Storyboard:
+    beats = BEATS.get(n, ["kisah"] * n)
     return Storyboard(
         title="Kisah uji",
         summary="Ringkas.",
         style_guide="Cat minyak romantik, palet hangat.",
         characters=[Character(code="c1", name="Tokoh", description="Sorban hijau, jubah putih", region_codes=list(regions))],
-        panels=[Panel(order_no=i, narration=narration, scene="Tokoh di tangga.", character_codes=["c1"], focus_region_codes=list(regions), use_artwork_crop=crop_first and i == 1) for i in range(1, n + 1)],
+        panels=[Panel(order_no=i, beat=beats[i - 1], narration=narration, scene="Tokoh di tangga.", character_codes=["c1"], focus_region_codes=list(regions), use_artwork_crop=crop_first and i == 1) for i in range(1, n + 1)],
     )
 
 
@@ -41,7 +45,7 @@ def board(n=4, narration="Sang tokoh berdiri tenang di tangga saat fajar.", regi
 
 def test_url_normalization_matches_search_results():
     assert sources.norm_url("https://www.Example.org/a/b/?hl=en#x") == sources.norm_url("http://example.org/a/b")
-    out = SourceSearch(found=True, claims=[SourcedClaim(text="X.", type="fakta", source_urls=["https://artsandculture.google.com/story/2AU?hl=en"])], sources=[])
+    out = SourceSearch(found=True, claims=[SourcedClaim(topic="kisah", text="X.", type="fakta", source_urls=["https://artsandculture.google.com/story/2AU?hl=en"])], sources=[])
     claims, _ = sources.validate_sources(out, ["https://artsandculture.google.com/story/2AU"])
     assert claims[0]["type"] == "fakta"
 
@@ -55,9 +59,9 @@ def test_trusted_domains_and_clean_text():
 
 def test_fact_needs_cited_and_trusted_url():
     out = SourceSearch(found=True, claims=[
-        SourcedClaim(text="A dibuat 1857.", type="fakta", source_urls=["https://id.wikipedia.org/wiki/A"]),
-        SourcedClaim(text="B dari blog.", type="fakta", source_urls=["https://blog.example.com/b"]),
-        SourcedClaim(text="C tidak dikutip.", type="fakta", source_urls=["https://id.wikipedia.org/wiki/C"]),
+        SourcedClaim(topic="kisah", text="A dibuat 1857.", type="fakta", source_urls=["https://id.wikipedia.org/wiki/A"]),
+        SourcedClaim(topic="kisah", text="B dari blog.", type="fakta", source_urls=["https://blog.example.com/b"]),
+        SourcedClaim(topic="kisah", text="C tidak dikutip.", type="fakta", source_urls=["https://id.wikipedia.org/wiki/C"]),
     ], sources=[Source(url="https://id.wikipedia.org/wiki/A", title="A")])
     claims, srcs = sources.validate_sources(out, ["https://id.wikipedia.org/wiki/A", "https://blog.example.com/b"])
     assert [c["type"] for c in claims] == ["fakta", "perkiraan", "perkiraan"]
@@ -75,10 +79,23 @@ def test_storyboard_validator_rules():
     assert any("daftar terbatas" in e for e in find_errors(restricted, {"r01"}, ["Nabi Muhammad"]))
 
 
+def test_storyboard_requires_artist_inspiration_story_arc():
+    sb = board(5)
+    assert not find_errors(sb, {"r01"}, [])
+    swapped = sb.model_copy(update={"panels": [sb.panels[2], *sb.panels[:2], *sb.panels[3:]]})
+    errs = " ".join(find_errors(swapped, {"r01"}, []))
+    assert "panel pertama" in errs and "urutan beat" in errs
+    no_insp = sb.model_copy(update={"panels": [p.model_copy(update={"beat": "kisah"}) if p.beat == "inspirasi" else p for p in sb.panels]})
+    assert any("inspirasi" in e for e in find_errors(no_insp, {"r01"}, []))
+    # Perbaikan paksa mengurutkan ulang beat
+    fixed = sanitize(swapped, {"r01"})
+    assert [p.beat for p in fixed.panels] == ["seniman", "inspirasi", "kisah", "kisah", "makna"]
+
+
 def test_storyboard_sanitize_trims_safely():
     fixed = sanitize(board(n=7, narration="kata " * 60, regions=("r01", "r99")), {"r01"})
     assert len(fixed.panels) == 6 and all(len(p.narration.split()) == 40 for p in fixed.panels)
-    assert fixed.characters[0].region_codes == ["r01"] and find_errors(fixed, {"r01"}, []) == []
+    assert fixed.characters[0].region_codes == ["r01"] and find_errors(fixed, {"r01"}, [], arc=False) == []
 
 
 # ---------------------------------------------------------------- panel
@@ -205,7 +222,7 @@ def story_ai(monkeypatch):
     def fake_parse(**kw):
         task = kw["task"]
         if task == "story_sources":
-            out = SourceSearch(found=True, claims=[SourcedClaim(text="Karya ini dilukis pada 1857.", type="fakta", source_urls=["https://id.wikipedia.org/wiki/Uji"])], sources=[Source(url="https://id.wikipedia.org/wiki/Uji", title="Uji")])
+            out = SourceSearch(found=True, claims=[SourcedClaim(topic="kisah", text="Karya ini dilukis pada 1857.", type="fakta", source_urls=["https://id.wikipedia.org/wiki/Uji"])], sources=[Source(url="https://id.wikipedia.org/wiki/Uji", title="Uji")])
             return SimpleNamespace(parsed=out, citations=["https://id.wikipedia.org/wiki/Uji"])
         if task == "story_identify":
             return SimpleNamespace(parsed=Identity(identified=True, title="Karya Uji", artist="Pelukis Uji", origin="Jawa", confidence="high", reason="ciri"))

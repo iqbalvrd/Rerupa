@@ -5,12 +5,12 @@ import logging
 from pathlib import Path
 
 from ai import openai_client as oc
-from story.schemas import Storyboard
+from story.schemas import BEAT_ORDER, Storyboard
 
 log = logging.getLogger("rerupa.story")
 
 PROMPTS = Path(__file__).parent / "prompts"
-PROMPT_VERSION = "storyboard.v1"
+PROMPT_VERSION = "storyboard.v2"
 MIN_PANELS, MAX_PANELS = 4, 6
 MAX_WORDS = 40
 MAX_CHARACTERS = 4
@@ -26,7 +26,8 @@ def restricted_names() -> list[str]:
         return []
 
 
-def find_errors(sb: Storyboard, region_codes: set[str], restricted: list[str]) -> list[str]:
+def find_errors(sb: Storyboard, region_codes: set[str], restricted: list[str], arc: bool = True) -> list[str]:
+    """arc=False: alur seniman→inspirasi→kisah→makna tidak dicek (diminta saat retry, tetapi tidak menggagalkan cerita)."""
     errors = []
     n = len(sb.panels)
     if not MIN_PANELS <= n <= MAX_PANELS:
@@ -56,6 +57,15 @@ def find_errors(sb: Storyboard, region_codes: set[str], restricted: list[str]) -
             errors.append(f"panel {p.order_no}: region tidak ada {sorted(bad)}")
         if not p.use_artwork_crop and not p.scene.strip():
             errors.append(f"panel {p.order_no}: scene wajib diisi")
+    beats = [p.beat for p in sb.panels] if arc else []
+    if beats and beats[0] not in ("seniman", "inspirasi"):
+        errors.append("panel pertama harus beat seniman atau inspirasi (siapa pembuatnya / apa yang mengilhaminya)")
+    if beats and beats[-1] != "makna":
+        errors.append("panel terakhir harus beat makna")
+    if beats and ("inspirasi" not in beats or "kisah" not in beats):
+        errors.append("storyline wajib punya beat inspirasi dan minimal satu beat kisah")
+    if [BEAT_ORDER.index(b) for b in beats] != sorted(BEAT_ORDER.index(b) for b in beats):
+        errors.append("urutan beat harus seniman → inspirasi → kisah → makna")
     text = " ".join([c.name for c in sb.characters] + [p.scene for p in sb.panels]).lower()
     for name in restricted:
         if name.lower() in text:
@@ -69,7 +79,8 @@ def sanitize(sb: Storyboard, region_codes: set[str]) -> Storyboard:
     codes = {c.code for c in chars}
     chars = [c.model_copy(update={"region_codes": [r for r in c.region_codes if r in region_codes]}) for c in chars]
     panels = []
-    for i, p in enumerate(sb.panels[:MAX_PANELS], start=1):
+    ordered = sorted(sb.panels[:MAX_PANELS], key=lambda p: BEAT_ORDER.index(p.beat))  # stabil: urutan dalam beat tetap
+    for i, p in enumerate(ordered, start=1):
         words = p.narration.split()
         panels.append(p.model_copy(update={
             "order_no": i,
@@ -105,7 +116,7 @@ def write_storyboard(*, basis: str, identity: dict, claims: list[dict], regions:
         log.info("storyboard_invalid", extra={"attempt": attempt, "error_count": len(errors)})
         content = content + [{"type": "input_text", "text": "Perbaiki pelanggaran berikut dan kirim ulang lengkap:\n- " + "\n- ".join(errors)}]
     fixed = sanitize(last, region_codes)
-    errors = find_errors(fixed, region_codes, restricted)
+    errors = find_errors(fixed, region_codes, restricted, arc=False)
     if errors:
         raise ValueError("storyboard_invalid: " + "; ".join(errors[:3]))
     return fixed

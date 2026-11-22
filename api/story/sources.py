@@ -66,7 +66,7 @@ def search(identity: dict, *, safety_id: str, job_id: str | None, max_searches: 
     """Cari sumber (teks saja). Return (klaim tervalidasi, sumber). Klaim fakta tanpa kutipan tepercaya → perkiraan."""
     query = {k: identity.get(k) for k in ("title", "artist", "origin") if identity.get(k)}
     content = [{"type": "input_text", "text": f"Karya yang dicari (maksimal {max_searches} pencarian):\n" + json.dumps(query, ensure_ascii=False)}]
-    res = oc.parse(task="story_sources", instructions=(PROMPTS / "sources.v1.md").read_text(encoding="utf-8"), content=content, schema=SourceSearch, safety_id=safety_id, job_id=job_id, max_output_tokens=3000, tools=[{"type": "web_search"}])
+    res = oc.parse(task="story_sources", instructions=(PROMPTS / "sources.v2.md").read_text(encoding="utf-8"), content=content, schema=SourceSearch, safety_id=safety_id, job_id=job_id, max_output_tokens=3000, tools=[{"type": "web_search"}])
     return validate_sources(res.parsed, res.citations)
 
 
@@ -132,8 +132,8 @@ def validate_sources(out: SourceSearch, seen_urls: list[str]) -> tuple[list[dict
         text = clean_text(c.text)
         if not text:
             continue
-        claims.append({"text": text[:280], "type": kind, "source_urls": urls if kind == "fakta" else [], "source_codes": []})
+        claims.append({"text": text[:280], "type": kind, "topic": c.topic, "source_urls": urls if kind == "fakta" else [], "source_codes": []})
         for u in urls:
             title = next((s.title for s in out.sources if norm_url(s.url) == norm_url(u)), domain(u))
             sources[u] = {"url": u, "title": title[:200], "domain": domain(u)}
-    return claims[:6], list(sources.values())
+    return claims[:8], list(sources.values())

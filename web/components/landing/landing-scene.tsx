@@ -8,19 +8,19 @@
  * Loaded with next/dynamic (ssr: false) by <Landing>.
  */
 import { Canvas, useThree } from "@react-three/fiber";
-import { Component, Suspense, useEffect, type ReactNode, type RefObject } from "react";
+import { Component, Suspense, useCallback, useEffect, useRef, type ReactNode, type RefObject } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { Birds } from "./birds";
 import { CameraRig } from "./camera-rig";
 import { Door } from "./door";
 import { Grass } from "./grass";
-import { CAMERA, COLORS, FOG, LIGHTS, RENDERER } from "./landing-config";
+import { CAMERA, COLORS, FOG, LIGHTS, RENDERER, STATUE } from "./landing-config";
 import { Museum } from "./museum";
 import { Nature } from "./nature";
 import { Ground, Path } from "./path";
 import { Sky } from "./sky";
-import { Statue } from "./statue";
+import { StatueFigure, StatuePedestal } from "./statue";
 import { TravelContext, type TravelState } from "./travel-state";
 
 type Props = {
@@ -35,6 +35,16 @@ type Props = {
 };
 
 export default function LandingScene({ travel, grassCount, maxDpr, whiteRef, onLoaded, onEnter, onArrive }: Props) {
+  const settled = useRef({ statue: false, plants: false });
+  const onStatueSettled = useCallback(() => {
+    settled.current.statue = true;
+    if (settled.current.plants) onLoaded();
+  }, [onLoaded]);
+  const onPlantsSettled = useCallback(() => {
+    settled.current.plants = true;
+    if (settled.current.statue) onLoaded();
+  }, [onLoaded]);
+
   return (
     <Canvas
       aria-label="Halaman depan Museum Nasional (Gedung Gajah) saat senja, dengan patung gajah di halaman"
@@ -60,14 +70,25 @@ export default function LandingScene({ travel, grassCount, maxDpr, whiteRef, onL
         <Museum />
         <Door onEnter={onEnter} />
         <Path />
-        <PortraitAware>{(portrait) => <Statue portrait={portrait} />}</PortraitAware>
         <Grass count={grassCount} />
         <Birds />
-        <LoadGuard onDone={onLoaded}>
-          <Suspense fallback={null}>
-            <Nature onLoaded={onLoaded} />
-          </Suspense>
-        </LoadGuard>
+        <PortraitAware>
+          {(portrait) => (
+            <group position={portrait ? STATUE.portrait : STATUE.desktop}>
+              <StatuePedestal />
+              <Suspense fallback={null}>
+                <LoadGuard asset="statue" onSettled={onStatueSettled}>
+                  <StatueFigure />
+                </LoadGuard>
+              </Suspense>
+            </group>
+          )}
+        </PortraitAware>
+        <Suspense fallback={null}>
+          <LoadGuard asset="plants" onSettled={onPlantsSettled}>
+            <Nature />
+          </LoadGuard>
+        </Suspense>
         <CameraRig whiteRef={whiteRef} onArrive={onArrive} />
       </TravelContext.Provider>
     </Canvas>
@@ -121,17 +142,25 @@ function PortraitAware({ children }: { children: (portrait: boolean) => ReactNod
   return <>{children(portrait)}</>;
 }
 
-/** If the plants fail to load, the landing still works without them. */
-class LoadGuard extends Component<{ onDone: () => void; children: ReactNode }, { failed: boolean }> {
+/** Once a model has mounted or failed, it no longer holds up the entry. */
+function ModelReady({ onSettled, children }: { onSettled: () => void; children: ReactNode }) {
+  useEffect(onSettled, [onSettled]);
+  return <>{children}</>;
+}
+
+class LoadGuard extends Component<
+  { asset: string; onSettled: () => void; children: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
   componentDidCatch(err: unknown) {
-    console.warn("[landing] plants failed to load", err);
-    this.props.onDone();
+    console.warn(`[landing] ${this.props.asset} failed to load`, err);
+    this.props.onSettled();
   }
   render() {
-    return this.state.failed ? null : this.props.children;
+    return this.state.failed ? null : <ModelReady onSettled={this.props.onSettled}>{this.props.children}</ModelReady>;
   }
 }

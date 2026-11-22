@@ -64,9 +64,10 @@ def _teed_tiled(img: np.ndarray, res: int) -> np.ndarray:
     Sisi pendek diskalakan ke `res` (foto 1600 px → ±1600×1024), dan sekali jalan butuh +880 MB;
     per petak cukup ±200 MB dengan hasil identik (uji foto koleksi: beda rata-rata 0/255)."""
     import torch
+
+    model = teed_detector().model  # sekaligus mendaftarkan controlnet_aux versi ringan
     from controlnet_aux.util import HWC3, resize_image, safe_step
 
-    model = teed_detector().model
     x = resize_image(HWC3(img), res)
     hh, ww = x.shape[:2]
     acc = np.zeros((hh, ww), np.float32)

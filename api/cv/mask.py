@@ -13,9 +13,7 @@ MAX_COVERAGE = 0.95
 
 def main_object_mask(img: np.ndarray, model: str = "isnet-general-use") -> np.ndarray | None:
     """Mask biner uint8 (0/255) ukuran sama dengan img, atau None bila tidak andal."""
-    from rembg import remove
-
-    raw = remove(Image.fromarray(img), session=rembg_session(model), only_mask=True)
+    raw = rembg_session(model).mask(Image.fromarray(img))
     mask = np.asarray(raw.convert("L"))
     if mask.shape != img.shape[:2]:
         mask = cv2.resize(mask, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_LINEAR)

@@ -14,7 +14,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from cv.models import lineart_detector, teed_detector
+from cv.models import lineart_detector, teed_detector, teed_onnx
 
 METHODS = ("model", "teed", "xdog", "canny")
 LINE_RGB = (30, 30, 30)
@@ -24,6 +24,8 @@ def edge_map(img: np.ndarray, method: str) -> np.ndarray:
     if method not in METHODS:
         raise ValueError(f"metode garis tidak dikenal: {method}")
     h, w = img.shape[:2]
+    if method == "teed" and teed_onnx() is not None:
+        return _model_edge_map(img, method, h, w)  # onnxruntime, tanpa torch (worker RAM 1 GB)
     if method in ("model", "teed"):
         import torch
 
@@ -59,32 +61,58 @@ def _tile_starts(n: int, tile: int, step: int) -> list[int]:
     return starts
 
 
+def _resize_short_side(img: np.ndarray, resolution: int) -> np.ndarray:
+    """Sama dengan controlnet_aux.util.resize_image: sisi pendek → resolution, kelipatan 64."""
+    h, w = img.shape[:2]
+    k = float(resolution) / min(h, w)
+    nh, nw = int(np.round(h * k / 64.0)) * 64, int(np.round(w * k / 64.0)) * 64
+    return cv2.resize(img, (nw, nh), interpolation=cv2.INTER_LANCZOS4 if k > 1 else cv2.INTER_AREA)
+
+
+def _safe_step(x: np.ndarray, step: int = 2) -> np.ndarray:
+    y = x.astype(np.float32) * float(step + 1)
+    return y.astype(np.int32).astype(np.float32) / float(step)
+
+
+def _teed_runner():
+    """Fungsi petak (h, w, 3) float32 → peta tepi (h, w) sebelum sigmoid: rata-rata keluaran TEED."""
+    session = teed_onnx()
+    if session is not None:
+        name = session.get_inputs()[0].name
+        return lambda patch: session.run(None, {name: patch.transpose(2, 0, 1)[None]})[0][0, 0]
+
+    import torch
+
+    model = teed_detector().model
+
+    def run(patch: np.ndarray) -> np.ndarray:
+        th, tw = patch.shape[:2]
+        outs = model(torch.from_numpy(patch).permute(2, 0, 1)[None])
+        return np.mean([cv2.resize(o[0, 0].numpy().astype(np.float32), (tw, th)) for o in outs], axis=0)
+
+    return run
+
+
 def _teed_tiled(img: np.ndarray, res: int) -> np.ndarray:
     """Sama dengan TEEDdetector(img, detect_resolution=res), tetapi model dijalankan per petak 512 px.
     Sisi pendek diskalakan ke `res` (foto 1600 px → ±1600×1024), dan sekali jalan butuh +880 MB;
     per petak cukup ±200 MB dengan hasil identik (uji foto koleksi: beda rata-rata 0/255)."""
-    import torch
-
-    model = teed_detector().model  # sekaligus mendaftarkan controlnet_aux versi ringan
-    from controlnet_aux.util import HWC3, resize_image, safe_step
-
-    x = resize_image(HWC3(img), res)
+    run = _teed_runner()
+    x = _resize_short_side(img, res).astype(np.float32)
     hh, ww = x.shape[:2]
     acc = np.zeros((hh, ww), np.float32)
     margin = TEED_OVERLAP // 2
     th, tw = min(TEED_TILE, hh), min(TEED_TILE, ww)
     for y0 in _tile_starts(hh, th, th - TEED_OVERLAP):
         for x0 in _tile_starts(ww, tw, tw - TEED_OVERLAP):
-            patch = torch.from_numpy(x[y0 : y0 + th, x0 : x0 + tw].copy()).float().permute(2, 0, 1)[None]
-            outs = model(patch)
-            e = np.mean([cv2.resize(o[0, 0].numpy().astype(np.float32), (tw, th)) for o in outs], axis=0)
+            e = run(np.ascontiguousarray(x[y0 : y0 + th, x0 : x0 + tw]))
             ya = margin if y0 > 0 else 0
             yb = th - margin if y0 + th < hh else th
             xa = margin if x0 > 0 else 0
             xb = tw - margin if x0 + tw < ww else tw
             acc[y0 + ya : y0 + yb, x0 + xa : x0 + xb] = e[ya:yb, xa:xb]
     edge = 1 / (1 + np.exp(-acc.astype(np.float64)))
-    edge = (safe_step(edge, 2) * 255.0).clip(0, 255).astype(np.uint8)
+    edge = (_safe_step(edge, 2) * 255.0).clip(0, 255).astype(np.uint8)
     return cv2.resize(edge, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_LINEAR)
 
 

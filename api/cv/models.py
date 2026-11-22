@@ -142,6 +142,23 @@ def warm_up(lineart_method: str, mask_model: str | None) -> dict[str, int]:
     return timings
 
 
+TEED_ONNX_DEFAULT = "~/.cache/rerupa/teed.onnx"
+
+
+@lru_cache(maxsize=1)
+def teed_onnx():
+    """TEED hasil ekspor ONNX (scripts/export_teed_onnx.py, dijalankan saat build image worker).
+    Dengan ini worker tidak memuat torch sama sekali (±300 MB di Linux). None bila file tidak ada
+    (mis. lokal) → pemanggil memakai torch."""
+    path = os.path.expanduser(os.getenv("TEED_ONNX_PATH", TEED_ONNX_DEFAULT))
+    if not os.path.isfile(path):
+        return None
+    import onnxruntime as ort
+
+    with _lock:
+        return ort.InferenceSession(path, sess_options=_ort_options(), providers=["CPUExecutionProvider"])
+
+
 @lru_cache(maxsize=1)
 def teed_detector():
     """TEED: detektor tepi sangat kecil."""

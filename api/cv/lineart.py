@@ -24,6 +24,18 @@ def edge_map(img: np.ndarray, method: str) -> np.ndarray:
     if method not in METHODS:
         raise ValueError(f"metode garis tidak dikenal: {method}")
     h, w = img.shape[:2]
+    if method in ("model", "teed"):
+        import torch
+
+        # Tanpa gradien: hemat ±500 MB aktivasi di CPU.
+        with torch.inference_mode():
+            return _model_edge_map(img, method, h, w)
+    if method == "xdog":
+        return xdog(img)
+    return canny(img)
+
+
+def _model_edge_map(img: np.ndarray, method: str, h: int, w: int) -> np.ndarray:
     if method == "model":
         res = min(1024, max(h, w))
         out = lineart_detector()(Image.fromarray(img), coarse=False, detect_resolution=res, image_resolution=res)
@@ -32,10 +44,6 @@ def edge_map(img: np.ndarray, method: str) -> np.ndarray:
         res = min(1024, max(h, w))
         out = teed_detector()(Image.fromarray(img), detect_resolution=res)
         edges = _to_float_map(out, (w, h))
-    elif method == "xdog":
-        edges = xdog(img)
-    else:
-        edges = canny(img)
     return edges
 
 

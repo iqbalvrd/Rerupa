@@ -1,12 +1,16 @@
 "use client";
 
+import { Logo } from "@/components/brand/logo";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useProgress } from "@react-three/drei";
+import { useQueryClient } from "@tanstack/react-query";
+import { markGalleryEntrance, preloadGallery } from "@/lib/gallery-entrance";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GRASS, LOAD_TIMEOUT_MS, RENDERER, SEEN_KEY, TRAVEL } from "./landing-config";
 import { createTravelState, type TravelState } from "./travel-state";
 import styles from "./landing.module.css";
+
 
 const LandingScene = dynamic(() => import("./landing-scene"), { ssr: false, loading: () => null });
 
@@ -88,6 +92,13 @@ export function Landing() {
 
   const onLoaded = useCallback(() => setReady(true), []);
 
+  // Once the museum itself has loaded, use the time in the front yard and on
+  // the walk to the door to load the gallery's first view.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (mode === "static" || ready) preloadGallery(queryClient);
+  }, [mode, ready, queryClient]);
+
   /** White fade, then the gallery. */
   const fadeToGallery = useCallback(
     (seconds: number) => {
@@ -96,7 +107,10 @@ export function Landing() {
         white.style.transition = `opacity ${seconds}s ease`;
         white.style.opacity = "1";
       }
-      window.setTimeout(() => router.push(GALLERY), seconds * 1000 + 30);
+      window.setTimeout(() => {
+        markGalleryEntrance();
+        router.push(GALLERY);
+      }, seconds * 1000 + 30);
     },
     [router],
   );
@@ -127,6 +141,7 @@ export function Landing() {
 
   const onArrive = useCallback(() => {
     travel.phase = "done";
+    markGalleryEntrance();
     router.push(GALLERY);
   }, [router, travel]);
 
@@ -155,7 +170,9 @@ export function Landing() {
       <div className={styles.ui} data-hidden={leaving}>
         <header className={styles.title}>
           <p className={styles.tagline}>Mentor melukis seni Nusantara</p>
-          <h1 className={styles.wordmark}>Rerupa</h1>
+          <h1 className={styles.wordmark}>
+            <Logo className={styles.logo} priority />
+          </h1>
           <p className={styles.lead}>Masuk museum, kenali karyanya, lukis ulang langkah demi langkah.</p>
         </header>
 
@@ -179,7 +196,7 @@ export function Landing() {
       {loading && (
         <div className={styles.loader} role="status" aria-live="polite">
           <div>
-            <p className={styles.loaderMark}>Rerupa</p>
+            <Logo className={styles.loaderLogo} />
             <p>Memuat halaman museum</p>
             <div className={styles.meter} aria-hidden="true">
               <i style={{ inlineSize: `${mode === "3d" ? Math.round(progress) : 0}%` }} />

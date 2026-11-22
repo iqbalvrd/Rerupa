@@ -13,6 +13,11 @@ import { useTravel } from "./travel-state";
  * look target slides from near the statue to the door. Drives the white fade
  * element directly so no React state changes per frame.
  */
+/** 0–1 progress of `p` through the [from, to] window. */
+function progress([from, to]: readonly [number, number], p: number) {
+  return Math.min(1, Math.max(0, (p - from) / (to - from)));
+}
+
 export function CameraRig({ whiteRef, onArrive }: { whiteRef: RefObject<HTMLDivElement | null>; onArrive: () => void }) {
   const travel = useTravel();
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
@@ -22,6 +27,9 @@ export function CameraRig({ whiteRef, onArrive }: { whiteRef: RefObject<HTMLDivE
       look: new THREE.Vector3(),
       start: new THREE.Vector3(),
       door: new THREE.Vector3(...CAMERA.lookDoor),
+      stop: new THREE.Vector3(),
+      enter: new THREE.Vector3(...CAMERA.enterTo),
+      inside: new THREE.Vector3(...CAMERA.lookInside),
     }),
     [],
   );
@@ -45,8 +53,13 @@ export function CameraRig({ whiteRef, onArrive }: { whiteRef: RefObject<HTMLDivE
       }
     }
     const p = travel.phase === "idle" ? 0 : travel.t;
-    camera.position.copy(getCameraCurve().getPointAt(easeInOutCubic(p)));
-    tmp.look.copy(tmp.start).lerp(tmp.door, smooth(TRAVEL.look[0], TRAVEL.look[1], p));
+    // 1) Walk the curve and stop in front of the door, 2) stand still while it
+    // opens, 3) walk straight through the doorway into the lit passage.
+    const walk = progress(TRAVEL.walk, p);
+    const walkIn = easeInOutCubic(progress(TRAVEL.walkIn, p));
+    getCameraCurve().getPointAt(easeInOutCubic(walk), tmp.stop);
+    camera.position.copy(tmp.stop).lerp(tmp.enter, walkIn);
+    tmp.look.copy(tmp.start).lerp(tmp.door, smooth(TRAVEL.look[0], TRAVEL.look[1], p)).lerp(tmp.inside, walkIn);
     camera.lookAt(tmp.look);
   });
   return null;

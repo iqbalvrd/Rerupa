@@ -33,7 +33,12 @@ export const COLORS = {
   glass: "#37445a",
   windowFrame: "#ece4d6",
   door: "#5a3a22",
+  /** Darker recess around each raised panel, and the panel face itself. */
+  doorPanelShadow: "#4a2f1b",
+  doorPanel: "#664229",
   doorKnob: "#d8b26a",
+  /** Fanlight glass: warm, lit from inside. */
+  fanlight: "#ffe9c2",
   doorLight: "#fff4dc",
   doorLamp: "#ffd9a0",
   steps: "#e9e2d6",
@@ -97,10 +102,49 @@ export const DOOR = {
   y: 4.95,
   leafWidth: 2,
   leafHeight: 7,
-  openAngle: 1.35,
+  leafDepth: 0.22,
+  /** Positive: the leaves swing in, into the lit passage cut behind the doorway (no clipping). */
+  openAngle: 1.3,
   lampIntensity: 40,
   glowScale: 9,
   glowGrow: 14,
+  /** Extra glow growth while the doorway floods the screen with white. */
+  glowFlood: 40,
+} as const;
+
+/**
+ * The doorway is a real opening: the portico wall and the building body are
+ * cut around it and a lit passage runs behind it, so the leaves can swing
+ * inward and the camera can walk in.
+ */
+export const DOORWAY = {
+  /** Half width of the opening and the passage (leaves are 2 m each; a little room for their thickness). */
+  halfWidth: 2.15,
+  /** Floor of the passage, just above the steps. */
+  floorY: 1.3,
+  /** Top of the opening: the underside of the lintel. */
+  topY: 8.47,
+  /** How deep the passage runs into the building. */
+  depth: 10,
+} as const;
+
+/** Neoclassical door details (all in metres). */
+export const DOOR_STYLE = {
+  /** Architrave: side jambs and head casing around the opening. */
+  jambWidth: 0.42,
+  jambDepth: 0.32,
+  /** Raised panels per leaf, top to bottom: [height, y offset from leaf centre]. */
+  panels: [
+    [2.9, 1.65],
+    [0.9, -0.55],
+    [2.2, -2.2],
+  ] as const,
+  panelInset: 0.28,
+  /** Semicircular fanlight above the lintel. */
+  fanlightRadius: 1.55,
+  fanlightY: 9.1,
+  /** Cornice hood above the fanlight. */
+  hoodY: 10.95,
 } as const;
 
 export const PATH = {
@@ -182,12 +226,18 @@ export const CAMERA = {
     [-1.6, 1.2, 1],
     [0.6, 1.7, -10],
     [0, 2.1, -22],
-    [0, 2.7, MZ + 14],
-    [0, 3.8, MZ + 6.2],
+    [0, 2.7, MZ + 15],
+    // Stop just outside the columns (MZ + 7.4), about 10 m from the door: the whole
+    // doorway stays in view while the leaves swing open toward the visitor.
+    [0, 3.3, MZ + 11],
   ] as Vec3[],
   lookStart: [2.5, 6.4, -22] as Vec3,
   lookStartPortrait: [1.2, 6.4, -22] as Vec3,
   lookDoor: [0, DOOR.y, DZ] as Vec3,
+  /** After the doors open, the camera walks through the doorway to this point inside the lit passage. */
+  enterTo: [0, 4.3, MZ - 4] as Vec3,
+  /** And looks down the passage. */
+  lookInside: [0, 4.3, MZ - 9] as Vec3,
   near: 0.1,
   far: 800,
   /** FOV by aspect: < 0.8 → portrait, < 1.2 → square-ish, else landscape. */
@@ -196,12 +246,23 @@ export const CAMERA = {
   squareAspect: 1.2,
 } as const;
 
-/** Entry timeline, as fractions of `duration`. */
+/**
+ * Entry timeline, as fractions of `duration`:
+ * walk to the steps → stop in front of the door → the leaves swing open, fully
+ * visible → the doorway floods with white light → the gallery fades in from white.
+ */
 export const TRAVEL = {
-  duration: 5.5,
-  look: [0.12, 0.62] as const,
-  doorOpen: [0.78, 0.93] as const,
-  white: [0.9, 1] as const,
+  duration: 7.4,
+  /** Camera walks the curve, then stops in front of the door. */
+  walk: [0, 0.48] as const,
+  /** Look target slides from the statue to the door. */
+  look: [0.06, 0.44] as const,
+  /** Door opens inward while the camera stands still. */
+  doorOpen: [0.48, 0.66] as const,
+  /** Camera walks through the doorway into the light. */
+  walkIn: [0.66, 0.98] as const,
+  /** White light fills the screen as the camera enters. */
+  white: [0.76, 0.98] as const,
   /** White fade into the gallery (s). */
   fadeOut: 0.6,
 } as const;

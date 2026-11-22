@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { COLORS, DZ, MUSEUM, MZ } from "./landing-config";
+import { COLORS, DOORWAY, MUSEUM, MZ } from "./landing-config";
 import { disposeTree, rbox, solid } from "./scene-utils";
 
 /**
@@ -10,6 +10,25 @@ import { disposeTree, rbox, solid } from "./scene-utils";
  * long windowed wings, three steps, a six-column portico with a pediment, and
  * two garden lamps. The door itself lives in <Door>.
  */
+/**
+ * A wall block with the doorway cut out: left and right parts, plus a part
+ * above the opening when the block reaches higher than the lintel.
+ */
+function splitAroundDoor(
+  g: THREE.Group,
+  mat: THREE.Material,
+  b: { x0: number; x1: number; y0: number; y1: number; z: number; d: number; r: number },
+) {
+  const hw = DOORWAY.halfWidth;
+  const h = b.y1 - b.y0;
+  const yc = (b.y0 + b.y1) / 2;
+  const side = (from: number, to: number) => rbox(g, to - from, h, b.d, mat, (from + to) / 2, yc, b.z, b.r);
+  side(b.x0, -hw);
+  side(hw, b.x1);
+  const top = Math.max(b.y0, DOORWAY.topY);
+  if (b.y1 > top) rbox(g, hw * 2, b.y1 - top, b.d, mat, 0, (top + b.y1) / 2, b.z, Math.min(b.r, 0.05));
+}
+
 export function Museum() {
   const group = useMemo(() => {
     const g = new THREE.Group();
@@ -23,10 +42,11 @@ export function Museum() {
 
     // Body: plinth, wings, cornice, flat roof, string course.
     rbox(g, 104, 1.0, 16, base, 0, 0.5, MZ - 6, 0.15);
-    rbox(g, 100, 10.4, 12, wall, 0, 6.2, MZ - 6, 0.12);
+    // The body is cut around the doorway so the lit passage can run inside.
+    splitAroundDoor(g, wall, { x0: -50, x1: 50, y0: 1.0, y1: 11.4, z: MZ - 6, d: 12, r: 0.12 });
     rbox(g, 101.6, 0.7, 13.4, trim, 0, 11.75, MZ - 6);
     rbox(g, 100.8, 0.9, 12.6, roof, 0, 12.55, MZ - 6);
-    rbox(g, 101, 0.35, 12.8, trim, 0, 4.1, MZ - 6 + 0.05);
+    splitAroundDoor(g, trim, { x0: -50.5, x1: 50.5, y0: 3.925, y1: 4.275, z: MZ - 6 + 0.05, d: 12.8, r: 0.08 });
 
     // Tall windows with sills, lintels and pilasters between them.
     for (let i = -MUSEUM.windowRange; i <= MUSEUM.windowRange; i++) {
@@ -44,7 +64,7 @@ export function Museum() {
     );
 
     // Portico: back wall, entablature, pediment with a slightly darker tympanum.
-    rbox(g, 26, 12.2, 1, wall, 0, 7.4, MZ + 0.5);
+    splitAroundDoor(g, wall, { x0: -13, x1: 13, y0: 1.3, y1: 13.5, z: MZ + 0.5, d: 1, r: 0.08 });
     rbox(g, 29.2, 1.5, 9.4, trim, 0, 12.85, MZ + 4.2);
     rbox(g, 29.8, 0.4, 9.8, trim, 0, 13.8, MZ + 4.2);
     const tri = new THREE.Shape();
@@ -89,8 +109,7 @@ export function Museum() {
       rbox(g, 2.0, 0.3, 2.0, trim, x, 1.42 - 0.2, z);
     }
 
-    // Lintel over the door.
-    rbox(g, 5, 0.55, 0.45, trim, 0, 8.75, DZ + 0.05);
+    // The door's architrave, fanlight and hood live in <Door>.
 
     // Garden lamps either side of the steps.
     const postMat = solid(COLORS.lampPost, 0.5, 0.6);

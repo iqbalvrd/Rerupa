@@ -14,6 +14,7 @@ import {
   usePrefetchArtwork,
   type GalleryArtwork,
 } from "@/lib/artworks";
+import { clearGalleryEntrance, isGalleryEntrance } from "@/lib/gallery-entrance";
 import { lastArtwork, navigateToArtwork, rememberArtwork } from "@/lib/view-transition";
 import { DEFAULT_FRAME, type FrameStyleId } from "./frames";
 import { FramedArt } from "./framed-art";
@@ -22,6 +23,9 @@ import styles from "./gallery.module.css";
 // The 3D room loads after the page is interactive. Until it is ready, or when
 // WebGL is unavailable, the CSS room (walls, pilasters, floor) stays visible.
 const Room3D = dynamic(() => import("./room-3d"), { ssr: false, loading: () => null });
+
+/** Longest the doorway's white light waits for the gallery before revealing it anyway. */
+const ENTRANCE_MAX_HOLD_MS = 6000;
 
 function supportsWebGL(): boolean {
   try {
@@ -65,9 +69,33 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
   const pendingTarget = useRef<number | null>(null);
   const lastSettled = useRef(0);
   const count = bays.length;
-  const [webgl, setWebgl] = useState(false);
+  // null until checked on the client; the entrance waits for the answer.
+  const [webgl, setWebgl] = useState<boolean | null>(null);
   const [roomReady, setRoomReady] = useState(false);
   useEffect(() => setWebgl(supportsWebGL()), []);
+
+  // Arriving through the landing's doorway: stay white (the light from the
+  // door) until the room, the collection and the first painting are ready,
+  // then reveal everything at once. The landing preloaded most of it.
+  const [entrance, setEntrance] = useState<"hold" | "reveal" | null>(() => (isGalleryEntrance() ? "hold" : null));
+  useEffect(() => clearGalleryEntrance(), []);
+  const [firstArtReady, setFirstArtReady] = useState(false);
+  useEffect(() => {
+    if (entrance !== "hold" || artworks.isPending) return;
+    const img = trackRef.current?.querySelector("img");
+    if (!img) return setFirstArtReady(true);
+    let live = true;
+    img.decode().catch(() => {}).finally(() => live && setFirstArtReady(true));
+    return () => void (live = false);
+  }, [entrance, artworks.isPending, bays]);
+  const viewReady = !artworks.isPending && firstArtReady && webgl !== null && (!webgl || roomReady);
+  useEffect(() => {
+    if (entrance !== "hold") return;
+    if (viewReady) return setEntrance("reveal");
+    // Never keep the visitor in the light: reveal whatever is there after a while.
+    const id = window.setTimeout(() => setEntrance("reveal"), ENTRANCE_MAX_HOLD_MS);
+    return () => window.clearTimeout(id);
+  }, [entrance, viewReady]);
 
   /** Index of the bay whose center is nearest the track's center. */
   const nearestBay = useCallback((): number => {
@@ -190,7 +218,21 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
   }, [bays, count]);
 
   return (
-    <div ref={sceneRef} className={styles.scene} data-room={roomReady ? "3d" : "css"}>
+    <div
+      ref={sceneRef}
+      className={styles.scene}
+      data-room={roomReady ? "3d" : "css"}
+      data-entrance={entrance ?? undefined}
+    >
+      {entrance && (
+        <div
+          className={styles.enterWhite}
+          aria-hidden="true"
+          onTransitionEnd={(e) => e.target === e.currentTarget && setEntrance(null)}
+        >
+          <span className={styles.enterNote}>Menyiapkan ruang galeri…</span>
+        </div>
+      )}
       <div className={styles.ceiling} aria-hidden="true" />
       <div className={styles.floorClip} aria-hidden="true">
         <div className={styles.floor} />

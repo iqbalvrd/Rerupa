@@ -116,6 +116,40 @@ Kuota: per tahap checkpoint maks **2 feedback** (1 + 1 retry); foto ulang (`need
 
 Nama yang diterima dari UI: `lesson_viewed`, `recipe_opened`, `original_photo_opened`, `feedback_shown`, `reflection_answered` (P1: `story_opened`, `recognition_confirmed`). `props` hanya `stage_order`, `origin`, `lesson_version_id`, `correct` (lainnya dibuang). Event `practice_started`, `stage_completed`, `checkpoint_requested`, `lesson_completed`, `session_deleted` dicatat backend sendiri. Tidak menyimpan gambar, jawaban bebas, atau ID sesi mentah.
 
+## Storyline cerita (P1, aktif bila `FEATURE_STORY=true`)
+
+Kisah di balik karya dalam 4–6 panel. Berlaku untuk **materi koleksi** dan **foto unggahan**. Setiap storyline membawa label sumber kisah, dan label itu **wajib ditampilkan**.
+
+| Metode & path | Butuh sesi | Keterangan |
+| --- | --- | --- |
+| `POST /lessons/{id}/story` | mode bebas: ✅ | Body opsional `{title_hint, artist_hint, origin_hint, confirm_artwork_id, interpretation_only, consent_ai_photo}` + header `Idempotency-Key`. Respons `{story_id}` (200, sudah ada) atau `{job}` (202, sedang dibuat) |
+| `GET /stories/{id}` | cerita mode bebas: ✅ | Cerita + panel. Polling sampai `status` bukan `generating`; panel muncul satu per satu |
+
+### Alur di UI
+
+```
+Materi koleksi → POST /lessons/{id}/story → 200 {story_id} (atau 404 story_not_available)
+Foto unggahan:
+  1. Setelah tutorial jadi, cek GET /jobs/{generate}.result.recognition (bila FEATURE_RECOGNITION aktif)
+     ada → tanya "Apakah ini <title> karya <artist>?"
+       ya    → POST …/story {confirm_artwork_id} → 200 {story_id} (cerita koleksi yang sudah ditinjau)
+  2. Selain itu tawarkan isian opsional "Tahu judul / seniman / asal karyanya?"
+       diisi → POST …/story {title_hint, artist_hint, origin_hint, consent_ai_photo} → 202 {job}
+       kosong + izin foto → POST …/story {consent_ai_photo: true} → 202 {job}
+  3. Polling GET /jobs/{job.id}; result.kind:
+       story          → GET /stories/{result.story_id}
+       needs_identity → tampilkan result.candidate ("Apakah ini …?"); ya → kirim ulang dengan title_hint/artist_hint = kandidat
+       unknown        → minta isian, atau POST …/story {interpretation_only: true}
+```
+
+### Membaca `GET /stories/{id}`
+
+- `basis_label` (tampilkan di atas cerita): **"Kisah bersumber"** (`curated`/`sourced`), **"Berdasarkan info dari kamu"** (`user_hint`), atau **"Interpretasi AI"** (`ai_interpretation`). `basis_note` berisi satu kalimat penjelasan.
+- `claims[]`: `type` `fakta` (punya `source_urls`; tampilkan tautan) atau `perkiraan`. `sources[]` adalah daftar tautan sumber.
+- `panels[]`: `narration` (≤40 kata), `image_url` (signed URL), `image_label`: **"Ilustrasi AI"** (wajib tampil di panel gambar AI) atau **"Potongan karya asli"**. `kind: "text"` / `status: "text_only"` → tampilkan kartu teks (gambar gagal atau ditolak pemeriksa).
+- `character_codes` + `characters[].region_codes`: ketuk tokoh → lompat ke tahap yang membuka region itu (`new_region_codes` di `GET /lessons/{id}`).
+- Panel cerita mode bebas dihapus setelah 24 jam (`purged: true`, `image_url: null`); narasi tetap ada.
+
 ## Kode error yang perlu ditangani di UI
 
 | HTTP | `code` | Saran UI |
@@ -128,6 +162,9 @@ Nama yang diterima dari UI: `lesson_viewed`, `recipe_opened`, `original_photo_op
 | 422 | `file_invalid`, `validation_error` | Minta JPG/PNG/WebP; `fields` berisi nama field yang salah (termasuk `scope` yang keluar dari foto) |
 | 429 | `quota_exceeded` | Batas 3 tutorial per sesi; arahkan ke galeri |
 | 429 | `checkpoint_quota_exceeded` | Batas feedback tahap ini; ajak lanjut ke tahap berikutnya |
+| 404 | `feature_disabled` | Fitur cerita/pencocokan belum aktif di server; sembunyikan tombolnya |
+| 404 | `story_not_available` | Cerita materi ini belum ditinjau/terbit |
+| 429 | `story_quota_exceeded` | Batas pembuatan cerita untuk tutorial ini tercapai |
 | 409 | `lesson_required` | Sesi belum punya materi: pilih dari galeri atau buat tutorial |
 | 422 | `not_checkpoint` | Bug frontend: tahap ini tidak meminta foto |
 | 429 | `rate_limited` | Terlalu banyak permintaan; tunggu `Retry-After` detik (header) lalu coba lagi. Polling `/jobs` tiap 1 detik aman |

@@ -28,6 +28,15 @@ def png_bytes() -> bytes:
     return make_image("PNG")
 
 
+def pytest_configure(config):
+    """Tes integrasi membuat & menghapus data dan menjalankan worker sendiri. Di database produksi,
+    worker Railway ikut mengambil job uji (hasil tes acak) dan data uji mencemari produksi → tolak."""
+    from core.config import get_settings
+
+    if get_settings().environment == "production":
+        pytest.exit("Tes menolak berjalan dengan ENVIRONMENT=production. Pakai api/.env (database dev/tes).", returncode=2)
+
+
 def _supabase_ready() -> bool:
     try:
         from core.config import get_settings

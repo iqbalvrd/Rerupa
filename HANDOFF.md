@@ -21,7 +21,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | 5. Checkpoint | 🟡 end-to-end ✅ (foto sintetis); uji 3–5 foto progres nyata ⏳; feedback AI menunggu key | ⏳ |
 | 6. Rilis versi awal | 🟡 siap deploy (Dockerfile, rate limit, batas biaya, smoke test) ✅; deploy Railway + batas OpenAI di dashboard ⏳ (butuh akun) | ⏳ |
 | 7. Penguatan showcase | 🟡 2 checkpoint, retensi 24 jam, tes akses antar-sesi, P95 lokal ✅; 3–5 materi + resep teruji fisik (konten) ⏳; P95 produksi ⏳ | ⏳ |
-| 8. P1 storyline | ⏳ | ⏳ |
+| 8. P1 storyline | 🟡 backend ✅ (koleksi + foto unggahan, sumber berlapis, uji nyata) — tinjauan cerita materi demo & daftar tokoh terbatas oleh konten ⏳ | ⏳ |
 | 9. Demo | ⏳ | ⏳ |
 
 ---
@@ -33,7 +33,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Bagian | Detail | Bukti |
 | --- | --- | --- |
 | Setup | Proyek `api/` (uv, Python 3.12), config `.env`, log JSON, error terstandar `{code, message}` | `GET /health` → Supabase ok |
-| Database | Project Supabase **Singapura** (`ap-southeast-1`, ref `xcksxhiablzenpiwkkak`) sejak 21 Nov; 14 migrasi diterapkan ke Supabase: 17 enum, 13 tabel, fungsi antrean, 3 bucket privat, indeks FK | `supabase/migrations/` |
+| Database | Project Supabase **Singapura** (`ap-southeast-1`, ref `xcksxhiablzenpiwkkak`) sejak 21 Nov = **produksi** (Railway `api` + `worker`). Dev/tes memakai project **Tokyo** (`kwsdjpxlvmjxlqmvbylf`, `api/.env`); produksi lewat `api/.env.prod` + `RERUPA_ENV_FILE`. 16 migrasi diterapkan ke keduanya; awalnya 14 migrasi diterapkan ke Supabase: 17 enum, 13 tabel, fungsi antrean, 3 bucket privat, indeks FK | `supabase/migrations/` |
 | Keamanan DB | RLS aktif di semua tabel tanpa policy publik; `anon`/`authenticated` tanpa hak tabel; hanya backend (service role) yang akses | Advisor keamanan Supabase bersih |
 | Sesi tamu | `POST/GET/PATCH/DELETE /sessions`; token di cookie httpOnly, DB simpan hash; sesi lain → 404; hapus sesi mencabut akses, membatalkan job antre, menghapus file foto | Tes integrasi |
 | Antrean job | Idempoten (`Idempotency-Key`), klaim atomik, job macet dicoba ulang lalu gagal, job sesi terhapus tidak diproses; `GET /jobs/{id}` | Tes integrasi |
@@ -49,6 +49,7 @@ Acuan: [PRD v1.3](PRD_Rerupa_v1.3.md) · [Rencana v1.2](RENCANA_PENGERJAAN.md) �
 | Showcase (Fase 7) | 2 checkpoint (sketsa + bidang sedang; tahap warna diselaraskan dengan tepi bidang warna); retensi: worker tiap 15 menit hapus foto + lapisan turunan foto >24 jam dan sesi terhapus/kedaluwarsa, `pg_cron` untuk `events`/`ai_usage`; lapisan terhapus → `purged: true`; tes otomatis akses antar-sesi/hapus sesi/idempotensi/retensi; `scripts/measure_p95.py` + `scripts/report_ai.py` | P95 lokal (20 putaran): tutorial 29,0 s, feedback 15,0 s — [eval/P95_LOKAL.md](eval/P95_LOKAL.md) |
 | AI OpenAI | Uji 3 model pada 4 materi koleksi ([eval/HASIL_UJI_MODEL.md](eval/HASIL_UJI_MODEL.md)): **gpt-6.1-terra** dipilih untuk mode bebas + feedback (lolos validator 4/4, ±18 s, ±$0,012/tutorial), gpt-6.2-sol untuk impor koleksi; `reasoning.effort=low`; alur penuh dengan AI sungguhan terbukti (teks tahap + feedback, biaya tercatat di `ai_usage`) | Uji model + uji end-to-end |
 | Optimasi & bug | Penyapu job pg_cron (job tak lagi menggantung saat worker mati), SIGTERM worker, worker 2 jalur, unggah lapisan paralel, `GET /lessons` paralel + cache koleksi, API tanpa torch (dua image Docker), klien Supabase pool HTTP/1.1 (bug unggahan paralel: 56/80 gagal → 0/80) | P95 tutorial 14,4 → 9,9 s; 4 pengguna serentak 42,4 → 30,1 s — [eval/HASIL_OPTIMASI.md](eval/HASIL_OPTIMASI.md) |
+| Storyline (Fase 8) | `POST /lessons/{id}/story`, `GET /stories/{id}`; pencocokan foto → koleksi (18/18); sumber kisah berlapis (kurasi → cocok koleksi → isian → web search, fakta hanya dengan URL tepercaya yang ditemukan pencarian); storyboard + validator + daftar terbatas; panel potongan asli / `gpt-image-2.6` + pemeriksa (regenerasi 1×, kartu teks); retensi panel 24 jam; `scripts/generate_story.py` | Tes + uji nyata — [eval/HASIL_STORYLINE.md](eval/HASIL_STORYLINE.md) |
 | Pipeline CV (Fase 2) | `api/cv/`: normalisasi, cek kualitas, mask (rembg u2net), garis (TEED untuk mode bebas, model lineart untuk koleksi, XDoG cadangan) dengan ambang adaptif, region k-means ≤35 yang digabung berdasarkan kemiripan warna, terang-gelap 3–5 tingkat, SVG + gambar region bernomor | 59 tes + evaluasi foto nyata ([eval/HASIL_FASE2.md](eval/HASIL_FASE2.md)) |
 
 ### 2.2 Berikutnya

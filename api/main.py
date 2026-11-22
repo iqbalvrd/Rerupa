@@ -10,7 +10,7 @@ from core import ratelimit
 from core.config import get_settings
 from core.errors import message_for, register_error_handlers
 from core.logging_setup import setup_logging
-from routes import artworks, checkpoints, health, jobs, lessons, palettes, progress, sessions
+from routes import artworks, checkpoints, health, jobs, lessons, palettes, progress, sessions, stories
 
 settings = get_settings()
 setup_logging()
@@ -101,3 +101,4 @@ app.include_router(lessons.router)
 app.include_router(palettes.router)
 app.include_router(progress.router)
 app.include_router(checkpoints.router)
+app.include_router(stories.router)

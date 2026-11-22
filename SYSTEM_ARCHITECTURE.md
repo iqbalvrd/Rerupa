@@ -342,11 +342,18 @@ sequenceDiagram
     participant K as Worker
     participant O as OpenAI
 
-    W->>A: POST /lessons/:id/story
+    W->>A: POST /lessons/:id/story {title_hint?, artist_hint?}
     A-->>W: 202 {job_id}
-    K->>O: storyboard (teks/vision) + basis budaya
+    alt materi koleksi / foto cocok koleksi (dikonfirmasi)
+        K->>K: kisah kurasi + basis budaya
+    else foto unggahan lain
+        K->>O: kandidat identitas (foto + isian)
+        K->>O: web search (teks: judul + seniman)
+        O-->>K: sumber + URL
+    end
+    K->>O: storyboard (teks/vision) + sumber + story_basis
     O-->>K: JSON storyboard
-    K->>K: validasi (fakta bersumber, tokoh terbatas tidak digenerate)
+    K->>K: validasi (fakta bersumber + URL tepercaya, label story_basis, tokoh terbatas tidak digenerate)
     loop panel 1..n (berurutan)
         alt adegan ada di karya
             K->>K: pakai potongan karya asli

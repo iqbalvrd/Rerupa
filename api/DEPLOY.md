@@ -33,10 +33,20 @@ Dua service, **dua image**: `api` dari `Dockerfile.api` (ringan, tanpa torch) da
 | `OPENAI_PRICE_INPUT_PER_M`, `OPENAI_PRICE_OUTPUT_PER_M` | ✅ | ✅ | `1.0`, `5.0` — **wajib** bila key diisi (dipakai menghitung batas biaya) |
 | `OPENAI_REASONING_EFFORT` | ✅ | ✅ | `low` |
 | `DAILY_AI_BUDGET_USD` | ✅ | ✅ | `5` (atau sesuai kesepakatan tim) |
+| `FEATURE_STORY`, `FEATURE_RECOGNITION` | ✅ | ✅ | `false` sampai cerita materi demo ditinjau; `true` untuk demo. Biaya storyline foto unggahan ±$0,30–0,37 |
 | `CHECKPOINT_COUNT` | | ✅ | `2` (showcase; `1` = versi awal) |
 | `WORKER_CONCURRENCY` | | ✅ | `2` (jalur paralel; memori ±1,2 GB per jalur) |
 | `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` | | ✅ | `60` bila `drainingSeconds` di `railway.worker.toml` tidak terbaca |
 | `LINEART_METHOD`, `MASK_MODEL` | | ✅ | `teed`, `u2net` |
+
+### Database produksi vs dev/tes
+
+| | Supabase | Dipakai oleh |
+| --- | --- | --- |
+| Produksi | Singapura `xcksxhiablzenpiwkkak` | Railway `api` + `worker` (variabel di Settings) |
+| Dev/tes | Tokyo `kwsdjpxlvmjxlqmvbylf` | `api/.env`: pytest, server & worker lokal |
+
+Tes tidak boleh menyentuh produksi: worker Railway akan mengambil job tes. `pytest` berhenti bila `ENVIRONMENT=production`. Operasi sengaja ke produksi (impor koleksi, storyline koleksi) memakai `RERUPA_ENV_FILE=.env.prod`. Migrasi baru diterapkan ke **kedua** project.
 
 ## 3. Batas biaya (dua lapis)
 

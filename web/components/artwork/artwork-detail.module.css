@@ -315,6 +315,28 @@
   padding-inline-start: 0.7rem;
   border-inline-start: 2px solid #c8a978;
 }
+/* Entry to the illustrated storyline (P1). Shown only when the server offers one. */
+.storyLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-block-size: max(var(--target-size), 2.25rem);
+  margin-block-start: 0.85rem;
+  padding-inline: 0.9rem;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.storyLink:hover {
+  background: #1b2b4d;
+}
+.storyLink:focus-visible {
+  outline: 3px solid #8fb4ff;
+  outline-offset: 2px;
+}
 .tag {
   display: inline-flex;
   align-items: center;

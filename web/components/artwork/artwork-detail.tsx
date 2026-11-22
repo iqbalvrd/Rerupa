@@ -19,6 +19,7 @@ import {
 } from "@/lib/artworks";
 import type { CultureClaim, Lesson } from "@/lib/schemas";
 import { withSession } from "@/lib/session-store";
+import { useCollectionStory } from "@/lib/story";
 import styles from "./artwork-detail.module.css";
 
 /**
@@ -136,9 +137,17 @@ function Cards({
 }) {
   // Artwork-level claims from the published lesson; dev fixtures carry the team's claims.
   const claims = (lesson?.culture_claims ?? artwork.claims ?? []).filter((c) => !c.stage_code);
+  // The reviewed storyline (P1). null = not offered (feature off / not reviewed): no button.
+  const story = useCollectionStory(artwork.lesson_version_id);
   const cards = [
     <LabelCard key="label" artwork={artwork} headingRef={headingRef} />,
-    <StoryCard key="story" claims={claims} loading={lessonLoading} published={Boolean(artwork.lesson_version_id)} />,
+    <StoryCard
+      key="story"
+      claims={claims}
+      loading={lessonLoading}
+      published={Boolean(artwork.lesson_version_id)}
+      storyHref={story.data ? `/cerita/${story.data}?kembali=${encodeURIComponent(`/karya/${artwork.slug}`)}` : null}
+    />,
     <PracticeCard key="practice" artwork={artwork} lesson={lesson} />,
     <ArchiveCard key="archive" artwork={artwork} />,
   ];
@@ -181,7 +190,17 @@ function LabelCard({
   );
 }
 
-function StoryCard({ claims, loading, published }: { claims: CultureClaim[]; loading: boolean; published: boolean }) {
+function StoryCard({
+  claims,
+  loading,
+  published,
+  storyHref,
+}: {
+  claims: CultureClaim[];
+  loading: boolean;
+  published: boolean;
+  storyHref: string | null;
+}) {
   return (
     <article className={`${styles.card} ${styles.cardStory}`} aria-labelledby="card-story-title" aria-busy={loading}>
       <span className={styles.kicker}>
@@ -205,6 +224,12 @@ function StoryCard({ claims, loading, published }: { claims: CultureClaim[]; loa
               ? "Belum ada cerita yang terverifikasi untuk karya ini."
               : "Cerita karya ini tampil setelah materinya diterbitkan dan ditinjau."}
           </p>
+        )}
+        {storyHref && (
+          <Link href={storyHref} className={styles.storyLink}>
+            <BookOpen aria-hidden="true" className="size-4" />
+            Baca kisah bergambarnya
+          </Link>
         )}
       </div>
     </article>

@@ -21,12 +21,15 @@ import {
   Progress,
   Recipe,
   Session,
+  Story,
+  StoryStart,
   type Corners,
   type EventName,
   type EventProps,
   type Scope,
   type SessionCreate,
   type SessionUpdate,
+  type StoryRequest,
 } from "./schemas";
 import { ApiError, isApiError } from "./api-error";
 import { DEV_MOCK_API, mockRequest } from "./dev-mock";
@@ -219,6 +222,11 @@ export const api = {
     request(`/sessions/${sessionId}/checkpoints`, z.array(Checkpoint), { signal }),
   getCheckpoint: (sessionId: string, jobId: string, signal?: AbortSignal) =>
     request(`/sessions/${sessionId}/checkpoints/${jobId}`, Checkpoint, { signal }),
+
+  // Storyline cerita (P1, FEATURE_STORY). 200 → { story_id }, 202 → { job }.
+  startStory: (lessonId: string, body: StoryRequest, idempotencyKey: string) =>
+    request(`/lessons/${lessonId}/story`, StoryStart, { method: "POST", json: body, idempotencyKey }),
+  getStory: (id: string, signal?: AbortSignal) => request(`/stories/${id}`, Story, { signal }),
 
   // Analytics. Fire-and-forget: a failed event must never break the UI.
   trackEvent: (name: EventName, props: EventProps = {}) =>

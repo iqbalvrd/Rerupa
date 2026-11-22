@@ -320,6 +320,8 @@ export const EventName = z.enum([
   "original_photo_opened",
   "feedback_shown",
   "reflection_answered",
+  "story_opened",
+  "recognition_confirmed",
 ]);
 export type EventName = z.infer<typeof EventName>;
 
@@ -366,3 +368,119 @@ export type Checkpoint = z.infer<typeof Checkpoint>;
 
 /** `corners` on `POST /sessions/{id}/checkpoints`: 4 points in natural photo pixels. */
 export type Corners = [number, number, number, number, number, number, number, number];
+
+// ── Storyline cerita (routes/stories.py, P1) ──────────────────────────────
+
+/** Body of `POST /lessons/{id}/story`. Every field is optional. */
+export type StoryRequest = {
+  title_hint?: string | null;
+  artist_hint?: string | null;
+  origin_hint?: string | null;
+  confirm_artwork_id?: string | null;
+  interpretation_only?: boolean;
+  consent_ai_photo?: boolean;
+};
+
+/** 200 `{ story_id }` (already exists) or 202 `{ job }` (being made). */
+export const StoryStart = z.object({
+  story_id: z.uuid().nullable().optional(),
+  job: Job.nullable().optional(),
+});
+export type StoryStart = z.infer<typeof StoryStart>;
+
+export const StorySource = z.object({
+  url: z.string(),
+  title: z.string(),
+  domain: z.string(),
+});
+export type StorySource = z.infer<typeof StorySource>;
+
+export const StoryClaim = z.object({
+  text: z.string(),
+  /** fakta | perkiraan. Kept as string; anything but a sourced "fakta" is shown as an estimate. */
+  type: z.string(),
+  source_urls: z.array(z.string()),
+});
+export type StoryClaim = z.infer<typeof StoryClaim>;
+
+export const StoryCharacter = z.object({
+  code: z.string(),
+  name: z.string(),
+  description: z.string(),
+  region_codes: z.array(z.string()),
+});
+export type StoryCharacter = z.infer<typeof StoryCharacter>;
+
+export const StoryPanel = z.object({
+  order_no: z.number().int(),
+  narration: z.string(),
+  /** generated | artwork_crop | text */
+  kind: z.string(),
+  /** pending | ready | text_only */
+  status: z.string(),
+  image_url: z.string().nullable(),
+  /** "Ilustrasi AI" | "Potongan karya asli"; always shown on a panel with an image. */
+  image_label: z.string().nullable(),
+  purged: z.boolean().default(false),
+  character_codes: z.array(z.string()),
+  focus_region_codes: z.array(z.string()),
+});
+export type StoryPanel = z.infer<typeof StoryPanel>;
+
+/**
+ * Who the story is about. The research-agent flow (branch feat/story-agen-riset)
+ * adds `source`, `confidence` and `reason`, so every field is optional.
+ */
+export const StoryIdentity = z
+  .object({
+    title: z.string().nullable().optional(),
+    artist: z.string().nullable().optional(),
+    origin: z.string().nullable().optional(),
+    /** user | ai_research */
+    source: z.string().nullable().optional(),
+    /** high | medium | low */
+    confidence: z.string().nullable().optional(),
+    reason: z.string().nullable().optional(),
+  })
+  .catchall(z.unknown());
+export type StoryIdentity = z.infer<typeof StoryIdentity>;
+
+export const Story = z.object({
+  id: z.uuid(),
+  lesson_version_id: z.uuid(),
+  /** generating | ready | text_only | failed */
+  status: z.string(),
+  /** curated | sourced | user_hint | ai_interpretation */
+  story_basis: z.string(),
+  /** Shown as given, above the story. Never rewritten by the UI. */
+  basis_label: z.string(),
+  basis_note: z.string(),
+  title: z.string().nullable(),
+  summary: z.string().nullable(),
+  identity: StoryIdentity,
+  claims: z.array(StoryClaim),
+  sources: z.array(StorySource),
+  characters: z.array(StoryCharacter),
+  panels: z.array(StoryPanel),
+});
+export type Story = z.infer<typeof Story>;
+
+/** `result` of a `generate_story` job. `kind` is loose so a new kind does not break the page. */
+export const StoryJobResult = z
+  .object({
+    kind: z.string(),
+    story_id: z.uuid().nullable().optional(),
+    candidate: z
+      .object({
+        title: z.string().nullable().optional(),
+        artist: z.string().nullable().optional(),
+        origin: z.string().nullable().optional(),
+        confidence: z.string().nullable().optional(),
+        reason: z.string().nullable().optional(),
+      })
+      .catchall(z.unknown())
+      .nullable()
+      .optional(),
+  })
+  .catchall(z.unknown());
+export type StoryJobResult = z.infer<typeof StoryJobResult>;

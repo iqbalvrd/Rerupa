@@ -1,6 +1,7 @@
 /**
- * Job polling for `generate_lesson` and checkpoint `feedback` jobs.
- * `GET /jobs/{id}` every second until `is_final: true` (API.md, "Status job").
+ * Job polling for `generate_lesson`, checkpoint `feedback` and `generate_story` jobs.
+ * `GET /jobs/{id}` every second for the first 10 s, then every 2 s, until
+ * `is_final: true` (API.md, "Status job").
  */
 "use client";
 
@@ -9,6 +10,16 @@ import { api, isApiError } from "./api";
 import type { Job } from "./schemas";
 
 export const JOB_POLL_INTERVAL_MS = 1_000;
+export const JOB_POLL_SLOW_INTERVAL_MS = 2_000;
+const JOB_POLL_FAST_FOR_MS = 10_000;
+
+/** Poll fast while a job is young, then back off (API.md). */
+export function jobPollInterval(job: Pick<Job, "created_at" | "is_final"> | undefined, now = Date.now()): number | false {
+  if (!job) return JOB_POLL_INTERVAL_MS;
+  if (job.is_final) return false;
+  const age = now - Date.parse(job.created_at);
+  return Number.isFinite(age) && age > JOB_POLL_FAST_FOR_MS ? JOB_POLL_SLOW_INTERVAL_MS : JOB_POLL_INTERVAL_MS;
+}
 
 /** Screen text per `progress.step` (API.md). Unknown steps fall back to a neutral label. */
 const STEP_LABELS: Record<string, string> = {
@@ -46,7 +57,7 @@ export function useJob(jobId: string | null | undefined) {
     queryKey: jobKeys.detail(jobId ?? "none"),
     queryFn: ({ signal }) => api.getJob(jobId!, signal),
     enabled: Boolean(jobId),
-    refetchInterval: (query) => (query.state.data?.is_final ? false : JOB_POLL_INTERVAL_MS),
+    refetchInterval: (query) => jobPollInterval(query.state.data),
     refetchIntervalInBackground: false,
     // A final job never changes; do not refetch it on focus or remount.
     staleTime: (query) => (query.state.data?.is_final ? Infinity : 0),

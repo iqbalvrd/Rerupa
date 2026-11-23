@@ -130,3 +130,17 @@ const LICENSE_LABELS: Record<string, string> = {
 export function licenseLabel(license: string): string {
   return LICENSE_LABELS[license] ?? license;
 }
+
+/**
+ * Painting used to illustrate "Cara kerja": a landscape with big, clear shapes
+ * reads well even as a tiny sketch. Falls back to the first artwork.
+ */
+const HOWTO_SAMPLE_SLUGS = ["mas-pirngadie-sawah-berundak", "raden-saleh-perburuan-singa"];
+export function howtoSample(list: readonly Pick<ArtworkCard, "slug" | "thumbnail_url">[] | undefined): string | undefined {
+  if (!list?.length) return undefined;
+  for (const slug of HOWTO_SAMPLE_SLUGS) {
+    const hit = list.find((a) => a.slug === slug && a.thumbnail_url);
+    if (hit?.thumbnail_url) return hit.thumbnail_url;
+  }
+  return list.find((a) => a.thumbnail_url)?.thumbnail_url ?? undefined;
+}

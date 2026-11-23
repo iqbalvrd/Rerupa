@@ -10,6 +10,7 @@ import { Logo } from "@/components/brand/logo";
 import {
   GALLERY_SOURCE,
   artworkByline,
+  howtoSample,
   licenseLabel,
   useArtworks,
   usePrefetchArtwork,
@@ -252,7 +253,7 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
         <div className={styles.topbarEnd}>
           <span className={styles.roomLabel}>Ruang Galeri</span>
           {/* Opens once on the first visit, after the doorway light has faded. */}
-          <HowItWorks autoOpen={entrance === null && !artworks.isPending} />
+          <HowItWorks autoOpen={entrance === null && !artworks.isPending} sample={howtoSample(artworks.data)} />
           <AccountMenu />
         </div>
       </header>

@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { AccountMenu } from "@/components/auth/account-menu";
 import { Logo } from "@/components/brand/logo";
 import { HowItWorks } from "../how-it-works";
-import { GALLERY_SOURCE, artworkByline, licenseLabel, useArtworks, usePrefetchArtwork, type GalleryArtwork } from "@/lib/artworks";
+import { GALLERY_SOURCE, artworkByline, howtoSample, licenseLabel, useArtworks, usePrefetchArtwork, type GalleryArtwork } from "@/lib/artworks";
 import { clearGalleryEntrance, isGalleryEntrance } from "@/lib/gallery-entrance";
 import { lastArtwork, navigateToArtwork, rememberArtwork, takeGalleryReturn } from "@/lib/view-transition";
 import { planRoom } from "./plan";
@@ -285,7 +285,7 @@ export function GalleryRoom() {
         <div className={styles.topbarEnd}>
           <span className={styles.roomLabel}>Ruang Galeri</span>
           {/* Opens once on the first visit, after the doorway light has faded. */}
-          <HowItWorks autoOpen={entrance === null && !artworks.isPending} />
+          <HowItWorks autoOpen={entrance === null && !artworks.isPending} sample={howtoSample(artworks.data)} />
           <AccountMenu />
         </div>
       </header>

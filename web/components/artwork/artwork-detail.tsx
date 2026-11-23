@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type RefObject } from "react";
 import { navigateBackToGallery } from "@/lib/view-transition";
 import { Archive, ArrowLeft, BadgeCheck, BookOpen, Brush, ExternalLink, Landmark, Sparkles } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { FramedArt } from "@/components/gallery/framed-art";
 import { Button } from "@/components/ui/button";
-import { api, isApiError } from "@/lib/api";
+import { isApiError } from "@/lib/api";
 import {
   GALLERY_SOURCE,
   artworkByline,
@@ -18,7 +19,7 @@ import {
   type GalleryArtworkDetail,
 } from "@/lib/artworks";
 import type { CultureClaim, Lesson } from "@/lib/schemas";
-import { withSession } from "@/lib/session-store";
+import { switchLesson } from "@/lib/session-store";
 import { useCollectionStory } from "@/lib/story";
 import styles from "./artwork-detail.module.css";
 
@@ -352,6 +353,7 @@ function ArchiveCard({ artwork }: { artwork: GalleryArtworkDetail }) {
 }
 
 function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
+  const queryClient = useQueryClient();
   const router = useRouter();
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -362,7 +364,7 @@ function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
     setStarting(true);
     setError(null);
     try {
-      await withSession((sessionId) => api.updateSession(sessionId, { lesson_version_id: lessonId }));
+      await switchLesson(queryClient, lessonId);
       router.push(`/persiapan?karya=${encodeURIComponent(artwork.slug)}`);
     } catch (err) {
       setError(isApiError(err) ? err.message : "Latihan belum bisa dimulai. Coba lagi.");

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BadgeCheck, BookOpen, ExternalLink, ImageOff, Sparkles, UserRound } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { api, isApiError } from "@/lib/api";
 import type { Lesson, Story, StoryCharacter, StoryClaim, StoryPanel } from "@/lib/schemas";
-import { withSession } from "@/lib/session-store";
+import { ensureSession, switchLesson } from "@/lib/session-store";
 import { firstStageForRegions } from "@/lib/stages";
 import {
   basisIsSourced,
@@ -244,6 +244,7 @@ function CharacterButton({
   compact?: boolean;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const stage = lesson ? firstStageForRegions(lesson.stages, character.region_codes) : null;
@@ -253,12 +254,10 @@ function CharacterButton({
     setBusy(true);
     setError(null);
     try {
-      await withSession(async (sessionId) => {
-        const session = await api.getSession(sessionId);
-        if (session.lesson_version_id !== story.lesson_version_id) {
-          await api.updateSession(sessionId, { lesson_version_id: story.lesson_version_id });
-        }
-      });
+      const session = await ensureSession();
+      if (session.lesson_version_id !== story.lesson_version_id) {
+        await switchLesson(queryClient, story.lesson_version_id);
+      }
       router.push(`/latihan?tahap=${encodeURIComponent(stage.code)}`);
     } catch (err) {
       setError(isApiError(err) ? err.message : "Tahapnya belum bisa dibuka. Coba lagi.");

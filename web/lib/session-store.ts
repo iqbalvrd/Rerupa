@@ -7,6 +7,7 @@
  * as `/sessions/{id}/progress`) so a reload can restore the practice. The id is
  * not a credential: the API authorizes every call against the cookie or token.
  */
+import type { QueryClient } from "@tanstack/react-query";
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import { api, isApiError } from "./api";
@@ -109,6 +110,18 @@ export async function withSession<T>(fn: (sessionId: string) => Promise<T>): Pro
     const fresh = await ensureSession();
     return fn(fresh.id);
   }
+}
+
+/**
+ * Point the session at another lesson and update the cached session, so
+ * Persiapan and Latihan open the new lesson (at its own first stage) instead
+ * of the previous one from cache. Progress is per lesson: drop the old one.
+ */
+export async function switchLesson(queryClient: QueryClient, lessonId: string): Promise<Session> {
+  const session = await withSession((id) => api.updateSession(id, { lesson_version_id: lessonId }));
+  queryClient.setQueryData(["session"], session);
+  queryClient.removeQueries({ queryKey: ["progress"] });
+  return session;
 }
 
 /** Delete the session on the server, then forget it locally. */

@@ -58,7 +58,7 @@ export function PracticeView() {
     refetchInterval: 25 * 60_000,
   });
   const progress = useQuery({
-    queryKey: ["progress", sessionId],
+    queryKey: ["progress", sessionId, lessonId],
     queryFn: ({ signal }) => api.getProgress(sessionId!, signal),
     enabled: Boolean(sessionId && lessonId),
   });
@@ -102,7 +102,8 @@ export function PracticeView() {
       </Shell>
     );
   }
-  if (!lesson.data || !progress.data || !sessionId) {
+  // Progress of another lesson (a stale cache) would open the wrong stage: wait for this lesson's.
+  if (!lesson.data || !progress.data || !sessionId || progress.data.lesson_version_id !== lesson.data.id) {
     return (
       <Shell>
         <p className={styles.message} role="status">
@@ -117,7 +118,7 @@ export function PracticeView() {
       lesson={lesson.data}
       progress={progress.data}
       sessionId={sessionId}
-      onProgress={(p) => queryClient.setQueryData(["progress", sessionId], p)}
+      onProgress={(p) => queryClient.setQueryData(["progress", sessionId, lessonId], p)}
       onLayerError={() => void lesson.refetch()}
     />
   );

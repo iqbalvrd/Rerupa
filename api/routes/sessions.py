@@ -1,4 +1,4 @@
-"""Sesi tamu: POST/GET/PATCH/DELETE /sessions."""
+"""Sesi latihan: POST/GET/PATCH/DELETE /sessions. Membuat sesi wajib masuk akun; akses berikutnya memakai token sesi."""
 
 import logging
 from datetime import timedelta
@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.auth import CurrentUser, current_user
 from core.config import get_settings
 from core.errors import AppError
 from core.security import hash_token, new_session_token, safety_id_for
@@ -83,7 +84,8 @@ def _check_palette(palette_id: UUID | None) -> None:
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=SessionOut)
-def create_session(body: SessionCreate, response: Response) -> SessionOut:
+def create_session(body: SessionCreate, response: Response, user: CurrentUser = Depends(current_user)) -> SessionOut:
+    """Mulai latihan butuh akun (tamu hanya melihat koleksi & tutorial)."""
     _check_palette(body.palette_id)
     _check_lesson(body.lesson_version_id, None)
     token = new_session_token()
@@ -96,6 +98,7 @@ def create_session(body: SessionCreate, response: Response) -> SessionOut:
         .insert(
             {
                 "id": session_id,
+                "user_id": user.id,
                 "token_hash": hash_token(token),
                 "palette_id": str(body.palette_id) if body.palette_id else None,
                 "lesson_version_id": str(body.lesson_version_id) if body.lesson_version_id else None,

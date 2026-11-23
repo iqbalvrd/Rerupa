@@ -112,18 +112,6 @@ export async function withSession<T>(fn: (sessionId: string) => Promise<T>): Pro
   }
 }
 
-/**
- * Point the session at another lesson and update the cached session, so
- * Persiapan and Latihan open the new lesson (at its own first stage) instead
- * of the previous one from cache. Progress is per lesson: drop the old one.
- */
-export async function switchLesson(queryClient: QueryClient, lessonId: string): Promise<Session> {
-  const session = await withSession((id) => api.updateSession(id, { lesson_version_id: lessonId }));
-  queryClient.setQueryData(["session"], session);
-  queryClient.removeQueries({ queryKey: ["progress"] });
-  return session;
-}
-
 /** Delete the session on the server, then forget it locally. */
 export async function endSession(): Promise<void> {
   const { sessionId, setSessionId } = useSessionStore.getState();
@@ -135,4 +123,24 @@ export async function endSession(): Promise<void> {
     }
   }
   setSessionId(null);
+}
+
+/** TanStack Query key of the current session (pages read it via `ensureSession`). */
+export const SESSION_QUERY_KEY = ["session"] as const;
+
+/**
+ * Put a session the API just returned into the query cache.
+ *
+ * Pages that read `["session"]` render straight from the cache. Only invalidating it after
+ * the lesson changed (a free-mode tutorial finished, or a collection artwork was picked)
+ * let /persiapan and /latihan first render the previous lesson, which then stuck around
+ * whenever the refetch lost a race. Writing the fresh session makes the next page right on
+ * its first render. Progress belongs to one lesson, so it is dropped when the lesson changes.
+ */
+export function rememberSession(queryClient: QueryClient, session: Session): void {
+  const previous = queryClient.getQueryData<Session>(SESSION_QUERY_KEY);
+  if (previous?.id !== session.id || previous?.lesson_version_id !== session.lesson_version_id) {
+    queryClient.removeQueries({ queryKey: ["progress"] });
+  }
+  queryClient.setQueryData(SESSION_QUERY_KEY, session);
 }

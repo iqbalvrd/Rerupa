@@ -98,6 +98,9 @@
   gap: 10px;
 }
 .pill {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
   min-block-size: 44px;
   padding-inline: 18px;
   border: 0;

@@ -1,18 +1,57 @@
-/* A gilded frame (CSS border-image) around an artwork image or any content. */
 .frame {
-  /* Artwork plus both frame sides must fit the available width. */
   --art-max-w: min(calc(100vw - 5rem - 2 * var(--frame-w)), 26rem);
   --art-max-h: 34dvh;
+  position: relative;
   display: block;
-  border-style: solid;
-  border-width: var(--frame-w);
-  border-image-source: var(--frame-src);
-  border-image-slice: var(--frame-slice);
-  border-image-width: var(--frame-w);
-  border-image-repeat: stretch;
-  /* the frame casts a soft shadow on the wall, lit from above */
+  padding: var(--frame-w);
+  background: #51360f;
   filter: drop-shadow(0 0.9rem 0.8rem rgb(60 45 30 / 0.35));
 }
+
+.content {
+  display: block;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 0 1px #362207, 0 0 0 calc(var(--frame-w) * 0.035) #dcba69;
+}
+
+.rails {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rails > span {
+  position: absolute;
+  display: block;
+  --grain-direction: 90deg;
+  --profile-direction: to bottom;
+  background:
+    repeating-linear-gradient(var(--grain-direction), #4b2e121a 0 .7px, transparent .7px 2.3px, #ffe9b00e 2.3px 3px),
+    linear-gradient(var(--profile-direction),
+      #51351b 0%, #bd934c 4%, #efd49c 8%, #9d7137 11%,
+      #704b25 16%, #bd9556 20%, #dfbd7e 29%, #b78b4b 38%,
+      #a87b3e 51%, #dfbd7b 65%, #f0d598 70%, #90612d 77%,
+      #64421e 84%, #d8b473 90%, #e7c78b 95%, #573818 100%);
+}
+
+.top, .bottom {
+  left: 0;
+  right: 0;
+  height: var(--frame-w);
+}
+.top { top: 0; clip-path: polygon(0 0, 100% 0, calc(100% - var(--frame-w)) 100%, var(--frame-w) 100%); }
+.bottom { bottom: 0; transform: rotate(180deg); clip-path: polygon(0 0, 100% 0, calc(100% - var(--frame-w)) 100%, var(--frame-w) 100%); }
+
+.left, .right {
+  top: 0;
+  bottom: 0;
+  width: var(--frame-w);
+  --grain-direction: 0deg;
+  --profile-direction: to right;
+}
+.left { left: 0; clip-path: polygon(0 0, 100% var(--frame-w), 100% calc(100% - var(--frame-w)), 0 100%); }
+.right { right: 0; transform: rotate(180deg); clip-path: polygon(0 0, 100% var(--frame-w), 100% calc(100% - var(--frame-w)), 0 100%); }
 
 .art {
   display: block;
@@ -23,3 +62,46 @@
   object-fit: contain;
   background: #e9e2d4;
 }
+
+/* Dotted beading repeats at a fixed pitch; the carving never stretches. */
+.rails > span::after {
+  content: "";
+  position: absolute;
+  inset: 11% 0 auto;
+  height: 7%;
+  background: radial-gradient(ellipse at 40% 28%, #f4d69c 0 18%, #ab7737 39%, #573b1e 55%, transparent 68%) 0 0 / 5px 100% repeat-x;
+}
+.rails > .left::after, .rails > .right::after {
+  inset: 0 auto 0 11%;
+  width: 7%;
+  height: auto;
+  background: radial-gradient(ellipse at 28% 40%, #f4d69c 0 18%, #ab7737 39%, #573b1e 55%, transparent 68%) 0 0 / 100% 5px repeat-y;
+}
+.ornaments {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.ornaments svg {
+  position: absolute;
+  overflow: visible;
+  filter: drop-shadow(1px 2px 1px #3c250c99);
+}
+.cornerTL, .cornerTR, .cornerBL, .cornerBR {
+  width: calc(var(--frame-w) * 1.42);
+  height: calc(var(--frame-w) * 1.42);
+}
+.cornerTL { top: -3px; left: -3px; }
+.cornerTR { top: -3px; right: -3px; transform: rotate(90deg); }
+.cornerBR { bottom: -3px; right: -3px; transform: rotate(180deg); }
+.cornerBL { bottom: -3px; left: -3px; transform: rotate(270deg); }
+.crownTop, .crownBottom, .crownLeft, .crownRight {
+  width: calc(var(--frame-w) * 2.32);
+  height: calc(var(--frame-w) * .96);
+}
+.crownTop { top: -2px; left: 50%; transform: translateX(-50%); }
+.crownBottom { bottom: -2px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.crownLeft { top: 50%; left: calc(var(--frame-w) * -.7); transform: translateY(-50%) rotate(-90deg); }
+.crownRight { top: 50%; right: calc(var(--frame-w) * -.7); transform: translateY(-50%) rotate(90deg); }
+.engraving { stroke: #765024; stroke-width: 2.5; }

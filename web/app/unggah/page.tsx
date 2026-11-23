@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireLogin } from "@/components/auth/require-login";
 import { UploadView } from "@/components/upload/upload-view";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function UploadPage() {
-  return <UploadView />;
+  return (
+    <RequireLogin>
+      <UploadView />
+    </RequireLogin>
+  );
 }

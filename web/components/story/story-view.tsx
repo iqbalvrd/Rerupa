@@ -8,7 +8,7 @@ import { ArrowLeft, BadgeCheck, BookOpen, ExternalLink, ImageOff, Sparkles, User
 import { Logo } from "@/components/brand/logo";
 import { api, isApiError } from "@/lib/api";
 import type { Lesson, Story, StoryCharacter, StoryClaim, StoryPanel } from "@/lib/schemas";
-import { ensureSession, switchLesson } from "@/lib/session-store";
+import { ensureSession, rememberSession, withSession } from "@/lib/session-store";
 import { firstStageForRegions } from "@/lib/stages";
 import {
   basisIsSourced,
@@ -256,7 +256,10 @@ function CharacterButton({
     try {
       const session = await ensureSession();
       if (session.lesson_version_id !== story.lesson_version_id) {
-        await switchLesson(queryClient, story.lesson_version_id);
+        const updated = await withSession((id) =>
+          api.updateSession(id, { lesson_version_id: story.lesson_version_id }),
+        );
+        rememberSession(queryClient, updated);
       }
       router.push(`/latihan?tahap=${encodeURIComponent(stage.code)}`);
     } catch (err) {

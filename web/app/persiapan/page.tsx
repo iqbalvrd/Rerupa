@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireLogin } from "@/components/auth/require-login";
 import { Suspense } from "react";
 import { PreparationView } from "@/components/preparation/preparation-view";
 
@@ -11,7 +12,9 @@ export default function PreparationPage() {
   return (
     // useSearchParams needs a Suspense boundary for static rendering.
     <Suspense>
-      <PreparationView />
+      <RequireLogin>
+        <PreparationView />
+      </RequireLogin>
     </Suspense>
   );
 }

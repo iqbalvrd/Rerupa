@@ -12,9 +12,10 @@ Dua service, **dua image**: `api` dari `Dockerfile.api` (ringan, tanpa torch) da
 4. Isi variabel (Shared Variables untuk keduanya, tabel di bawah).
 5. Deploy. Cek `https://<domain-api>/health` → `status: ok`, `supabase: ok`, `environment: production`.
 6. Kirim domain API ke Xavier → Vercel `NEXT_PUBLIC_API_BASE_URL`.
-7. Smoke test dari laptop (alur lengkap seperti pengguna, data uji dihapus sendiri):
+7. Akun (Supabase Auth): Vercel `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (kunci *publishable* project produksi, bukan service role). Di Supabase → Authentication → URL Configuration, isi *Site URL* dengan domain Vercel dan tambahkan `https://<domain-vercel>/masuk` ke *Redirect URLs* (tautan konfirmasi email). Railway API: `ADMIN_EMAILS`.
+8. Smoke test dari laptop (alur lengkap seperti pengguna, data uji dihapus sendiri; butuh akun uji terverifikasi):
    ```bash
-   cd api && uv run --group cv python scripts/smoke.py --base-url https://<domain-api>
+   cd api && SMOKE_EMAIL=… SMOKE_PASSWORD=… uv run --group cv python scripts/smoke.py --base-url https://<domain-api> --supabase-url https://<ref>.supabase.co --anon-key sb_publishable_…
    ```
 
 ## 2. Variabel lingkungan
@@ -24,6 +25,7 @@ Dua service, **dua image**: `api` dari `Dockerfile.api` (ringan, tanpa torch) da
 | `ENVIRONMENT` | ✅ | ✅ | `production` (API menolak start bila konfigurasi berbahaya) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | ✅ | ✅ | **Rahasia**. Disarankan rotasi key yang pernah ditempel di chat sebelum produksi |
 | `FRONTEND_ORIGIN` | ✅ | | `https://<domain-vercel>` (beberapa dipisah koma) |
+| `ADMIN_EMAILS` | ✅ | | Email admin (dipisah koma). Jadi admin setelah email terverifikasi; admin lain diangkat dari `/admin` |
 | `FRONTEND_ORIGIN_REGEX` | ✅ | | Opsional, preview Vercel, mis. `^https://rerupa-[a-z0-9-]+-xavier\.vercel\.app$` |
 | `COOKIE_SAMESITE` / `COOKIE_SECURE` | ✅ | | `none` / `true` (frontend & API beda domain) |
 | `TRUST_PROXY_HEADERS` | ✅ | | `true` (IP klien dari proxy Railway untuk rate limit) |

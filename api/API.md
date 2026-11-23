@@ -7,6 +7,7 @@ Status per Fase 7 backend (versi showcase; URL produksi menyusul). Dokumentasi i
 - Basis lokal: `http://localhost:8000`. Atur di frontend lewat `NEXT_PUBLIC_API_BASE_URL`.
 - **Selalu kirim cookie:** `fetch(url, { credentials: "include" })`. Sesi tamu disimpan di cookie httpOnly `rerupa_session`; frontend tidak bisa (dan tidak perlu) membacanya.
 - **Endpoint yang membuat job** wajib header `Idempotency-Key`: buat UUID baru per aksi pengguna (`crypto.randomUUID()`), dan pakai UUID yang sama bila mengulang aksi itu (retry/klik ganda) — job tidak akan dibuat dua kali.
+- **Akun:** daftar/masuk/keluar lewat Supabase Auth (email + password) langsung dari frontend (`@supabase/supabase-js`). Setiap request dari pengguna yang masuk membawa `Authorization: Bearer <access_token>`; API memverifikasinya ke Supabase Auth dan membaca peran dari `profiles.role` (klaim peran dari klien tidak dipercaya). Tamu boleh melihat galeri, detail karya, dan tutorial koleksi; **membuat sesi latihan, unggah tutorial, checkpoint, dan cerita mode bebas wajib masuk** (`401 login_required`).
 - **Error** selalu berbentuk `{ "error": { "code": "...", "message": "..." } }`. Tampilkan `message` ke pengguna; pakai `code` untuk logika UI.
 
 ## Endpoint
@@ -16,7 +17,13 @@ Status per Fase 7 backend (versi showcase; URL produksi menyusul). Dokumentasi i
 | `GET /health` | ✅ | — | Status API, Supabase, OpenAI |
 | `GET /artworks` | ✅ | — | Galeri karya terbit. [contoh](examples/artworks_list.json) |
 | `GET /artworks/{slug}` | ✅ | — | Detail + sumber. [contoh](examples/artwork_detail.json) |
-| `POST /sessions` | ✅ | — | Body `{canvas_size?, palette_id?, lesson_version_id?}` → 201 + Set-Cookie. [contoh](examples/session.json) |
+| `GET /auth/me` | ✅ | akun | `{id, email, role}`; `role` = `user` \| `admin` |
+| `POST /auth/logout` | ✅ | — | 204; lupakan cookie sesi latihan di browser ini (token Supabase dicabut frontend) |
+| `GET /admin/users`, `PATCH /admin/users/{id}` | ✅ | admin | Daftar akun; body `{role}`. Tidak bisa mengubah peran sendiri (409) |
+| `GET /admin/ai-usage?days=7` | ✅ | admin | Ringkasan `ai_usage` (total, per hari/tugas/model), `days` 1–90 |
+| `GET /admin/content` | ✅ | admin | Karya koleksi + versi tutorial + cerita koleksi beserta statusnya |
+| `PATCH /admin/artworks/{id}`, `/admin/lessons/{id}`, `/admin/stories/{id}` | ✅ | admin | Body `{status: draft\|in_review\|published\|archived}` (cerita: `review_status`) |
+| `POST /sessions` | ✅ | akun | Body `{canvas_size?, palette_id?, lesson_version_id?}` → 201 + Set-Cookie. [contoh](examples/session.json) |
 | `GET /sessions/{id}` | ✅ | ✅ | Pulihkan sesi setelah reload; `lesson_version_id` terisi otomatis setelah tutorial jadi |
 | `PATCH /sessions/{id}` | ✅ | ✅ | Body `{lesson_version_id?, palette_id?, canvas_size?, current_stage_order?}`. `lesson_version_id`: materi koleksi terbit (dari `GET /artworks`) atau tutorial mode bebas milik sesi ini |
 | `DELETE /sessions/{id}` | ✅ | ✅ | 204; akses langsung dicabut, foto dan lapisan tutorial dihapus |
@@ -155,6 +162,9 @@ Foto unggahan:
 | HTTP | `code` | Saran UI |
 | --- | --- | --- |
 | 401 | `session_required` | Buat sesi baru (`POST /sessions`) lalu ulangi |
+| 401 | `login_required` | Arahkan ke `/masuk?next=<halaman ini>` |
+| 403 | `admin_required` | Halaman/aksi khusus admin |
+| 409 | `cannot_change_own_role`, `license_unknown` | Admin: ubah peran akun lain saja; lengkapi lisensi sebelum menerbitkan |
 | 404 | `not_found` | Data tidak ada / bukan milik sesi ini |
 | 400 | `idempotency_key_required` | Bug frontend: lupa header |
 | 409 | `idempotency_conflict` | Bug frontend: kunci dipakai ulang untuk file lain |

@@ -9,7 +9,8 @@ vi.mock("./api", async (importOriginal) => {
 });
 
 const { api, ApiError } = await import("./api");
-const { ensureSession, withSession, endSession, useSessionStore } = await import("./session-store");
+const { ensureSession, withSession, endSession, rememberSession, useSessionStore, SESSION_QUERY_KEY } = await import("./session-store");
+const { QueryClient } = await import("@tanstack/react-query");
 
 const session = (id: string) => ({
   id,
@@ -88,5 +89,42 @@ describe("endSession", () => {
     await endSession();
     expect(deleteSession).toHaveBeenCalledWith("old");
     expect(useSessionStore.getState().sessionId).toBeNull();
+  });
+});
+
+describe("rememberSession", () => {
+  const withLesson = (id: string, lesson: string | null) => ({ ...session(id), lesson_version_id: lesson });
+
+  it("replaces a cached session that still points at the previous lesson", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(SESSION_QUERY_KEY, withLesson("s1", "collection-lesson"));
+    qc.setQueryData(["progress", "s1"], { current_stage_order: 8 });
+
+    rememberSession(qc, withLesson("s1", "free-mode-lesson"));
+
+    expect(qc.getQueryData(SESSION_QUERY_KEY)).toMatchObject({ lesson_version_id: "free-mode-lesson" });
+    expect(qc.getQueryData(["progress", "s1"])).toBeUndefined();
+  });
+
+  it("keeps progress when the lesson is unchanged", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(SESSION_QUERY_KEY, withLesson("s1", "l1"));
+    qc.setQueryData(["progress", "s1"], { current_stage_order: 3 });
+
+    rememberSession(qc, { ...withLesson("s1", "l1"), canvas_size: "A3" });
+
+    expect(qc.getQueryData(["progress", "s1"])).toEqual({ current_stage_order: 3 });
+    expect(qc.getQueryData(SESSION_QUERY_KEY)).toMatchObject({ canvas_size: "A3" });
+  });
+
+  it("drops progress of a replaced session", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(SESSION_QUERY_KEY, withLesson("old", "l1"));
+    qc.setQueryData(["progress", "old"], { current_stage_order: 5 });
+
+    rememberSession(qc, withLesson("new", "l1"));
+
+    expect(qc.getQueryData(["progress", "old"])).toBeUndefined();
+    expect(qc.getQueryData(SESSION_QUERY_KEY)).toMatchObject({ id: "new" });
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountMenu } from "@/components/auth/account-menu";
 import { Logo } from "@/components/brand/logo";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -186,6 +187,7 @@ export function Landing() {
           <button type="button" className={`${styles.pill} ${seen ? styles.pillStrong : ""}`} onClick={skip}>
             {seen ? "Langsung ke galeri ›" : "Lewati"}
           </button>
+          <AccountMenu pillClassName={styles.pill} />
         </nav>
 
         <footer className={styles.bar}>

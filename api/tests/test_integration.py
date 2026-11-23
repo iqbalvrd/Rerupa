@@ -41,12 +41,12 @@ def test_session_lifecycle(client_factory):
     assert a.get(f"/sessions/{sid}").status_code == 401
 
 
-def test_cookie_is_httponly(client_factory):
+def test_cookie_is_httponly(client_factory, test_user):
     from fastapi.testclient import TestClient
 
     from main import app
 
-    res = TestClient(app).post("/sessions", json={})
+    res = TestClient(app).post("/sessions", json={}, headers=test_user["headers"])
     cookie = res.headers["set-cookie"].lower()
     assert "httponly" in cookie and "path=/" in cookie
     from core.supabase_client import get_supabase
@@ -73,13 +73,13 @@ def test_missing_or_forged_cookie_rejected(client_factory):
     assert forged.get(f"/sessions/{a.session_id}").status_code == 401
 
 
-def test_session_token_header_works_without_cookie():
+def test_session_token_header_works_without_cookie(test_user):
     """Safari iOS memblokir cookie lintas situs: token dari POST /sessions dikirim ulang lewat header."""
     from fastapi.testclient import TestClient
 
     from main import app
 
-    created = TestClient(app).post("/sessions", json={})
+    created = TestClient(app).post("/sessions", json={}, headers=test_user["headers"])
     assert created.status_code == 201
     token, sid = created.json()["session_token"], created.json()["id"]
     assert token

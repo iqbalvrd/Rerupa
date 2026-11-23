@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AccountMenu } from "@/components/auth/account-menu";
 import { Logo } from "@/components/brand/logo";
 
 /** Mobile-first page frame: header, a single readable column, safe-area padding. */
@@ -10,6 +11,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="inline-flex min-h-(--target-size) items-center">
             <Logo priority />
           </Link>
+          <AccountMenu />
         </div>
       </header>
       <main className="px-safe pb-safe mx-auto w-full max-w-3xl flex-1">{children}</main>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ChevronLeft, ChevronRight, Camera } from "lucide-react";
+import { AccountMenu } from "@/components/auth/account-menu";
 import { Logo } from "@/components/brand/logo";
 import {
   GALLERY_SOURCE,
@@ -252,6 +253,7 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
           <span className={styles.roomLabel}>Ruang Galeri</span>
           {/* Opens once on the first visit, after the doorway light has faded. */}
           <HowItWorks autoOpen={entrance === null && !artworks.isPending} />
+          <AccountMenu />
         </div>
       </header>
 

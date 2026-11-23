@@ -1,18 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Yeseva_One } from "next/font/google";
+import { Alegreya_Sans, Marcellus } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 
-// Fonts from LANDING_SPEC.md §7 (OFL). next/font self-hosts them and generates
-// metric-matched fallbacks, so the swap does not shift layout.
-const sans = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
+// Museum typography (OFL, Google Fonts). Headings: Marcellus, a carved
+// inscription capital like a museum wall plaque. Text: Alegreya Sans, a
+// humanist sans with calligraphic roots that stays readable in small UI copy.
+// next/font self-hosts them and generates metric-matched fallbacks.
+const sans = Alegreya_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const display = Yeseva_One({
-  variable: "--font-yeseva",
+const display = Marcellus({
+  variable: "--font-display",
   subsets: ["latin"],
   weight: "400",
   display: "swap",

@@ -36,6 +36,8 @@ export const Session = z.object({
   current_stage_order: z.number().int(),
   consent: z.record(z.string(), z.unknown()),
   expires_at: z.string(),
+  /** Only on `POST /sessions`: sent back as `X-Session-Token` when the cookie is blocked. */
+  session_token: z.string().nullish(),
 });
 export type Session = z.infer<typeof Session>;
 

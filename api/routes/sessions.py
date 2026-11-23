@@ -53,10 +53,12 @@ class SessionOut(BaseModel):
     current_stage_order: int
     consent: dict
     expires_at: str
+    # Hanya di respons POST /sessions: dikirim ulang lewat header X-Session-Token bila browser memblokir cookie.
+    session_token: str | None = None
 
 
-def _out(row: dict) -> SessionOut:
-    return SessionOut(**{k: row[k] for k in SessionOut.model_fields})
+def _out(row: dict, token: str | None = None) -> SessionOut:
+    return SessionOut(**{k: row[k] for k in SessionOut.model_fields if k != "session_token"}, session_token=token)
 
 
 def _check_lesson(lesson_id: UUID | None, session_id: str | None) -> None:
@@ -106,7 +108,7 @@ def create_session(body: SessionCreate, response: Response) -> SessionOut:
         .data[0]
     )
     set_session_cookie(response, token)
-    return _out(row)
+    return _out(row, token)
 
 
 @router.get("/{session_id}", response_model=SessionOut)

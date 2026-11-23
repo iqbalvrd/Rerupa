@@ -88,7 +88,7 @@ app.add_middleware(
     allow_origin_regex=settings.frontend_origin_regex or None,
     allow_credentials=True,  # cookie sesi tamu
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "Idempotency-Key"],
+    allow_headers=["Content-Type", "Idempotency-Key", "X-Session-Token"],
     expose_headers=["Retry-After"],
 )
 register_error_handlers(app)

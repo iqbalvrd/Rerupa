@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     # Usaha penalaran model (none|low|medium|high; kosong = bawaan model). "low" cukup untuk menulis
     # teks dari data terstruktur dan menjaga latensi/biaya (uji model: eval/HASIL_UJI_MODEL.md).
     openai_reasoning_effort: str = "low"
+    # Model per tugas (opsional), JSON: {"feedback": "gpt-6-luna"}. Tugas yang tidak disebut memakai
+    # OPENAI_VISION_MODEL. Nama tugas = kolom ai_usage.task (stage_text, feedback, storyboard, …).
+    # Pilih model per tugas dari hasil uji (eval/HASIL_UJI_MODEL.md): luna gagal untuk stage_text.
+    openai_task_models: dict[str, str] = {}
+    # Harga [input, output] per 1 juta token untuk model selain OPENAI_VISION_MODEL, JSON:
+    # {"gpt-6-luna": [0.10, 0.50]}. Wajib untuk setiap model di OPENAI_TASK_MODELS agar biaya tercatat benar.
+    openai_model_prices: dict[str, tuple[float, float]] = {}
     # Storyline (P1): panel gambar. Harga token gambar per 1 juta (halaman harga OpenAI 21 Nov 2026).
     openai_image_model_draft: str = "gpt-image-2.6-flare"
     openai_image_model_final: str = "gpt-image-2.6-sunburst"
@@ -130,6 +137,18 @@ class Settings(BaseSettings):
             problems.append("DAILY_AI_BUDGET_USD harus > 0 bila OpenAI aktif")
         if self.openai_configured and (self.openai_price_input_per_m <= 0 or self.openai_price_output_per_m <= 0):
             problems.append("OPENAI_PRICE_INPUT_PER_M/OUTPUT_PER_M wajib diisi agar batas biaya bekerja")
+        problems += self.task_model_problems()
+        return problems
+
+    def task_model_problems(self) -> list[str]:
+        """Model per tugas tanpa harga akan tercatat dengan harga model utama (biaya & batas harian salah)."""
+        problems = []
+        for task, model in self.openai_task_models.items():
+            if model == self.openai_vision_model:
+                continue
+            price = self.openai_model_prices.get(model)
+            if price is None or price[0] <= 0 or price[1] <= 0:
+                problems.append(f"OPENAI_MODEL_PRICES belum berisi harga {model} (dipakai tugas {task})")
         return problems
 
     @property

@@ -258,3 +258,44 @@ def test_parse_timeout_is_mapped(fake_sdk):
     with pytest.raises(oc.AIUnavailable):
         _call()
     assert recorded[0][5] == "timeout"
+
+
+# ---------- model per tugas ----------
+
+def test_task_model_and_price_override(monkeypatch):
+    """OPENAI_TASK_MODELS memindahkan satu tugas ke model lain; biayanya dicatat dengan harga model itu."""
+    from types import SimpleNamespace as NS
+
+    seen, recorded = [], []
+    monkeypatch.setattr(oc, "_record_usage", lambda *a, **k: recorded.append((a, k)))
+    monkeypatch.setattr(oc, "get_settings", lambda: NS(
+        openai_vision_model="utama", openai_price_input_per_m=1.0, openai_price_output_per_m=5.0,
+        openai_task_models={"feedback": "murah"}, openai_model_prices={"murah": (0.1, 0.5)},
+    ))
+    monkeypatch.setattr(oc, "_client", lambda: NS(responses=NS(parse=lambda **kw: seen.append(kw["model"]) or _Resp(parsed=good_output()))))
+
+    oc.parse(task="feedback", instructions="i", content=[], schema=LessonText, safety_id="s", job_id=None)
+    oc.parse(task="stage_text", instructions="i", content=[], schema=LessonText, safety_id="s", job_id=None)
+
+    assert seen == ["murah", "utama"]
+    assert recorded[0][0][1] == "murah" and (recorded[0][1]["price_in"], recorded[0][1]["price_out"]) == (0.1, 0.5)
+    assert recorded[1][0][1] == "utama" and (recorded[1][1]["price_in"], recorded[1][1]["price_out"]) == (1.0, 5.0)
+
+
+def test_task_model_without_price_is_a_production_problem():
+    from core.config import Settings
+
+    s = Settings(_env_file=None, openai_vision_model="utama", openai_task_models={"feedback": "murah"})
+    assert any("murah" in p for p in s.task_model_problems())
+    ok = Settings(_env_file=None, openai_vision_model="utama", openai_task_models={"feedback": "murah"}, openai_model_prices={"murah": (0.1, 0.5)})
+    assert ok.task_model_problems() == []
+
+
+def test_task_models_parse_from_env(monkeypatch):
+    from core.config import Settings
+
+    monkeypatch.setenv("OPENAI_TASK_MODELS", '{"feedback": "gpt-6-luna"}')
+    monkeypatch.setenv("OPENAI_MODEL_PRICES", '{"gpt-6-luna": [0.10, 0.50]}')
+    s = Settings(_env_file=None)
+    assert s.openai_task_models == {"feedback": "gpt-6-luna"}
+    assert s.openai_model_prices == {"gpt-6-luna": (0.10, 0.50)}

@@ -62,6 +62,21 @@ def today_cost_usd() -> float:
     return float(sum(float(r["cost_usd"]) for r in rows))
 
 
+def model_for(task: str, settings=None) -> str:
+    """Model untuk satu tugas: OPENAI_TASK_MODELS[task], selain itu OPENAI_VISION_MODEL."""
+    s = settings or get_settings()
+    return (getattr(s, "openai_task_models", None) or {}).get(task) or s.openai_vision_model
+
+
+def prices_for(model: str, settings=None) -> tuple[float, float]:
+    """Harga [input, output] per 1 juta token: OPENAI_MODEL_PRICES[model], selain itu harga model utama."""
+    s = settings or get_settings()
+    price = (getattr(s, "openai_model_prices", None) or {}).get(model)
+    if price:
+        return float(price[0]), float(price[1])
+    return s.openai_price_input_per_m, s.openai_price_output_per_m
+
+
 def ensure_available() -> None:
     settings = get_settings()
     if not settings.openai_configured or not settings.openai_vision_model:
@@ -93,7 +108,8 @@ def parse(
     from openai import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
 
     settings = get_settings()
-    model = settings.openai_vision_model
+    model = model_for(task, settings)
+    price_in, price_out = prices_for(model, settings)
     start = time.perf_counter()
     outcome, usage_in, usage_out, searches = "error", 0, 0, 0
     try:
@@ -149,7 +165,8 @@ def parse(
         log.warning("openai_error", extra={"task": task, "error": type(exc).__name__})
         raise AIUnavailable("ai_unavailable") from None
     finally:
-        _record_usage(job_id, model, task, usage_in, usage_out, outcome, int((time.perf_counter() - start) * 1000), extra_usd=searches * WEB_SEARCH_USD_PER_CALL)
+        _record_usage(job_id, model, task, usage_in, usage_out, outcome, int((time.perf_counter() - start) * 1000),
+                      extra_usd=searches * WEB_SEARCH_USD_PER_CALL, price_in=price_in, price_out=price_out)
 
 
 def edit_image(*, task: str, prompt: str, references: list[bytes], safety_id: str, job_id: str | None, model: str | None = None, quality: str = "medium") -> bytes:

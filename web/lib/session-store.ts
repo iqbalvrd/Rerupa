@@ -7,6 +7,7 @@
  * as `/sessions/{id}/progress`) so a reload can restore the practice. The id is
  * not a credential: the API authorizes every call against the cookie or token.
  */
+import type { QueryClient } from "@tanstack/react-query";
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import { api, isApiError } from "./api";
@@ -122,4 +123,24 @@ export async function endSession(): Promise<void> {
     }
   }
   setSessionId(null);
+}
+
+/** TanStack Query key of the current session (pages read it via `ensureSession`). */
+export const SESSION_QUERY_KEY = ["session"] as const;
+
+/**
+ * Put a session the API just returned into the query cache.
+ *
+ * Pages that read `["session"]` render straight from the cache. Only invalidating it after
+ * the lesson changed (a free-mode tutorial finished, or a collection artwork was picked)
+ * let /persiapan and /latihan first render the previous lesson, which then stuck around
+ * whenever the refetch lost a race. Writing the fresh session makes the next page right on
+ * its first render. Progress belongs to one lesson, so it is dropped when the lesson changes.
+ */
+export function rememberSession(queryClient: QueryClient, session: Session): void {
+  const previous = queryClient.getQueryData<Session>(SESSION_QUERY_KEY);
+  if (previous?.id !== session.id || previous?.lesson_version_id !== session.lesson_version_id) {
+    queryClient.removeQueries({ queryKey: ["progress"] });
+  }
+  queryClient.setQueryData(SESSION_QUERY_KEY, session);
 }

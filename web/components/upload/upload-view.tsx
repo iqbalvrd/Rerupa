@@ -10,7 +10,7 @@ import { api, isApiError, newIdempotencyKey } from "@/lib/api";
 import { DEFAULT_CROP, WHOLE_PHOTO, toScope, type Box } from "@/lib/crop";
 import { DEV_MOCK_API } from "@/lib/dev-mock";
 import { LESSON_JOB_STEPS, jobOutcome, jobStepLabel, useJob } from "@/lib/jobs";
-import { withSession } from "@/lib/session-store";
+import { SESSION_QUERY_KEY, ensureSession, rememberSession, withSession } from "@/lib/session-store";
 import cp from "@/components/checkpoint/checkpoint.module.css";
 import { CropBox } from "./crop-box";
 import styles from "./upload.module.css";
@@ -50,12 +50,23 @@ export function UploadView() {
   const job = useJob(jobId);
   const outcome = jobOutcome(job.data);
 
-  // Tutorial ready: the API has attached it to the session. Go prepare the table.
+  // Tutorial ready: the API has attached it to the session. Load that session into the cache
+  // before leaving, so /persiapan and /latihan never start from the previous (collection) lesson.
   useEffect(() => {
     if (outcome === "succeeded") {
-      void queryClient.invalidateQueries({ queryKey: ["session"] });
-      const t = setTimeout(() => router.push("/persiapan"), 900);
-      return () => clearTimeout(t);
+      let cancelled = false;
+      const fresh = ensureSession().then(
+        (s) => rememberSession(queryClient, s),
+        // Could not read it now: drop the cached copy so the next page fetches instead of showing it.
+        () => queryClient.removeQueries({ queryKey: SESSION_QUERY_KEY }),
+      );
+      const pause = new Promise((resolve) => setTimeout(resolve, 900));
+      void Promise.all([fresh, pause]).then(() => {
+        if (!cancelled) router.push("/persiapan");
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     if (outcome === "needs_retake" || outcome === "failed") setPhase("result");
   }, [outcome, queryClient, router]);

@@ -156,6 +156,39 @@ def test_clean_lines_removes_short_specks():
     assert out[100, 200] == 255 and out[301, 301] == 0
 
 
+def test_hysteresis_keeps_faint_part_of_a_line_but_not_faint_specks():
+    """Garis lembut model koleksi: inti gelap + ekor abu-abu. Ambang tunggal memotong ekornya
+    (kontur jadi coretan pendek); histeresis menyambungnya. Abu-abu yang tidak tersambung tetap dibuang."""
+    edges = np.zeros((200, 400), np.float32)
+    edges[50, 20:120] = 0.9  # inti kuat
+    edges[50, 120:380] = 0.3  # lanjutan lemah, tersambung
+    edges[150, 20:380] = 0.3  # garis lemah tanpa inti kuat
+    out = lineart.hysteresis(edges, strong=0.8, weak=0.2)
+    assert out[50, 300] == 1 and out[150, 300] == 0
+
+
+def test_outline_keeps_long_contours_and_drops_short_texture():
+    edges = np.zeros((600, 600), np.float32)
+    cv2.circle(edges, (300, 300), 200, 0.9, 2)  # kontur objek
+    for x in range(60, 540, 30):  # motif kecil-kecil
+        edges[290:296, x] = 0.9
+    out = lineart.outline_lines(edges)
+    assert out[100, 300] == 255 or out[101, 300] == 255 or out[99, 300] == 255
+    assert out[290:296, 300].max() == 0
+
+
+def test_outline_svg_reads_back_for_checkpoint():
+    """Lapisan sketsa dibaca ulang svgpath.stroke_map oleh checkpoint: garisnya harus di tempat yang sama."""
+    from cv import svgpath
+
+    binary = np.zeros((300, 300), np.uint8)
+    cv2.line(binary, (30, 150), (270, 150), 255, 3)
+    body = lineart.lines_svg_body(binary)
+    svg = f'<svg viewBox="0 0 300 300">{body}</svg>'
+    back = svgpath.stroke_map(svg, (300, 300), 1.0, thickness=2)
+    assert back[148:153, 150].max() == 1 and back[100, 150] == 0
+
+
 # ---------- pipeline ----------
 
 def test_pipeline_without_models():

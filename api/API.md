@@ -67,7 +67,7 @@ Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 
 - `image_width × image_height` = ruang koordinat **semua** lapisan, `bbox`, dan `focus_bbox`. Pakai satu `<svg viewBox="0 0 W H">`.
 - `purged: true` + `url: null` pada lapisan mode bebas = file sudah dihapus otomatis (foto dan turunannya ≤24 jam, PRD §17). Tampilkan penanda "Foto sudah dihapus otomatis"; teks tahap, resep, dan feedback tetap ada. `grid` tidak pernah dihapus.
-- `layers[]`: `kind` = `grid`, `sketch`, `main_object` (bila ada), `regions`, `value` (hanya bila `use_shading`), `lineart` (PNG transparan), `original_photo` (JPEG). `url` adalah signed URL **30 menit** (koleksi: 60 menit) — panggil ulang `GET /lessons/{id}` bila kedaluwarsa.
+- `layers[]`: `kind` = `grid`, `sketch` (SVG: **garis kontur** objek, tanpa lipatan/motif, untuk tahap sketsa), `main_object` (bila ada), `regions`, `value` (hanya bila `use_shading`), `lineart` (PNG transparan: **garis detail** lengkap, lipatan & motif, dipakai tahap detail dan penyelesaian), `original_photo` (JPEG). `url` adalah signed URL **30 menit** (koleksi: 60 menit) — panggil ulang `GET /lessons/{id}` bila kedaluwarsa.
 - `regions.svg` berisi satu `<path id="rNN">` per region. Tahap N menampilkan semua region dari `new_region_codes` tahap 1..N; region baru di tahap N diberi highlight.
 - `stages[]` urut `order_no`; `layers` = lapisan yang tampil di tahap itu; `is_checkpoint` = tahap yang meminta foto progres (versi awal: hanya tahap sketsa).
 - `focus_bbox` = area untuk tombol "Zoom ke area ini" pada foto asli.

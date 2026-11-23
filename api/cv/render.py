@@ -3,6 +3,7 @@
 import cv2
 import numpy as np
 
+from cv import lineart
 from cv.regions import Segmentation, _region_path
 
 
@@ -34,12 +35,12 @@ def main_object_svg(mask: np.ndarray | None, width: int, height: int) -> str | N
     return svg_doc(width, height, body, "main_object")
 
 
-def sketch_svg(seg: Segmentation, mask: np.ndarray | None, width: int, height: int, min_area_pct: float = 2.0) -> str:
-    """Garis bentuk besar untuk tahap sketsa: kontur objek utama + batas region besar."""
-    parts = []
-    for r in seg.regions:
-        if r.area_pct >= min_area_pct and r.path_svg:
-            parts.append(f'<path fill="none" stroke="#1E1E1E" stroke-width="2" d="{r.path_svg}"/>')
+def sketch_svg(outline: np.ndarray, mask: np.ndarray | None, width: int, height: int) -> str:
+    """Lapisan tahap sketsa: garis KONTUR objek (lineart.outline_lines, tanpa lipatan/motif) +
+    siluet objek utama. Rincian baru muncul di tahap detail lewat lapisan `lineart`.
+
+    Dulu diambil dari batas region warna besar → bentuknya gumpalan yang tidak mengikuti tokoh."""
+    parts = [lineart.lines_svg_body(outline)]
     obj = main_object_svg(mask, width, height)
     if obj:
         parts.append(obj[obj.index(">") + 1 : obj.rindex("</svg>")])

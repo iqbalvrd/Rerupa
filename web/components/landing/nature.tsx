@@ -1,7 +1,7 @@
 "use client";
 
 import { useGLTF } from "@react-three/drei";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import * as THREE from "three";
 import { NATURE } from "./landing-config";
 
@@ -25,7 +25,7 @@ function seeded(seed: number) {
  * named scenes (LANDING_SPEC §4.9): trees around the yard, a hedge along the
  * facade, flowers by the path and flowering bushes around the statue.
  */
-export function Nature({ onLoaded }: { onLoaded: () => void }) {
+export function Nature() {
   const gltf = useGLTF(NATURE.url);
   const group = useMemo(() => {
     const byName = new Map<string, THREE.Object3D>();
@@ -64,10 +64,6 @@ export function Nature({ onLoaded }: { onLoaded: () => void }) {
     for (const [x, z] of NATURE.statueBushes) put("Bush_Common_Flowers", x, z, NATURE.statueBushScale);
     return g;
   }, [gltf]);
-
-  useEffect(() => {
-    onLoaded();
-  }, [group, onLoaded]);
 
   return <primitive object={group} />;
 }

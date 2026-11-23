@@ -16,6 +16,7 @@ const LandingScene = dynamic(() => import("./landing-scene"), { ssr: false, load
 
 const GALLERY = "/galeri";
 const FALLBACK_IMAGE = "/landing/landing-fallback.webp";
+const FALLBACK_PORTRAIT = "/landing/landing-fallback-portrait.webp";
 
 type Mode = "pending" | "3d" | "static";
 
@@ -83,7 +84,7 @@ export function Landing() {
     router.prefetch(GALLERY);
   }, [router, travel]);
 
-  // Never leave the enter button locked if the plants hang.
+  // Never leave the enter button locked if an asset hangs.
   useEffect(() => {
     if (mode !== "3d") return;
     const id = window.setTimeout(() => setReady(true), LOAD_TIMEOUT_MS);
@@ -151,8 +152,10 @@ export function Landing() {
   return (
     <div className={styles.root}>
       {mode === "static" && (
-        // eslint-disable-next-line @next/next/no-img-element -- full-bleed static render, no layout to reserve
-        <img className={styles.fallback} src={FALLBACK_IMAGE} alt="Halaman depan Museum Nasional (Gedung Gajah) saat senja, dengan patung gajah di halaman" />
+        <picture>
+          <source media="(max-aspect-ratio: 4/5)" srcSet={FALLBACK_PORTRAIT} />
+          <img className={styles.fallback} src={FALLBACK_IMAGE} alt="Halaman depan Museum Nasional (Gedung Gajah) saat senja, dengan patung gajah di halaman" />
+        </picture>
       )}
       {mode === "3d" && (
         <LandingScene

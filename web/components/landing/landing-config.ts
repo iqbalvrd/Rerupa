@@ -43,7 +43,6 @@ export const COLORS = {
   doorLamp: "#ffd9a0",
   steps: "#e9e2d6",
   tympanum: "#eee7db",
-  bronze: "#7d5631",
   road: "#ece2d1",
   roadEdge: "#d2c6b2",
   ground: "#6a9149",
@@ -163,6 +162,9 @@ export const PATH = {
 export const STATUE = {
   desktop: [6.5, 0, -6.5] as Vec3,
   portrait: [3.6, 0, -6.5] as Vec3,
+  // The model faces +X and its foot contact is at the GLB origin.
+  figureUrl: "/models/rerupa-gajah.glb",
+  pedestalTop: 3.75,
   figureRotationY: -0.55,
 } as const;
 
@@ -267,7 +269,7 @@ export const TRAVEL = {
   fadeOut: 0.6,
 } as const;
 
-/** Safety net: the enter button unlocks even if the plants never load. */
+/** Safety net: the enter button unlocks even if a model never loads. */
 export const LOAD_TIMEOUT_MS = 15_000;
 
 export const SEEN_KEY = "rerupa:landing-seen";

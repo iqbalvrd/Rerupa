@@ -191,7 +191,12 @@ function PreparationForm({
     `Bidang lukis ${sizeInfo.label} (${formatCm(landscape ? sizeInfo.h : sizeInfo.w)} × ${formatCm(landscape ? sizeInfo.w : sizeInfo.h)} cm)`,
     ...tools,
   ];
-  const total = checklist.length + (palette?.paints.length ?? 0);
+  const allKeys = [...checklist, ...(palette?.paints.map((p) => p.id) ?? [])];
+  const total = allKeys.length;
+  // Count only what is on the list now (a palette switch leaves old paint ids in `ready`).
+  const readyCount = allKeys.filter((k) => ready.has(k)).length;
+  const allReady = total > 0 && readyCount === total;
+  const toggleAll = () => setReady(allReady ? new Set() : new Set(allKeys));
 
   const toggle = (key: string) =>
     setReady((prev) => {
@@ -274,7 +279,12 @@ function PreparationForm({
 
       <fieldset className={styles.section}>
         <legend className={styles.legend}>Siapkan di meja</legend>
-        <p className={styles.hint}>Centang yang sudah siap. Daftar ini hanya untuk membantumu, tidak disimpan.</p>
+        <div className={styles.checklistHead}>
+          <p className={styles.hint}>Centang yang sudah siap. Daftar ini hanya untuk membantumu, tidak disimpan.</p>
+          <button type="button" className={styles.checkAll} onClick={toggleAll}>
+            {allReady ? "Kosongkan semua" : "Semua sudah siap"}
+          </button>
+        </div>
         <ul className={styles.checklist}>
           {checklist.map((item) => (
             <li key={item}>
@@ -295,7 +305,7 @@ function PreparationForm({
           ))}
         </ul>
         <p className={styles.progressNote} role="status">
-          {ready.size} dari {total} siap
+          {readyCount} dari {total} siap
         </p>
       </fieldset>
 

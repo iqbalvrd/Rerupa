@@ -1,7 +1,6 @@
 "use client";
 
 import type { QueryClient } from "@tanstack/react-query";
-import { DEFAULT_FRAME, FRAME_STYLES } from "@/components/gallery/frames";
 import { artworksQuery } from "./artworks";
 
 /**
@@ -45,7 +44,6 @@ export function preloadGallery(queryClient: QueryClient) {
   started = true;
   void import("@/components/gallery/room-3d");
   warmImage("/gallery/floor-wood.webp");
-  warmImage(FRAME_STYLES[DEFAULT_FRAME].src);
   void queryClient
     .fetchQuery(artworksQuery())
     .then((list) => {

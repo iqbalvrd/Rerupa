@@ -5,7 +5,8 @@
  *
  * Stylized after the renovated Museum Nasional galleries: cream walls with
  * pilasters on grey marble plinths, honey wood ceiling beams resting on the
- * pilasters, a black light track, high grey-framed windows, and a warm oak
+ * pilasters, a black light track with one spot per bay washing the wall
+ * (no windows on the hung wall, as in modern galleries), and a warm oak
  * plank floor.
  *
  * Shading follows the landing prototype (LANDING_SPEC §4): solid colours with
@@ -42,15 +43,13 @@ const ROOM_H = CAM_Y + (0.5 - CEILING_FRAC) * VIEW_H; // wall top lands at CEILI
 
 // ── Palette (LANDING_SPEC §4.4 family) ──────────────────────────────────────
 const C = {
-  wall: "#f7f1e6",
+  wall: "#ece4d6", // a touch darker than the trim, so the wash on it reads
   trim: "#fffbf3",
   marble: "#cfccc6",
   marbleTop: "#b7b3ad",
   rail: "#4d5156",
   beam: "#c4884d",
   ceiling: "#f8f4ec",
-  windowFrame: "#626a73",
-  glass: "#dde7ec",
   track: "#222326",
 };
 
@@ -67,8 +66,6 @@ function useMaterials() {
       rail: S(C.rail, 0.5),
       beam: S(C.beam, 0.62),
       ceiling: S(C.ceiling, 0.95),
-      windowFrame: S(C.windowFrame, 0.55),
-      glass: S(C.glass, 0.12),
       track: S(C.track, 0.45, 0.3),
     };
   }, []);
@@ -205,7 +202,7 @@ function Scene({ trackRef, bayCount }: Omit<RoomProps, "onReady">) {
         <Pilaster key={`p${b}`} x={b * bayW} m={m} />
       ))}
       {bays.map((i) => (
-        <Windows key={`w${i}`} x={i * bayW} bayW={bayW} m={m} />
+        <WallWash key={`l${i}`} x={i * bayW} bayW={bayW} />
       ))}
 
       <Ceiling midX={midX} span={span} boundaries={boundaries} bays={bays} bayW={bayW} m={m} />
@@ -219,17 +216,20 @@ function RBox({
   size,
   at,
   r = 0.05,
+  shadow = true,
   children,
 }: {
   m: THREE.Material;
   size: [number, number, number];
   at: [number, number, number];
   r?: number;
+  /** Cast a sun shadow. Off for ceiling parts, whose shadows would streak down the wall. */
+  shadow?: boolean;
   children?: ReactNode;
 }) {
   const radius = Math.min(r, size[0] / 2 - 0.005, size[1] / 2 - 0.005, size[2] / 2 - 0.005);
   return (
-    <RoundedBox args={size} radius={radius} smoothness={2} position={at} material={m} castShadow receiveShadow>
+    <RoundedBox args={size} radius={radius} smoothness={2} position={at} material={m} castShadow={shadow} receiveShadow>
       {children}
     </RoundedBox>
   );
@@ -250,33 +250,45 @@ function Pilaster({ x, m }: { x: number; m: Materials }) {
   );
 }
 
-/** Two high windows per bay, set into the wall with a sill, like the reference clerestory. */
-function Windows({ x, bayW, m }: { x: number; bayW: number; m: Materials }) {
-  const w = Math.min(0.62, bayW * 0.16);
-  const h = 0.48;
-  const y = ROOM_H - 0.66;
-  const bar = 0.045;
+/**
+ * Light from the track spot above each bay, as modern galleries light a hung
+ * wall: no windows on the wall itself, a soft pool aimed at the painting from
+ * about 30° above, brightest near the top and fading to the wall colour.
+ * A textured plane instead of real spotlights keeps it cheap on phones.
+ */
+function WallWash({ x, bayW }: { x: number; bayW: number }) {
+  const map = useWashTexture();
+  const w = Math.min(bayW * 0.95, 7.5);
+  const h = ROOM_H * 0.92;
   return (
-    <group position={[x, 0, 0]}>
-      {[-0.3 * bayW, 0.3 * bayW].map((ox) => (
-        <group key={ox} position={[ox, y, 0.02]}>
-          <mesh material={m.glass} position={[0, 0, -0.01]}>
-            <planeGeometry args={[w, h]} />
-          </mesh>
-          {/* frame */}
-          <RBox m={m.windowFrame} size={[w + bar * 2, bar, 0.07]} at={[0, h / 2 + bar / 2, 0.02]} r={0.015} />
-          <RBox m={m.windowFrame} size={[w + bar * 2, bar, 0.07]} at={[0, -h / 2 - bar / 2, 0.02]} r={0.015} />
-          <RBox m={m.windowFrame} size={[bar, h, 0.07]} at={[-w / 2 - bar / 2, 0, 0.02]} r={0.015} />
-          <RBox m={m.windowFrame} size={[bar, h, 0.07]} at={[w / 2 + bar / 2, 0, 0.02]} r={0.015} />
-          {/* mullions */}
-          <RBox m={m.windowFrame} size={[0.022, h, 0.03]} at={[0, 0, 0.005]} r={0.008} />
-          <RBox m={m.windowFrame} size={[w, 0.022, 0.03]} at={[0, 0, 0.005]} r={0.008} />
-          {/* sill */}
-          <RBox m={m.trim} size={[w + 0.2, 0.05, 0.12]} at={[0, -h / 2 - bar - 0.025, 0.06]} r={0.02} />
-        </group>
-      ))}
-    </group>
+    <mesh position={[x, ROOM_H - h / 2 - 0.25, 0.006]} renderOrder={1}>
+      <planeGeometry args={[w, h]} />
+      <meshBasicMaterial map={map} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+    </mesh>
   );
+}
+
+let washTexture: THREE.CanvasTexture | null = null;
+/** One shared texture: an ellipse of warm light, hot at the top where the beam lands. */
+function useWashTexture() {
+  return useMemo(() => {
+    if (washTexture) return washTexture;
+    const size = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext("2d")!;
+    ctx.translate(size / 2, size * 0.3);
+    ctx.scale(1, 1.55);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.48);
+    g.addColorStop(0, "rgba(255, 214, 160, 0.42)");
+    g.addColorStop(0.5, "rgba(255, 206, 150, 0.2)");
+    g.addColorStop(1, "rgba(255, 200, 140, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(-size, -size, size * 2, size * 2);
+    washTexture = new THREE.CanvasTexture(canvas);
+    washTexture.colorSpace = THREE.SRGBColorSpace;
+    return washTexture;
+  }, []);
 }
 
 function Ceiling({
@@ -302,12 +314,12 @@ function Ceiling({
       </mesh>
       {/* wood beams resting on the pilasters, running toward the viewer */}
       {boundaries.map((b) => (
-        <RBox key={b} m={m.beam} size={[0.34, 0.38, depth]} at={[b * bayW, ROOM_H - 0.19, depth / 2]} r={0.04} />
+        <RBox key={b} m={m.beam} size={[0.34, 0.38, depth]} at={[b * bayW, ROOM_H - 0.19, depth / 2]} r={0.04} shadow={false} />
       ))}
       {/* black light track along the wall, one small spot per bay */}
-      <RBox m={m.track} size={[span, 0.05, 0.07]} at={[midX, ROOM_H - 0.025, 0.95]} r={0.015} />
+      <RBox m={m.track} size={[span, 0.05, 0.07]} at={[midX, ROOM_H - 0.025, 0.95]} r={0.015} shadow={false} />
       {bays.map((i) => (
-        <mesh key={i} material={m.track} position={[i * bayW, ROOM_H - 0.13, 0.95]} rotation={[0.85, 0, 0]} castShadow>
+        <mesh key={i} material={m.track} position={[i * bayW, ROOM_H - 0.13, 0.95]} rotation={[0.85, 0, 0]}>
           <cylinderGeometry args={[0.045, 0.055, 0.16, 16]} />
         </mesh>
       ))}

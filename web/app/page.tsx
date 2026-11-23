@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
+import { Landing } from "@/components/landing/landing";
 
-// The 3D museum landing (LANDING_SPEC.md) will live here. Until it exists,
-// the entrance goes straight into the gallery room.
+// The museum entrance (LANDING_SPEC.md): front yard of Gedung Gajah, tap to walk in to the gallery.
 export default function Home() {
-  redirect("/galeri");
+  return <Landing />;
 }

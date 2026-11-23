@@ -1,0 +1,262 @@
+/*
+ * Landing overlay (LANDING_SPEC §3.1), ported from the prototype: title top
+ * left, pills top right, action bar at the bottom, over a full-screen canvas.
+ * Title screen of a game: warm dusk, gold wordmark with a dark outline.
+ */
+
+.root {
+  --ink: #fbefd9;
+  --gold: #f2b04a;
+  --deep: #2b1e14;
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--deep);
+  color: var(--ink);
+  color-scheme: dark;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  max-inline-size: none;
+  object-fit: cover;
+  object-position: 45% 60%;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 55%, transparent 55%, rgb(25 14 6 / 0.45));
+}
+
+.ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+.ui > * {
+  pointer-events: auto;
+}
+.ui[data-hidden="true"] {
+  opacity: 0;
+}
+.ui[data-hidden="true"] > * {
+  pointer-events: none;
+}
+
+.title {
+  isolation: isolate;
+  position: absolute;
+  inset-inline-start: max(clamp(16px, 4vw, 56px), env(safe-area-inset-left, 0px));
+  inset-block-start: max(clamp(16px, 5vh, 56px), env(safe-area-inset-top, 0px));
+  max-inline-size: min(560px, 80vw);
+  color: #0f1b33;
+  pointer-events: none;
+}
+/* A soft pool of warm light behind the title, so the navy logo and text read on the dusk sky. */
+.title::before {
+  content: "";
+  position: absolute;
+  inset: -50px -110px -40px -70px;
+  z-index: -1;
+  background: radial-gradient(ellipse at 32% 48%, rgb(255 246 232 / 0.86), rgb(255 240 222 / 0.5) 45%, transparent 72%);
+}
+.tagline {
+  font-size: clamp(14px, 1.6vw, 18px);
+  font-weight: 600;
+  color: #3a3550;
+}
+.wordmark {
+  margin: 0.15em 0 0.25em;
+  line-height: 0;
+}
+.logo {
+  display: block;
+  block-size: clamp(56px, 9vw, 112px);
+  inline-size: auto;
+  filter: drop-shadow(0 2px 6px rgb(255 240 220 / 0.6));
+}
+.lead {
+  font-size: clamp(14px, 1.5vw, 17px);
+  font-weight: 500;
+  color: #2b2840;
+}
+
+.top {
+  position: absolute;
+  inset-inline-end: max(clamp(12px, 3vw, 32px), env(safe-area-inset-right, 0px));
+  inset-block-start: max(clamp(12px, 3vh, 28px), env(safe-area-inset-top, 0px));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.pill {
+  min-block-size: 44px;
+  padding-inline: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(251 246 236 / 0.92);
+  color: var(--deep);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+.pill:hover {
+  background: #fff;
+}
+.pillStrong {
+  background: var(--gold);
+  font-weight: 700;
+}
+.pillStrong:hover {
+  background: #f7c26a;
+}
+.pillDark {
+  background: var(--deep);
+  color: var(--ink);
+}
+.pillDark:hover {
+  background: #3d2b1d;
+}
+
+.bar {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px max(clamp(16px, 4vw, 56px), env(safe-area-inset-right, 0px))
+    max(14px, env(safe-area-inset-bottom, 0px)) max(clamp(16px, 4vw, 56px), env(safe-area-inset-left, 0px));
+  background: linear-gradient(transparent, rgb(30 21 14 / 0.75));
+}
+.bar span {
+  font-size: 15px;
+  opacity: 0.9;
+}
+.go {
+  min-block-size: 48px;
+  padding-inline: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--deep);
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  animation: pulse 2.4s ease-in-out infinite;
+}
+.go:disabled {
+  opacity: 0.6;
+  animation: none;
+  cursor: wait;
+}
+@keyframes pulse {
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.pill:focus-visible,
+.go:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+.pillDark:focus-visible {
+  outline-color: var(--deep);
+}
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: var(--deep);
+  text-align: center;
+}
+.loaderLogo {
+  display: block;
+  block-size: 48px;
+  inline-size: auto;
+  margin-inline: auto;
+}
+.meter {
+  inline-size: 200px;
+  block-size: 6px;
+  margin: 14px auto 0;
+  border-radius: 3px;
+  background: rgb(251 239 217 / 0.2);
+  overflow: hidden;
+}
+.meter i {
+  display: block;
+  block-size: 100%;
+  background: var(--gold);
+  transition: inline-size 0.2s;
+}
+
+.white {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #fffaf0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dialog {
+  max-inline-size: min(440px, 90vw);
+  margin: auto;
+  padding: 24px;
+  border: 0;
+  border-radius: 16px;
+  background: #fbf6ec;
+  color: var(--deep);
+}
+.dialog::backdrop {
+  background: rgb(20 14 8 / 0.5);
+  backdrop-filter: blur(4px);
+}
+.dialog h2 {
+  margin-block-end: 8px;
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: 26px;
+}
+.dialog ul {
+  margin: 8px 0 16px;
+  padding-inline-start: 18px;
+  list-style: disc;
+}
+
+@media (max-width: 600px) {
+  .title {
+    inset-block-start: max(76px, calc(env(safe-area-inset-top, 0px) + 60px));
+  }
+  .wordmark {
+    font-size: 64px;
+  }
+  .pill {
+    padding-inline: 14px;
+    font-size: 14px;
+  }
+  .bar span {
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .go {
+    animation: none;
+  }
+}

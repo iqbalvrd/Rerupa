@@ -29,12 +29,20 @@ async function loadFixtures(signal: AbortSignal): Promise<GalleryArtwork[]> {
   return DEV_MOCK_API ? cards.map((c) => ({ ...c, lesson_version_id: DEV_LESSON_ID })) : cards;
 }
 
-export function useArtworks() {
-  return useQuery({
+/** Shared by the gallery and the landing's preload, so the walk to the door warms the cache. */
+export function artworksQuery() {
+  return queryOptions({
     queryKey: ["artworks", GALLERY_SOURCE],
     queryFn: ({ signal }): Promise<GalleryArtwork[]> =>
       GALLERY_SOURCE === "fixtures" ? loadFixtures(signal) : api.listArtworks(signal),
+    // Thumbnail URLs are signed per request: a refetch would swap every image
+    // on the wall. They live 30–60 minutes, so keep the list well inside that.
+    staleTime: 5 * 60_000,
   });
+}
+
+export function useArtworks() {
+  return useQuery(artworksQuery());
 }
 
 export const GalleryArtworkDetail = ArtworkDetail.extend({

@@ -458,3 +458,55 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ── Entrance from the landing's doorway ─────────────────────────────────── */
+
+/* The doorway's white light holds until the room is ready, then lifts. */
+.enterWhite {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: end center;
+  padding-block-end: 12vh;
+  background: #fffaf0;
+  pointer-events: none;
+  transition: opacity 1.2s ease-out;
+}
+.scene[data-entrance="reveal"] .enterWhite {
+  opacity: 0;
+}
+/* Only shown if the wait gets long. */
+.enterNote {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: rgb(60 50 40 / 0.55);
+  opacity: 0;
+  animation: enter-note 0.6s ease 1.8s forwards;
+}
+@keyframes enter-note {
+  to {
+    opacity: 1;
+  }
+}
+.scene[data-entrance="reveal"] .enterNote {
+  animation: none;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* A short step into the room as the light lifts. */
+  .scene[data-entrance="reveal"] .track,
+  .scene[data-entrance="reveal"] .room3d {
+    animation: enter-step 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+@keyframes enter-step {
+  from {
+    scale: 1.08;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .enterWhite {
+    transition-duration: 0.3s;
+  }
+}

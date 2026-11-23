@@ -9,21 +9,70 @@ const SEEN_KEY = "rerupa:howto-seen";
 
 const STEPS = [
   {
-    icon: ImageUp,
-    title: "Pilih atau foto karya",
+    title: "Pilih karya",
     body: "Pilih lukisan di galeri ini, atau unggah foto karya yang kamu suka.",
   },
   {
-    icon: Layers,
-    title: "AI memecahnya jadi tahapan",
-    body: "Sketsa, bidang warna, lalu detail, lengkap dengan resep campuran cat.",
+    title: "Dipecah jadi tahapan",
+    body: "AI menyusun sketsa, bidang warna, lalu detail, lengkap dengan resep campuran cat.",
   },
   {
-    icon: Brush,
-    title: "Lukis langkah demi langkah",
-    body: "Ikuti tiap tahap di kanvasmu, cek foto progres, dan kenali kisah di balik karyanya.",
+    title: "Lukis di kanvasmu",
+    body: "Ikuti tiap tahap, lalu cek progresmu lewat foto.",
   },
 ] as const;
+
+/**
+ * What each step looks like, drawn from one real painting from the collection
+ * (`sample`): the framed original, the same painting split into its stages
+ * (sketch, color blocks, detail), and a canvas half painted over its sketch.
+ * Without a sample the steps fall back to drawn icons.
+ */
+function StepVisual({ step, sample }: { step: number; sample?: string }) {
+  if (!sample) {
+    const Icon = [ImageUp, Layers, Brush][step];
+    return (
+      <span className={styles.medallion} aria-hidden="true">
+        <Icon className="size-5" />
+      </span>
+    );
+  }
+  if (step === 0) {
+    return (
+      <span className={styles.visual} aria-hidden="true">
+        <span className={styles.framed}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- decorative, signed URL */}
+          <img src={sample} alt="" />
+        </span>
+      </span>
+    );
+  }
+  if (step === 1) {
+    return (
+      <span className={styles.visual} aria-hidden="true">
+        <span className={styles.stack}>
+          {(["sketch", "blocks", "detail"] as const).map((stage) => (
+            <span key={stage} className={styles.sheet} data-stage={stage}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- decorative, signed URL */}
+              <img src={sample} alt="" />
+            </span>
+          ))}
+        </span>
+      </span>
+    );
+  }
+  return (
+    <span className={styles.visual} aria-hidden="true">
+      <span className={styles.canvas}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- decorative, signed URL */}
+        <img src={sample} alt="" data-stage="sketch" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- decorative, signed URL */}
+        <img src={sample} alt="" data-stage="painted" />
+        <span className={styles.grid} />
+      </span>
+    </span>
+  );
+}
 
 function hasSeen(): boolean {
   try {
@@ -59,16 +108,21 @@ function canAnimateExit(): boolean {
 }
 
 /**
- * "Cara kerja": what a first-time visitor uploads, what the AI makes of it and
- * what they get, readable in about ten seconds. Opens once on the first visit
- * to the gallery (after the room is revealed), and again from the header button.
+ * "Cara kerja": what a first-time visitor picks, what the AI makes of it and
+ * what they do with it, readable in about ten seconds and shown on a real
+ * painting from the collection (`sample`). Opens once on the first visit to
+ * the gallery (after the room is revealed), and again from the header button.
  */
-export function HowItWorks({ autoOpen }: { autoOpen: boolean }) {
+export function HowItWorks({ autoOpen, sample }: { autoOpen: boolean; sample?: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const primaryRef = useRef<HTMLButtonElement>(null);
 
   const open = useCallback(() => {
     const dialog = dialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    // React's autoFocus doesn't render the attribute, so showModal() would focus "Tutup".
+    primaryRef.current?.focus();
   }, []);
 
   const close = useCallback(async () => {
@@ -143,7 +197,6 @@ export function HowItWorks({ autoOpen }: { autoOpen: boolean }) {
         ref={dialogRef}
         className={styles.dialog}
         aria-labelledby="howto-title"
-        aria-describedby="howto-lead"
         {...({ closedby: "any" } as object)}
       >
         <div className={styles.kawung} aria-hidden="true" />
@@ -153,23 +206,21 @@ export function HowItWorks({ autoOpen }: { autoOpen: boolean }) {
         </button>
 
         <div className={styles.body}>
-          <p className={styles.kicker}>Selamat datang di museum</p>
           <h2 id="howto-title" className={styles.title}>
-            Cara kerja Rerupa
+            Dari satu lukisan, jadi latihan bertahap
           </h2>
-          <p id="howto-lead" className={styles.lead}>
-            Dari satu karya jadi latihan melukis bertahap.
-          </p>
 
           <ol className={styles.steps}>
-            {STEPS.map(({ icon: Icon, title, body }, i) => (
+            {STEPS.map(({ title, body }, i) => (
               <li key={title} className={styles.step}>
-                <span className={styles.medallion} aria-hidden="true">
-                  <Icon className="size-5" />
-                  <span className={styles.stepNo}>{i + 1}</span>
-                </span>
+                <StepVisual step={i} sample={sample} />
                 <span className={styles.stepText}>
-                  <span className={styles.stepTitle}>{title}</span>
+                  <span className={styles.stepTitle}>
+                    <span className={styles.stepNo} aria-hidden="true">
+                      {i + 1}
+                    </span>
+                    {title}
+                  </span>
                   <span className={styles.stepBody}>{body}</span>
                 </span>
               </li>
@@ -179,11 +230,11 @@ export function HowItWorks({ autoOpen }: { autoOpen: boolean }) {
           <div className={styles.tumpal} aria-hidden="true" />
 
           <div className={styles.actions}>
-            <button type="button" className={styles.primary} onClick={() => void close()} autoFocus>
-              Mulai menjelajah
+            <button ref={primaryRef} type="button" className={styles.primary} onClick={() => void close()}>
+              Pilih lukisan
             </button>
             <Link href="/unggah" className={styles.secondary}>
-              Atau foto lukisanmu
+              Atau unggah foto karya
             </Link>
           </div>
         </div>

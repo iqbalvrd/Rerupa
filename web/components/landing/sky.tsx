@@ -4,88 +4,91 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { COLORS, SKY } from "./landing-config";
-import { canvasTexture } from "./scene-utils";
 import { useTravel } from "./travel-state";
 
-/** Gradient sky dome with a soft sun glow, plus slow drifting clouds (LANDING_SPEC §4.2). */
+/** A sunset gradient and thin cloud bands within a single sky draw. */
 export function Sky() {
   const travel = useTravel();
-  const { dome, clouds, dispose } = useMemo(() => {
+  const { dome, uniforms } = useMemo(() => {
+    const uniforms = {
+      top: { value: new THREE.Color(COLORS.skyTop) },
+      mid: { value: new THREE.Color(COLORS.skyMid) },
+      low: { value: new THREE.Color(COLORS.horizon) },
+      litCloud: { value: new THREE.Color(COLORS.cloudLight) },
+      shadedCloud: { value: new THREE.Color(COLORS.cloudShade) },
+      sunDir: { value: new THREE.Vector3(...SKY.sunDir).normalize() },
+      sunColor: { value: new THREE.Color(COLORS.sunGlow) },
+      time: { value: 0 },
+    };
     const geo = new THREE.SphereGeometry(SKY.radius, 48, 24);
     const mat = new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
       fog: false,
-      uniforms: {
-        top: { value: new THREE.Color(COLORS.skyTop) },
-        mid: { value: new THREE.Color(COLORS.skyMid) },
-        low: { value: new THREE.Color(COLORS.horizon) },
-        sunDir: { value: new THREE.Vector3(...SKY.sunDir).normalize() },
-        sunColor: { value: new THREE.Vector3(...COLORS.sunGlow) },
-      },
-      vertexShader: /* glsl */ `varying vec3 vDir;
-        void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-      fragmentShader: /* glsl */ `uniform vec3 top; uniform vec3 mid; uniform vec3 low; uniform vec3 sunDir; uniform vec3 sunColor; varying vec3 vDir;
-        void main(){ float h = clamp(vDir.y,0.0,1.0);
-          vec3 c = mix(low, mid, smoothstep(0.0,0.22,h)); c = mix(c, top, smoothstep(0.22,0.75,h));
-          float s = max(dot(normalize(vDir), sunDir),0.0);
-          c += sunColor * (pow(s,24.0)*0.9 + pow(s,4.0)*0.18);
-          gl_FragColor = vec4(c,1.0);
+      uniforms,
+      vertexShader: /* glsl */ `
+        varying vec3 vDir;
+        void main() {
+          vDir = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform vec3 top, mid, low, litCloud, shadedCloud, sunDir, sunColor;
+        uniform float time;
+        varying vec3 vDir;
+
+        float hash(vec2 p) {
+          vec3 a = fract(vec3(p.xyx) * 0.1031);
+          a += dot(a, a.yzx + 33.33);
+          return fract((a.x + a.y) * a.z);
+        }
+
+        float noise2(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          vec2 w = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), w.x),
+                     mix(hash(i + vec2(0.0, 1.0)), hash(i + 1.0), w.x), w.y);
+        }
+
+        void main() {
+          vec3 dir = normalize(vDir);
+          float h = max(dir.y, 0.0);
+          float s = max(dot(dir, sunDir), 0.0);
+          float warmth = pow(s, 6.0) * (1.0 - smoothstep(0.19, 0.53, h));
+          vec3 color = mix(low, mid, smoothstep(0.005, 0.39, h));
+          color = mix(color, top, smoothstep(0.20, 0.64, h));
+          color = mix(color, sunColor, warmth * 0.56);
+          color += sunColor * (pow(s, 48.0) * 0.18 + pow(s, 270.0) * 0.15);
+
+          vec2 q = vec2(dir.x + dir.z * 0.28, h) * vec2(4.8, 17.0);
+          q += vec2(4.1 - time * 0.012, 3.8);
+          float coarse = noise2(q);
+          float fine = noise2(q * 2.1 + vec2(1.6, 5.3));
+          float detail = noise2(q * 4.35);
+          float density = coarse * 0.63 + fine * 0.26 + detail * 0.11;
+          float cloud = smoothstep(0.52, 0.76, density);
+          cloud *= smoothstep(0.043, 0.16, h) * (1.0 - smoothstep(0.49, 0.84, h));
+          float rim = smoothstep(0.48, 0.80, coarse);
+          vec3 cloudColor = mix(shadedCloud, litCloud, 0.34 + 0.32 * rim + 0.30 * warmth);
+          color = mix(color, cloudColor, cloud * 0.54);
+
+          gl_FragColor = vec4(color, 1.0);
           #include <colorspace_fragment>
-        }`,
+        }
+      `,
     });
-    const dome = new THREE.Mesh(geo, mat);
-
-    const tex = canvasTexture(256, 128, (g) => {
-      for (let i = 0; i < 7; i++) {
-        const x = 40 + i * 30 + Math.sin(i) * 10;
-        const y = 70 + Math.cos(i * 1.7) * 12;
-        const r = 34 + (i % 3) * 10;
-        const gr = g.createRadialGradient(x, y, 2, x, y, r);
-        gr.addColorStop(0, `rgba(${COLORS.cloud},0.85)`);
-        gr.addColorStop(1, `rgba(${COLORS.cloud},0)`);
-        g.fillStyle = gr;
-        g.beginPath();
-        g.arc(x, y, r, 0, 7);
-        g.fill();
-      }
-    });
-    const clouds = SKY.clouds.map(([x, y, z, s]) => {
-      const sp = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: tex, transparent: true, fog: false, depthWrite: false, opacity: SKY.cloudOpacity }),
-      );
-      sp.position.set(x, y, z);
-      sp.scale.set(s, s / 2, 1);
-      return sp;
-    });
-    return {
-      dome,
-      clouds,
-      dispose: () => {
-        geo.dispose();
-        mat.dispose();
-        tex.dispose();
-        clouds.forEach((c) => c.material.dispose());
-      },
-    };
+    return { dome: new THREE.Mesh(geo, mat), uniforms };
   }, []);
-  useEffect(() => dispose, [dispose]);
+  useEffect(() => () => {
+    dome.geometry.dispose();
+    dome.material.dispose();
+  }, [dome]);
 
-  useFrame((_, delta) => {
-    if (travel.reduceMotion) return;
-    const dt = Math.min(delta, 0.05);
-    clouds.forEach((c, i) => {
-      c.position.x += (0.6 + i * 0.2) * dt;
-      if (c.position.x > SKY.cloudWrapX) c.position.x = -SKY.cloudWrapX;
-    });
+  useFrame(({ clock }) => {
+    if (!travel.reduceMotion) uniforms.time.value = clock.getElapsedTime();
   });
 
-  return (
-    <>
-      <primitive object={dome} />
-      {clouds.map((c, i) => (
-        <primitive key={i} object={c} />
-      ))}
-    </>
-  );
+  return <primitive object={dome} />;
 }

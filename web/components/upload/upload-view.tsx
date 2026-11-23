@@ -13,6 +13,7 @@ import { LESSON_JOB_STEPS, jobOutcome, jobStepLabel, useJob } from "@/lib/jobs";
 import { withSession } from "@/lib/session-store";
 import cp from "@/components/checkpoint/checkpoint.module.css";
 import { CropBox } from "./crop-box";
+import { PhotoFrame } from "./photo-frame";
 import styles from "./upload.module.css";
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -216,8 +217,10 @@ export function UploadView() {
             {mode === "crop" ? (
               <CropBox src={photo.url} width={photo.width} height={photo.height} box={box} onChange={setBox} />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photo.url} alt="Foto karyamu" className={styles.thumb} width={photo.width} height={photo.height} />
+              <PhotoFrame>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt="Foto karyamu" className={styles.cropPhoto} width={photo.width} height={photo.height} />
+              </PhotoFrame>
             )}
             <label className={`${cp.card} ${cp.consent}`}>
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
@@ -332,8 +335,10 @@ function Making({
         <p className={cp.lead}>Fotomu sedang dipecah menjadi garis, bidang warna, dan tahapan.</p>
       </header>
       {photo && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo.url} alt="" className={styles.thumb} width={photo.width} height={photo.height} />
+        <PhotoFrame maxHeight="30dvh">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo.url} alt="" className={styles.cropPhoto} width={photo.width} height={photo.height} />
+        </PhotoFrame>
       )}
       <section className={cp.card}>
         <label htmlFor="lesson-progress" className={cp.visuallyHidden}>

@@ -3,6 +3,9 @@
   --art-max-h: 34dvh;
   position: relative;
   display: block;
+  /* Hug the artwork even inside a stretching flex/grid parent. */
+  inline-size: fit-content;
+  max-inline-size: 100%;
   padding: var(--frame-w);
   background: #51360f;
   filter: drop-shadow(0 0.9rem 0.8rem rgb(60 45 30 / 0.35));

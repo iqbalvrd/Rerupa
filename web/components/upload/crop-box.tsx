@@ -7,6 +7,7 @@
  */
 import { useRef, type KeyboardEvent, type PointerEvent } from "react";
 import { moveBox, resizeBox, type Box, type CornerId } from "@/lib/crop";
+import { PhotoFrame } from "./photo-frame";
 import styles from "./upload.module.css";
 
 const CORNERS: { id: CornerId; label: string }[] = [
@@ -68,7 +69,7 @@ export function CropBox({
 
   const pct = (n: number) => `${n * 100}%`;
   return (
-    <div className={styles.cropStage}>
+    <PhotoFrame>
       <div ref={frameRef} className={styles.cropFrame}>
         {/* Object URL of the user's own photo; next/image cannot optimise it. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -97,6 +98,6 @@ export function CropBox({
           ))}
         </div>
       </div>
-    </div>
+    </PhotoFrame>
   );
 }

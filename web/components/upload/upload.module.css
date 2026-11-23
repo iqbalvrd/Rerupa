@@ -1,16 +1,17 @@
 /* Upload-specific pieces; shared studio styles come from checkpoint.module.css. */
 
-.cropStage {
+.photoStage {
+  container-type: inline-size;
   display: grid;
   place-items: center;
-  padding: 0.5rem;
+  padding: 0.75rem;
   border-radius: 0.75rem;
   background: #d9d1c4;
 }
 .cropFrame {
   position: relative;
-  display: inline-block;
-  max-inline-size: 100%;
+  display: block;
+  inline-size: fit-content;
   overflow: hidden; /* clips the dimming shadow to the photo */
   touch-action: none;
   -webkit-user-select: none;
@@ -18,8 +19,8 @@
 }
 .cropPhoto {
   display: block;
-  max-inline-size: 100%;
-  max-block-size: 56dvh;
+  max-inline-size: var(--art-max-w);
+  max-block-size: var(--art-max-h);
   inline-size: auto;
   block-size: auto;
 }
@@ -140,13 +141,6 @@
   font-weight: 700;
 }
 
-.thumb {
-  inline-size: 100%;
-  max-block-size: 30dvh;
-  object-fit: contain;
-  border-radius: 0.5rem;
-  background: #d9d1c4;
-}
 .success {
   display: flex;
   gap: 0.6rem;

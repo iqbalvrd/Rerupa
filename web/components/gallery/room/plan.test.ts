@@ -1,82 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { HALL, arcadeColumns, lerpPose, overviewPose, paintingSize, planRoom, slotPose } from "./plan";
+import { HALL, angleDelta, lerpPose, overviewPose, paintingSize, planRoom, slotPose } from "./plan";
 
-describe("planRoom", () => {
-  it("hangs every painting on the wall facing the visitor, in reading order", () => {
-    const plan = planRoom(6, 16 / 9);
-    expect(plan.slots).toHaveLength(6);
-    for (const s of plan.slots) expect(s.center[2]).toBeCloseTo(-plan.depth / 2);
-    expect(plan.slots.map((s) => [s.row, s.col])).toEqual([
-      [0, 0],
-      [0, 1],
-      [0, 2],
-      [1, 0],
-      [1, 1],
-      [1, 2],
-    ]);
-  });
-
-  it("shapes the arcade like the screen: wide on a laptop, tall on an upright phone", () => {
-    expect(arcadeColumns(6, 16 / 9)).toBeGreaterThan(arcadeColumns(6, 9 / 19));
-    const phone = planRoom(6, 9 / 19);
-    expect(phone.rows).toBeGreaterThan(phone.cols);
-  });
-
-  it("keeps the arcade inside the hall, above the plinth", () => {
-    for (const [n, aspect] of [
-      [1, 1.6],
-      [5, 1.6],
-      [6, 0.46],
-      [9, 1.2],
-    ] as const) {
-      const plan = planRoom(n, aspect);
-      for (const s of plan.slots) {
-        expect(Math.abs(s.center[0])).toBeLessThan(plan.width / 2 - 1);
-        expect(s.center[1] - HALL.levelH / 2).toBeGreaterThanOrEqual(HALL.plinth - 1e-9);
+describe("three-wall plan", () => {
+  it("distributes every exhibit once across the back, left and right walls", () => {
+    for (const n of [1, 2, 3, 6, 11, 24]) {
+      const p = planRoom(n);
+      expect(p.slots.map(s => s.index)).toEqual(Array.from({length:n}, (_,i)=>i));
+      const counts = ["back", "left", "right"].map(w => p.slots.filter(s=>s.wall===w).length);
+      expect(Math.max(...counts)-Math.min(...counts)).toBeLessThanOrEqual(1);
+      for (const s of p.slots) {
+        expect(s.center[1]).toBeGreaterThan(HALL.maxH/2);
+        expect(s.center[1]+HALL.maxH/2).toBeLessThan(p.springY);
+        if(s.wall==='back') expect(s.center[2]).toBeCloseTo(-p.depth/2+0.04);
+        else expect(Math.abs(s.center[0])).toBeCloseTo(p.width/2-0.04);
       }
     }
   });
-
-  it("centers a last row that is not full", () => {
-    const plan = planRoom(5, 16 / 9);
-    const last = plan.slots.filter((s) => s.row === plan.rows - 1);
-    const mid = last.reduce((sum, s) => sum + s.center[0], 0) / last.length;
-    expect(mid).toBeCloseTo(0);
+  it("keeps the same navigation order when the viewport changes", () => {
+    expect(planRoom(6,16/9).slots.map(s=>s.wall)).toEqual(planRoom(6,9/19).slots.map(s=>s.wall));
+  });
+  it("spaces side exhibits without overlapping frames or the entrance", () => {
+    const p=planRoom(24);
+    for(const wall of ['left','right']) {
+      const slots=p.slots.filter(s=>s.wall===wall);
+      for(let i=1;i<slots.length;i++) expect(slots[i].center[2]-slots[i-1].center[2]).toBeGreaterThan(HALL.maxW+0.68);
+      expect(slots.at(-1)!.center[2]+HALL.maxW/2).toBeLessThan(p.depth/2-1);
+    }
   });
 });
 
-describe("poses", () => {
-  it("sees the whole arcade from inside the hall", () => {
-    for (const aspect of [16 / 9, 1, 9 / 19]) {
-      const plan = planRoom(6, aspect);
-      const pose = overviewPose(plan, aspect);
-      expect(pose.pos[2]).toBeLessThan(plan.depth / 2);
-      expect(pose.pos[2]).toBeGreaterThan(-plan.depth / 2);
+describe("guided camera", () => {
+  it("stays inside the hall and faces each artwork squarely on desktop and phone", () => {
+    for(const aspect of [16/9,1,9/19]) {
+      const p=planRoom(6,aspect), o=overviewPose(p,aspect);
+      expect(Math.abs(o.pos[2])).toBeLessThan(p.depth/2);
+      for(const s of p.slots) {
+        const pose=slotPose(p,s,paintingSize(1.4),aspect);
+        expect(Math.abs(pose.pos[0])).toBeLessThan(p.width/2);
+        expect(Math.abs(pose.pos[2])).toBeLessThan(p.depth/2);
+        const dx=s.center[0]-pose.pos[0], dz=s.center[2]-pose.pos[2];
+        expect(angleDelta(pose.yaw,Math.atan2(dx,-dz))).toBeCloseTo(0);
+      }
     }
   });
-
-  it("stands straight in front of a painting, closer than the overview", () => {
-    const plan = planRoom(6, 16 / 9);
-    const overview = overviewPose(plan, 16 / 9);
-    for (const slot of plan.slots) {
-      const pose = slotPose(plan, slot, paintingSize(1.4), 16 / 9);
-      expect(pose.pos[0]).toBeCloseTo(slot.center[0]);
-      expect(pose.yaw).toBe(0);
-      expect(pose.pos[2]).toBeLessThan(overview.pos[2]);
+  it("interpolates a left-to-right turn via the room rather than a full revolution",()=>{
+    const p=planRoom(6), size=paintingSize(1);
+    const left=slotPose(p,p.slots[2],size,16/9), right=slotPose(p,p.slots[4],size,16/9);
+    const mid=lerpPose(left,right,0.5);
+    expect(Math.abs(mid.yaw)).toBeCloseTo(0);
+    expect(mid.pos[0]).toBeCloseTo(0);
+  });
+  it("preserves arbitrary painting ratios inside the display limits",()=>{
+    for(const aspect of [1200/730,617/1373,4.8,1]) {
+      const s=paintingSize(aspect);
+      expect(s.w/s.h).toBeCloseTo(aspect);
+      expect(s.w).toBeLessThanOrEqual(HALL.maxW);
+      expect(s.h).toBeLessThanOrEqual(HALL.maxH);
     }
-  });
-
-  it("interpolates position and pitch", () => {
-    const plan = planRoom(6, 16 / 9);
-    const a = overviewPose(plan, 16 / 9);
-    const b = slotPose(plan, plan.slots[0], paintingSize(1), 16 / 9);
-    const mid = lerpPose(a, b, 0.5);
-    expect(mid.pos[2]).toBeCloseTo((a.pos[2] + b.pos[2]) / 2);
-    expect(mid.pitch).toBeCloseTo((a.pitch + b.pitch) / 2);
-  });
-
-  it("fits wide and tall paintings in the same box", () => {
-    expect(paintingSize(3).w).toBeCloseTo(HALL.maxW);
-    expect(paintingSize(0.5).h).toBeCloseTo(HALL.maxH);
   });
 });

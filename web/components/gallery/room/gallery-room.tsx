@@ -23,19 +23,7 @@ const ENTRANCE_MAX_HOLD_MS = 7000;
 type Mode = "overview" | "single";
 type Item = { exhibit: Exhibit; artwork: GalleryArtwork | null };
 
-/**
- * The gallery as a real 3D hall. The visitor arrives at the entrance (through
- * the landing's white light) facing one wall where the whole collection hangs,
- * every painting in view and facing them, and picks one: the camera walks up
- * to it like the landing's walk to the museum door. There is no free looking
- * around (guided, point-to-point movement is easier to use and to stomach
- * than first-person controls). In front of a painting, previous/next
- * (buttons, swipe, arrow keys) step along the arcade; "Lihat semua" or Esc
- * walks back. Choosing the painting in front opens the artwork page.
- *
- * Every painting has a real link in the HTML layer, kept over the painting by
- * the scene, so the room works with a keyboard and a screen reader.
- */
+/** Guided visits to paintings on the back, left and right walls of the hall. */
 export function GalleryRoom() {
   const artworks = useArtworks();
   const items: Item[] = useMemo(() => {
@@ -134,7 +122,7 @@ export function GalleryRoom() {
         setAnnouncement(`Di depan ${nameOf(target.index)}, karya ${target.index + 1} dari ${count}`);
       } else {
         setMode("overview");
-        setAnnouncement("Kembali ke pintu masuk. Semua karya terlihat.");
+        setAnnouncement("Kembali ke pintu masuk. Pilih dinding atau lukisan untuk mendekat.");
       }
     };
   }, [count, nameOf]);
@@ -178,7 +166,7 @@ export function GalleryRoom() {
   }, [mode, current, items, prefetchArtwork, router]);
 
   // In front of a painting, a horizontal swipe walks to the next one. There is no looking around:
-  // every painting faces the visitor from the start.
+  // the camera turns to face the destination wall.
   const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -314,9 +302,12 @@ export function GalleryRoom() {
         )}
 
         {mode === "overview" && count > 0 && !walking && (
-          <p className={styles.hint}>
-            Pilih lukisan untuk mendekat
-          </p>
+          <nav className={styles.actions} aria-label="Pilih dinding galeri">
+            {([["left", "Dinding kiri"], ["back", "Dinding depan"], ["right", "Dinding kanan"]] as const).map(([wall, label]) => {
+              const slot = plan.slots.find(s => s.wall === wall);
+              return slot ? <button key={wall} className={styles.pill} onClick={() => go({ kind: "slot", index: slot.index })}>{label}</button> : null;
+            })}
+          </nav>
         )}
 
         {here && (

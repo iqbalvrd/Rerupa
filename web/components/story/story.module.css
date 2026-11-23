@@ -1,0 +1,508 @@
+/*
+ * Kisah di balik karya: the warm studio paper of Persiapan/Selesai, with the
+ * story told as numbered panels hung in narrow dark mats, like a comic strip
+ * pinned along the gallery wall.
+ */
+
+.page {
+  --paper: #f6efe2;
+  --card: #fffbf4;
+  --line: #e4d8c3;
+  --ink: #1f1b17;
+  --ink-soft: #5e554b;
+  --navy: #0f1b33;
+  --gold: #c99a45;
+  --gold-deep: #8a6222;
+  --mat: #1d1a17;
+  --fact: #1f5f3a;
+  --fact-bg: #e3f1e7;
+  --estimate: #7a4b00;
+  --estimate-bg: #fcefd2;
+  --danger: #a12a1c;
+
+  min-block-size: 100dvh;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, #fff8ea, transparent 70%),
+    var(--paper);
+  color: var(--ink);
+}
+
+.topbar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block: max(0.5rem, env(safe-area-inset-top, 0px)) 0.5rem;
+  padding-inline: max(0.75rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px));
+  background: rgb(246 239 226 / 0.94);
+  border-block-end: 1px solid var(--line);
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-block-size: var(--target-size);
+  padding-inline: 0.5rem 0.8rem;
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.back:hover {
+  background: rgb(0 0 0 / 0.05);
+}
+
+.main {
+  max-inline-size: 40rem;
+  margin-inline: auto;
+  padding: 1.25rem 1rem calc(3rem + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.loading {
+  margin: 12dvh auto 0;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.message {
+  max-inline-size: 32rem;
+  margin: 10dvh auto 0;
+  padding-inline: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+.message p {
+  color: var(--ink-soft);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+/* The basis label is the first thing read: it says how much of this is sourced. */
+.basis {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: var(--estimate-bg);
+  color: var(--estimate);
+  border: 1px solid color-mix(in oklab, var(--estimate) 25%, transparent);
+}
+.basis[data-sourced="true"] {
+  background: var(--fact-bg);
+  color: var(--fact);
+  border-color: color-mix(in oklab, var(--fact) 25%, transparent);
+}
+.basisNote {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-block-start: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+.title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 1.2rem + 2vw, 2.2rem);
+  line-height: 1.15;
+  color: var(--navy);
+  text-wrap: balance;
+}
+.title:focus {
+  outline: none;
+}
+.identity {
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.confidence {
+  font-size: 0.8125rem;
+}
+.confidenceBadge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 700;
+  background: var(--estimate-bg);
+  color: var(--estimate);
+}
+.confidenceBadge[data-level="high"] {
+  background: var(--fact-bg);
+  color: var(--fact);
+}
+.lead {
+  font-size: 1rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+.soft {
+  color: var(--ink-soft);
+}
+.small {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* ── Progress while panels are drawn ─────────────────────────────────────── */
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+.progress progress {
+  inline-size: 100%;
+  block-size: 0.4rem;
+  accent-color: var(--gold-deep);
+}
+
+/* ── Panels ──────────────────────────────────────────────────────────────── */
+
+.panels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+.figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+/* A fixed 4:3 mat, so a panel never shifts the page when its picture arrives. */
+.frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  padding: 0.5rem;
+  background: var(--mat);
+  border-radius: 0.35rem;
+  box-shadow: 0 0.8rem 1.6rem rgb(60 40 20 / 0.22);
+  overflow: hidden;
+}
+.frame img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+/* Always visible on the picture itself, never only in a tooltip or caption. */
+.imageLabel {
+  position: absolute;
+  inset-block-start: 0.9rem;
+  inset-inline-start: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgb(15 27 51 / 0.86);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+.imageLabel[data-kind="artwork_crop"] {
+  background: rgb(255 251 244 / 0.94);
+  color: var(--navy);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+.pending {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(100deg, #2a2621 30%, #3a342d 50%, #2a2621 70%);
+  background-size: 300% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+.pendingText {
+  color: #e4d8c3;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+.panel[data-view="image"] .frame img {
+  animation: develop 0.6s ease-out both;
+}
+@keyframes develop {
+  from {
+    opacity: 0;
+    filter: saturate(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pending,
+  .panel[data-view="image"] .frame img {
+    animation: none;
+  }
+}
+.purged {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.5rem;
+  border: 1px dashed var(--line);
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+.caption {
+  display: flex;
+  gap: 0.65rem;
+  align-items: baseline;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+/* Text-only panel: the narration carries the panel on its own, as a card. */
+.panel[data-view="text"] .caption,
+.panel[data-view="purged"] .caption {
+  padding: 1rem 1.1rem;
+  border-radius: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.panelNo {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: var(--navy);
+  color: #fff;
+  transform: translateY(-0.1rem);
+}
+.cast {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* ── Characters ──────────────────────────────────────────────────────────── */
+
+.chip,
+.chipStatic,
+.characterButton,
+.characterName {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-block-size: var(--target-size);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.chip,
+.chipStatic {
+  padding-inline: 0.65rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--navy);
+}
+.chipStatic {
+  background: transparent;
+  color: var(--ink-soft);
+}
+.characterButton {
+  padding-inline: 0.8rem;
+  border: 1px solid var(--gold-deep);
+  background: #fff;
+  color: var(--navy);
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.chip {
+  cursor: pointer;
+}
+.chip:hover,
+.characterButton:hover {
+  background: #fdf4e2;
+}
+.chip:disabled,
+.characterButton:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.chip:focus-visible,
+.characterButton:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible,
+.back:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.characterName {
+  font-size: 0.9375rem;
+  color: var(--navy);
+}
+.stageHint {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.characters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.characters li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+.error {
+  font-size: 0.8125rem;
+  color: var(--danger);
+}
+
+/* ── Claims & sources ────────────────────────────────────────────────────── */
+
+.card {
+  padding: 1.1rem;
+  border-radius: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 0.2rem 0.6rem rgb(60 40 20 / 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-inline-size: 0;
+}
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  color: var(--navy);
+}
+.message .sectionTitle {
+  font-size: 1.5rem;
+}
+.claims {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.claims li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.tagFact {
+  background: var(--fact-bg);
+  color: var(--fact);
+}
+.tagEstimate {
+  background: var(--estimate-bg);
+  color: var(--estimate);
+}
+.claimSource {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+.claimSource a,
+.sources a {
+  color: var(--navy);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-block-size: 44px;
+  padding-inline: 1.1rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.primary {
+  background: var(--navy);
+  color: #fff;
+}
+.primary:hover {
+  background: #1b2b4d;
+}
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.secondary {
+  background: #fff;
+  color: var(--navy);
+  border-color: var(--line);
+}

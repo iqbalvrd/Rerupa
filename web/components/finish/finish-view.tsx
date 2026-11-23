@@ -17,6 +17,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { StoryEntry } from "@/components/story/story-entry";
 import { api, isApiError } from "@/lib/api";
 import { artworkByline, useArtworks } from "@/lib/artworks";
 import { isValidReflection, summarize, type FinishSummary } from "@/lib/finish";
@@ -181,6 +182,8 @@ function Finish({ lesson, progress, onDeleted }: { lesson: Lesson; progress: Pro
       <StageSummaryCard lesson={lesson} summary={summary} />
 
       {reflection && <ReflectionCard reflection={reflection} lesson={lesson} />}
+
+      <StoryEntry lesson={lesson} />
 
       <OtherPractice currentArtworkId={lesson.artwork_id} />
 

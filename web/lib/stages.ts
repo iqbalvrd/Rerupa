@@ -84,3 +84,21 @@ export function initialStageIndex(stageCount: number, currentStageOrder: number 
 export function isGeneratedText(lesson: Lesson, stage: Stage): boolean {
   return lesson.generated_automatically || stage.text_source === "ai" || stage.text_source === "template";
 }
+
+/**
+ * The first stage that paints any of `regionCodes` (its `new_region_codes`),
+ * so tapping a story character opens the stage where that figure is painted.
+ */
+export function firstStageForRegions(stages: Stage[], regionCodes: string[]): Stage | null {
+  if (!regionCodes.length) return null;
+  const wanted = new Set(regionCodes);
+  const ordered = [...stages].sort((a, b) => a.order_no - b.order_no);
+  return ordered.find((s) => s.new_region_codes.some((c) => wanted.has(c))) ?? null;
+}
+
+/** Index (0-based) of the stage with `code`, or null when the lesson has none. */
+export function stageIndexByCode(stages: Stage[], code: string | null | undefined): number | null {
+  if (!code) return null;
+  const i = stages.findIndex((s) => s.code === code);
+  return i >= 0 ? i : null;
+}

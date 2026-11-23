@@ -30,6 +30,7 @@ import {
   regionColorsFor,
   regionNumber,
   regionsUpTo,
+  stageIndexByCode,
   type LayerKey,
 } from "@/lib/stages";
 import { StageCanvas, type StageCanvasHandle } from "./stage-canvas";
@@ -137,7 +138,11 @@ function Practice({
 }) {
   const router = useRouter();
   const stages = lesson.stages;
-  const [index, setIndex] = useState(() => initialStageIndex(stages.length, progress.current_stage_order));
+  // `?tahap=<code>` (from a story character) opens that stage; otherwise resume where the session was.
+  const stageParam = useSearchParams().get("tahap");
+  const [index, setIndex] = useState(
+    () => stageIndexByCode(stages, stageParam) ?? initialStageIndex(stages.length, progress.current_stage_order),
+  );
   const [overrides, setOverrides] = useState<{ index: number; layers: Partial<Record<LayerKey, boolean>> }>({
     index,
     layers: {},

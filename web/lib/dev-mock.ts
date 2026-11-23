@@ -7,6 +7,7 @@
  * The guest session lives in memory + localStorage, like a cookie would.
  */
 import { ApiError } from "./api-error";
+import { mockGetStory, mockStartStory, mockStoryJob } from "./dev-mock-story";
 
 export const DEV_MOCK_API = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_API_MOCK === "1";
 
@@ -172,11 +173,31 @@ export async function mockRequest(method: string, path: string, body: unknown, f
       photoUrl: null,
     };
     jobs.set(job.id, job);
-    if (usable) saveSession({ ...session, lesson_version_id: DEV_LESSON_ID, progress: {}, current_stage_order: 1 });
+    if (usable) {
+      saveSession({
+        ...session,
+        lesson_version_id: DEV_LESSON_ID,
+        lesson_origin: "free_mode",
+        progress: {},
+        current_stage_order: 1,
+      });
+    }
     return jobOut(job);
   }
+  // Storyline cerita (P1): see lib/dev-mock-story.ts for the cases it covers.
+  const storyStart = path.match(/^\/lessons\/([^/]+)\/story$/);
+  if (storyStart && method === "POST") {
+    const session = loadSession();
+    const freeMode = session?.lesson_version_id === storyStart[1] && session.lesson_origin === "free_mode";
+    return mockStartStory(storyStart[1], json, freeMode);
+  }
+  const storyMatch = path.match(/^\/stories\/([^/]+)$/);
+  if (storyMatch && method === "GET") return mockGetStory(storyMatch[1], DEV_LESSON_ID);
+
   const jobMatch = path.match(/^\/jobs\/([^/]+)$/);
   if (jobMatch && method === "GET") {
+    const storyJob = mockStoryJob(jobMatch[1]);
+    if (storyJob) return storyJob;
     const job = jobs.get(jobMatch[1]);
     if (!job) throw new ApiError("not_found", "Pekerjaan tidak ditemukan.", { status: 404 });
     return jobOut(job);
@@ -197,7 +218,12 @@ export async function mockRequest(method: string, path: string, body: unknown, f
   if (method === "GET" && path === "/health") return { status: "ok", mock: true };
   if (method === "GET" && path === "/palettes") return example("palettes");
   // Synthetic lesson: the example lesson with shape layers that actually load.
-  if (method === "GET" && path.startsWith("/lessons/")) return example("lesson_mock");
+  // The session remembers whether its lesson came from the gallery or a photo.
+  if (method === "GET" && path.startsWith("/lessons/")) {
+    const lesson = (await example("lesson_mock")) as Record<string, unknown>;
+    const origin = loadSession()?.lesson_origin;
+    return typeof origin === "string" ? { ...lesson, origin } : lesson;
+  }
 
   const progressMatch = path.match(/^\/sessions\/([^/]+)\/progress$/);
   if (progressMatch) {
@@ -254,6 +280,8 @@ export async function mockRequest(method: string, path: string, body: unknown, f
     if (method === "GET") return session;
     if (method === "PATCH") {
       const next = { ...session, ...Object.fromEntries(Object.entries(json).filter(([, v]) => v !== undefined)) };
+      // Choosing a lesson from the gallery makes it a collection lesson.
+      if (typeof json.lesson_version_id === "string") next.lesson_origin = "collection";
       saveSession(next);
       return next;
     }

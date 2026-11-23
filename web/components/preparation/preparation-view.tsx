@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { api, isApiError } from "@/lib/api";
 import { useArtwork } from "@/lib/artworks";
 import { DEV_MOCK_API } from "@/lib/dev-mock";
-import type { CanvasSize, Lesson, Palette } from "@/lib/schemas";
-import { ensureSession, withSession } from "@/lib/session-store";
+import type { CanvasSize, Lesson, Palette, Session } from "@/lib/schemas";
+import { ensureSession, rememberSession, withSession } from "@/lib/session-store";
 import styles from "./preparation.module.css";
 
 /** Physical canvas sizes in cm (portrait). */
@@ -141,11 +141,11 @@ export function PreparationView() {
               palettes={palettes.data}
               initialSize={session.data?.canvas_size ?? null}
               initialPalette={session.data?.palette_id ?? null}
-              onSaved={(paletteId) => {
+              onSaved={(saved) => {
                 // Colour suggestions depend on the palette: refetch them for practice.
-                void queryClient.invalidateQueries({ queryKey: ["lesson", lessonId] });
-                void queryClient.invalidateQueries({ queryKey: ["session"] });
-                router.push(`/latihan?palet=${paletteId}`);
+                void queryClient.invalidateQueries({ queryKey: ["lesson", saved.lesson_version_id] });
+                rememberSession(queryClient, saved);
+                router.push(`/latihan?palet=${saved.palette_id ?? ""}`);
               }}
             />
           )
@@ -166,7 +166,7 @@ function PreparationForm({
   palettes: Palette[];
   initialSize: CanvasSize | null;
   initialPalette: string | null;
-  onSaved: (paletteId: string) => void;
+  onSaved: (session: Session) => void;
 }) {
   const [size, setSize] = useState<CanvasSize>(initialSize ?? "A4");
   const [paletteId, setPaletteId] = useState<string>(
@@ -207,8 +207,8 @@ function PreparationForm({
     setSaving(true);
     setError(null);
     try {
-      await withSession((id) => api.updateSession(id, { canvas_size: size, palette_id: paletteId }));
-      onSaved(paletteId);
+      const saved = await withSession((id) => api.updateSession(id, { canvas_size: size, palette_id: paletteId }));
+      onSaved(saved);
     } catch (err) {
       setError(isApiError(err) ? err.message : "Pilihan belum tersimpan. Coba lagi.");
       setSaving(false);

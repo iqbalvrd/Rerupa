@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type RefObject } from "react";
 import { navigateBackToGallery } from "@/lib/view-transition";
 import { Archive, ArrowLeft, BadgeCheck, BookOpen, Brush, ExternalLink, Landmark, Sparkles } from "lucide-react";
@@ -18,7 +19,7 @@ import {
   type GalleryArtworkDetail,
 } from "@/lib/artworks";
 import type { CultureClaim, Lesson } from "@/lib/schemas";
-import { withSession } from "@/lib/session-store";
+import { rememberSession, withSession } from "@/lib/session-store";
 import { useCollectionStory } from "@/lib/story";
 import styles from "./artwork-detail.module.css";
 
@@ -353,6 +354,7 @@ function ArchiveCard({ artwork }: { artwork: GalleryArtworkDetail }) {
 
 function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lessonId = artwork.lesson_version_id;
@@ -362,7 +364,8 @@ function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
     setStarting(true);
     setError(null);
     try {
-      await withSession((sessionId) => api.updateSession(sessionId, { lesson_version_id: lessonId }));
+      const session = await withSession((sessionId) => api.updateSession(sessionId, { lesson_version_id: lessonId }));
+      rememberSession(queryClient, session);
       router.push(`/persiapan?karya=${encodeURIComponent(artwork.slug)}`);
     } catch (err) {
       setError(isApiError(err) ? err.message : "Latihan belum bisa dimulai. Coba lagi.");

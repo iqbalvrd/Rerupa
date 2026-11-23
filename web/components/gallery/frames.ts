@@ -12,12 +12,12 @@ export const FRAME_STYLES: Record<FrameStyleId, FrameStyle> = {
   "louis-xiv": {
     id: "louis-xiv",
     label: "Emas berukir (Louis XIV)",
-    thickness: 0.2,
+    thickness: 0.1,
   },
   "louis-xvi": {
     id: "louis-xvi",
     label: "Emas klasik (Louis XVI)",
-    thickness: 0.09,
+    thickness: 0.045,
   },
 };
 

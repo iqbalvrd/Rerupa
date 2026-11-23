@@ -9,7 +9,7 @@ import { FrameOrnament } from "./frame-ornament";
 function frameVars(id: FrameStyleId, maxW?: string, maxH?: string): CSSProperties {
   const frame = FRAME_STYLES[id];
   return {
-    "--frame-w": `clamp(1rem, calc(${frame.thickness} * min(52vw, 30dvh)), 4rem)`,
+    "--frame-w": `clamp(0.5rem, calc(${frame.thickness} * min(52vw, 30dvh)), 2rem)`,
     ...(maxW ? { "--art-max-w": maxW } : {}),
     ...(maxH ? { "--art-max-h": maxH } : {}),
   } as CSSProperties;
@@ -52,7 +52,7 @@ export function FramedArt(props: FramedArtProps) {
     if (!width || !height) return;
     const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const thickness = FRAME_STYLES[frame].thickness;
-    const next = Math.max(rootFont, Math.min(rootFont * 4, Math.min(width, height) * thickness));
+    const next = Math.max(rootFont * 0.5, Math.min(rootFont * 2, Math.min(width, height) * thickness));
     setFrameWidth((previous) => previous !== undefined && Math.abs(previous - next) < 0.5 ? previous : next);
   }, [frame]);
   useEffect(() => {

@@ -2,12 +2,13 @@
 
 Dasar kisah (RENCANA §4.8, PRD FR16):
 - Materi koleksi → `curated` (klaim kurasi + sumbernya).
-- Foto unggahan:
+- Foto unggahan → agen riset (story/sources.research), TANPA bertanya ke pengguna:
   - interpretation_only → `ai_interpretation` tanpa pencarian.
-  - Ada isian judul/seniman/asal (diketik atau dikonfirmasi pengguna) → cari sumber web (teks saja):
-    ada fakta bersumber → `sourced`; tidak ada → `user_hint`.
-  - Tanpa isian → AI menebak KANDIDAT dari foto (bila diizinkan) dan berhenti: pengguna harus
-    mengonfirmasi ("Apakah ini …?") lalu memanggil ulang dengan isian, atau memilih interpretasi.
+  - Kenali karya dari foto (bila diizinkan) atau isian → cari sumber web (teks saja) → keyakinan.
+  - Keyakinan high/medium + ada fakta bersumber → `sourced`.
+  - Isian pengguna tanpa fakta → `user_hint`.
+  - Kandidat dari foto tanpa fakta, keyakinan medium → `ai_interpretation` dengan kandidat sebagai dugaan.
+  - Keyakinan low / tidak ada kandidat → `ai_interpretation` tanpa nama karya (tidak menebak).
 """
 
 import logging
@@ -34,8 +35,6 @@ BASIS_LABEL = {
 @dataclass
 class StoryOutcome:
     story_id: str | None = None
-    needs_identity: dict | None = None  # kandidat yang harus dikonfirmasi pengguna
-    unknown: bool = False  # karya tidak dikenali → minta isian atau pilih interpretasi
 
 
 def _download(bucket: str, path: str) -> bytes:
@@ -63,8 +62,8 @@ def curated_claims(lesson_id: str) -> tuple[list[dict], list[dict]]:
     return claims, list(srcs.values())
 
 
-def decide_basis(lesson: dict, params: dict, *, safety_id: str, job_id: str | None) -> tuple[str, dict, list[dict], list[dict]] | StoryOutcome:
-    """Return (basis, identity, claims, sources) atau StoryOutcome bila perlu konfirmasi pengguna dulu."""
+def decide_basis(lesson: dict, params: dict, *, safety_id: str, job_id: str | None) -> tuple[str, dict, list[dict], list[dict]]:
+    """Return (basis, identity, claims, sources). identity.confidence = hasil agen riset (foto unggahan)."""
     settings = get_settings()
     if lesson["origin"] == "collection":
         a = lesson.get("artworks") or {}
@@ -77,18 +76,21 @@ def decide_basis(lesson: dict, params: dict, *, safety_id: str, job_id: str | No
 
     hints = {k: (params.get(f"{k}_hint") or "").strip() for k in ("title", "artist", "origin")}
     hints = {k: v for k, v in hints.items() if v}
-    if not hints:
-        if not params.get("consent_ai_photo") or not lesson["original_jpeg"]:
-            return StoryOutcome(unknown=True)
-        cand = sources.identify(lesson["original_jpeg"], {}, safety_id=safety_id, job_id=job_id)
-        if cand.identified and cand.confidence in ("high", "medium") and (cand.title or cand.artist or cand.origin):
-            return StoryOutcome(needs_identity={"title": cand.title, "artist": cand.artist, "origin": cand.origin, "confidence": cand.confidence, "reason": cand.reason})
-        return StoryOutcome(unknown=True)
+    photo = lesson["original_jpeg"] if params.get("consent_ai_photo") else None
+    if not hints and photo is None:
+        return "ai_interpretation", {"confirmed_by_user": False}, [], []  # tidak ada yang bisa diriset
 
-    identity = {**hints, "confirmed_by_user": True}
-    claims, srcs = sources.search(identity, safety_id=safety_id, job_id=job_id, max_searches=settings.story_max_web_searches)
-    basis = "sourced" if any(c["type"] == "fakta" for c in claims) else "user_hint"
-    return basis, identity, claims, srcs
+    r = sources.research(photo, hints, safety_id=safety_id, job_id=job_id, max_searches=settings.story_max_web_searches)
+    identity, claims, srcs, conf = r["identity"], r["claims"], r["sources"], r["confidence"]
+    has_fact = any(c["type"] == "fakta" for c in claims)
+    if has_fact and conf in ("high", "medium"):
+        return "sourced", identity, claims, srcs
+    if hints:
+        return "user_hint", identity, claims, srcs
+    if identity and conf == "medium":
+        # Kandidat kuat secara visual tetapi belum ada sumber: dipakai sebagai dugaan, klaim web tidak dipakai.
+        return "ai_interpretation", identity, [c for c in claims if c["type"] == "perkiraan"], []
+    return "ai_interpretation", {"confirmed_by_user": False, "confidence": "low"}, [], []
 
 
 def build_story(lesson_id: str, session_id: str | None, params: dict, *, safety_id: str, job_id: str | None, final: bool = False, progress: Callable[[str], None] = lambda s: None) -> StoryOutcome:
@@ -97,10 +99,7 @@ def build_story(lesson_id: str, session_id: str | None, params: dict, *, safety_
     lesson = load_lesson(lesson_id)
 
     progress("sources")
-    decided = decide_basis(lesson, params, safety_id=safety_id, job_id=job_id)
-    if isinstance(decided, StoryOutcome):
-        return decided
-    basis, identity, claims, srcs = decided
+    basis, identity, claims, srcs = decide_basis(lesson, params, safety_id=safety_id, job_id=job_id)
 
     progress("storyboard")
     # Foto karya ikut ke AI untuk materi koleksi (gambar publik) atau bila pengguna sudah setuju.

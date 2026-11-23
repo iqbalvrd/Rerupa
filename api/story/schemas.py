@@ -23,6 +23,7 @@ class Identity(_Strict):
 class SourcedClaim(_Strict):
     text: str
     type: Literal["fakta", "perkiraan"]
+    topic: Literal["pembuat", "inspirasi", "kisah", "makna", "konteks"]
     source_urls: list[str]
 
 
@@ -44,8 +45,13 @@ class Character(_Strict):
     region_codes: list[str]
 
 
+Beat = Literal["seniman", "inspirasi", "kisah", "makna"]
+BEAT_ORDER = ("seniman", "inspirasi", "kisah", "makna")
+
+
 class Panel(_Strict):
     order_no: int
+    beat: Beat  # alur: seniman → inspirasi → kisah (1–3 panel) → makna
     narration: str  # ≤40 kata, Bahasa Indonesia
     scene: str  # deskripsi visual untuk pembuat gambar
     character_codes: list[str]

@@ -1,0 +1,347 @@
+/*
+ * The 3D gallery room: canvas at the back, a layer of painting links kept over
+ * the paintings by the scene, then the top bar and the controls.
+ */
+
+.scene {
+  --plaque: #fffdf8;
+  --ink: #2b2723;
+  --ink-soft: #5f5850;
+  --focus: #1f5fbf;
+
+  position: relative;
+  block-size: 100dvh;
+  min-block-size: 32rem;
+  overflow: hidden;
+  isolation: isolate;
+  background: #ece4d6;
+  color: var(--ink);
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ── Painting links ──────────────────────────────────────────────────────── */
+
+.hits {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  /* a horizontal swipe in front of a painting walks to the next one */
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Placed every frame by the scene (translate + size), over the painting's canvas. */
+.hit {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: block;
+  border-radius: 0.125rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hit[data-in-view="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+.hit:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 0.4rem;
+}
+@media (hover: hover) {
+  .scene[data-mode="overview"] .hit:hover,
+  .hit:not([data-here]):hover {
+    outline: 2px solid rgb(255 250 235 / 0.9);
+    outline-offset: 0.35rem;
+  }
+}
+/* The painting's own image, shown only while a view transition carries it to or from the artwork page. */
+.hit img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: fill;
+  opacity: 0;
+  pointer-events: none;
+}
+:root[data-transition] .hit[data-here] img {
+  opacity: 1;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+
+.topbar {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block: max(0.5rem, env(safe-area-inset-top, 0px)) 1.25rem;
+  padding-inline: max(1rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px));
+  background: linear-gradient(to bottom, rgb(250 248 243 / 0.92) 55%, rgb(250 248 243 / 0));
+  pointer-events: none;
+}
+.topbar > * {
+  pointer-events: auto;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-size, 2.75rem);
+  color: var(--ink);
+  text-decoration: none;
+}
+.roomLabel {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.topbarEnd {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+@media (max-width: 30rem) {
+  .roomLabel {
+    display: none;
+  }
+}
+
+/* ── Controls ────────────────────────────────────────────────────────────── */
+
+.controls {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding-inline: 1rem;
+  padding-block-end: max(1rem, env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+.controls > * {
+  pointer-events: auto;
+}
+
+.hint {
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(255 253 248 / 0.92);
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  text-align: center;
+  box-shadow: 0 0.2rem 0.6rem rgb(0 0 0 / 0.12);
+}
+/* Plaque and actions for the painting in front of the visitor. */
+.panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem 0.9rem;
+  max-inline-size: min(100%, 42rem);
+  transition: opacity 0.25s ease;
+}
+.panel[data-walking] {
+  opacity: 0.35;
+}
+.plaque {
+  display: grid;
+  gap: 0.15rem;
+  min-inline-size: 0;
+  max-inline-size: min(100%, 24rem);
+  padding: 0.55rem 0.85rem;
+  background: var(--plaque);
+  border: 1px solid #e4ddcf;
+  box-shadow: 0 0.15rem 0.4rem rgb(0 0 0 / 0.08);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+.plaqueTitle {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.plaqueMeta {
+  color: var(--ink-soft);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-block-size: 2.75rem;
+  padding-inline: 1rem;
+  border-radius: 999px;
+  background: rgb(255 253 248 / 0.94);
+  color: var(--ink);
+  border: 1px solid rgb(0 0 0 / 0.15);
+  box-shadow: 0 0.2rem 0.6rem rgb(0 0 0 / 0.18);
+  font-size: 0.875rem;
+  text-decoration: none;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.pill svg {
+  inline-size: 1rem;
+  block-size: 1rem;
+}
+.primary {
+  background: #c9a14a;
+  border-color: #a8812f;
+  color: #1f1a12;
+  font-weight: 600;
+}
+
+.navRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.navButton {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border-radius: 999px;
+  background: rgb(255 253 248 / 0.92);
+  color: var(--ink);
+  border: 1px solid rgb(0 0 0 / 0.15);
+  box-shadow: 0 0.2rem 0.6rem rgb(0 0 0 / 0.18);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.navButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.markers {
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(255 253 248 / 0.85);
+}
+.marker {
+  /* 24px target with a small visible dot (WCAG 2.5.8) */
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  min-inline-size: 1.5rem;
+  min-block-size: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.marker::before {
+  content: "";
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 999px;
+  background: #9a917f;
+  transition: inline-size 0.2s;
+}
+/* Active marker is wider and darker, not only a different color (WCAG 1.4.1). */
+.marker[aria-current="true"]::before {
+  inline-size: 1.1rem;
+  background: var(--ink);
+}
+.pill:focus-visible,
+.navButton:focus-visible,
+.marker:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.notice {
+  max-inline-size: min(88vw, 24rem);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(255 253 248 / 0.94);
+  font-size: 0.8125rem;
+  text-align: center;
+  box-shadow: 0 0.2rem 0.6rem rgb(0 0 0 / 0.12);
+}
+.fixtureBadge {
+  font-size: 0.6875rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #fff3c4;
+  color: #5c4700;
+  border: 1px solid #e8d48a;
+}
+
+.visuallyHidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Entrance from the landing's doorway ─────────────────────────────────── */
+
+.enterWhite {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: end center;
+  padding-block-end: 12vh;
+  background: #fffaf0;
+  pointer-events: none;
+  transition: opacity 1.4s ease-out;
+}
+.scene[data-entrance="reveal"] .enterWhite {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .enterWhite {
+    transition-duration: 0.3s;
+  }
+}
+/* Only shown if the wait gets long. */
+.enterNote {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: rgb(60 50 40 / 0.55);
+  opacity: 0;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: enter-note 0.6s ease 1.8s forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 1;
+  }
+}
+@keyframes enter-note {
+  to {
+    opacity: 1;
+  }
+}
+.scene[data-entrance="reveal"] .enterNote {
+  opacity: 0;
+  animation: none;
+}

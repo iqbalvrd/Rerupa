@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MuseumGallery } from "@/components/gallery/museum-gallery";
+import { Gallery } from "@/components/gallery/gallery";
 
 export const metadata: Metadata = {
   title: "Galeri",
@@ -10,7 +10,7 @@ export default function GalleryPage() {
   return (
     <main>
       <h1 className="sr-only">Galeri Rerupa</h1>
-      <MuseumGallery />
+      <Gallery />
     </main>
   );
 }

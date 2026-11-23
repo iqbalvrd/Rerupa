@@ -7,8 +7,8 @@ import { artworksQuery } from "./artworks";
  * Hand-off from the landing's doorway to the gallery.
  *
  * The landing walks the visitor to the door for several seconds; that time is
- * used to load everything the gallery's first view needs (the collection, the
- * first painting, the 3D room's code and floor texture). The gallery then
+ * used to load everything the gallery's first view needs (the collection, every
+ * painting in the room, the 3D room's code and floor texture). The gallery then
  * stays white until it is ready and reveals itself in one piece.
  *
  * The flag is module state, not storage: it survives the client-side
@@ -42,13 +42,13 @@ let started = false;
 export function preloadGallery(queryClient: QueryClient) {
   if (started) return;
   started = true;
-  void import("@/components/gallery/room-3d");
+  void import("@/components/gallery/room/room-scene");
   warmImage("/gallery/floor-wood.webp");
   void queryClient
     .fetchQuery(artworksQuery())
     .then((list) => {
-      const first = list[0]?.thumbnail_url;
-      if (first) warmImage(first);
+      // The gallery opens on the overview wall, so every painting is in view.
+      for (const artwork of list) if (artwork.thumbnail_url) warmImage(artwork.thumbnail_url);
     })
     .catch(() => {
       started = false; // the gallery shows its own error and retry

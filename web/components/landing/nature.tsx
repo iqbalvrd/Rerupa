@@ -1,30 +1,20 @@
 "use client";
 
 import { useGLTF } from "@react-three/drei";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
+import { buildGardenFlowers } from "./garden-flowers";
+import { buildFeatureTrees } from "./garden-trees";
 import { NATURE } from "./landing-config";
+import { disposeTree, seededRandom } from "./scene-utils";
 
 type ModelName =
   | "CommonTree_1"
   | "CommonTree_3"
   | "Bush_Common"
-  | "Bush_Common_Flowers"
-  | "Flower_3_Group"
-  | "Flower_4_Group"
-  | "Grass_Common_Short";
+  | "Bush_Common_Flowers";
 
-/** Seeded random, so the hedge and rotations look the same on every visit. */
-function seeded(seed: number) {
-  let s = seed;
-  return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
-}
-
-/**
- * Quaternius Stylized Nature MegaKit (CC0), compressed into one glb with 7
- * named scenes (LANDING_SPEC §4.9): trees around the yard, a hedge along the
- * facade, flowers by the path and flowering bushes around the statue.
- */
+/** The background trees and shrub leaves share the Quaternius pack (CC0). */
 export function Nature() {
   const gltf = useGLTF(NATURE.url);
   const group = useMemo(() => {
@@ -43,7 +33,7 @@ export function Nature() {
         if (mat.map) mat.alphaTest = NATURE.alphaTest;
       });
     }
-    const rnd = seeded(11);
+    const rnd = seededRandom(11);
     const g = new THREE.Group();
     const put = (name: ModelName, x: number, z: number, s = 1, ry = rnd() * Math.PI * 2) => {
       const src = byName.get(name);
@@ -52,20 +42,46 @@ export function Nature() {
       o.position.set(x, 0, z);
       o.scale.setScalar(s);
       o.rotation.y = ry;
+      if (name === "Bush_Common_Flowers") {
+        // Reuse the green foliage primitive and replace the pack's blossom primitive.
+        const oldBlossom = o.children.find((child) =>
+          child instanceof THREE.Mesh && child.material.name === "Flowers",
+        );
+        oldBlossom?.removeFromParent();
+      }
       g.add(o);
     };
     for (const [x, z, s, name] of NATURE.trees) put(name, x, z, s);
+    const floweringShrubs = [];
     const h = NATURE.hedge;
     for (let x = h.from; x <= h.to; x += h.step) {
       if (Math.abs(x) < h.skipInside) continue;
-      put(rnd() < h.flowering ? "Bush_Common_Flowers" : "Bush_Common", x, h.z, h.scaleMin + rnd() * h.scaleRange);
+      const flowering = rnd() < h.flowering;
+      const scale = h.scaleMin + rnd() * h.scaleRange;
+      put(flowering ? "Bush_Common_Flowers" : "Bush_Common", x, h.z, scale);
+      if (flowering) floweringShrubs.push({ x, z: h.z, scale });
     }
-    NATURE.flowers.forEach(([x, z], i) => put(i % 2 ? "Flower_3_Group" : "Flower_4_Group", x, z, NATURE.flowerScale));
-    for (const [x, z] of NATURE.statueBushes) put("Bush_Common_Flowers", x, z, NATURE.statueBushScale);
-    return g;
+    for (const [x, z] of NATURE.statueBushes) {
+      put("Bush_Common_Flowers", x, z, NATURE.statueBushScale);
+      floweringShrubs.push({ x, z, scale: NATURE.statueBushScale });
+    }
+    const trees = buildFeatureTrees(NATURE.featureTrees);
+    const flowers = buildGardenFlowers(NATURE.flowerBeds, floweringShrubs, trees.blooms);
+    g.add(trees.group, flowers);
+    return { scene: g, trees, flowers };
   }, [gltf]);
 
-  return <primitive object={group} />;
+  useEffect(() => () => {
+    for (const plants of [group.trees.group, group.flowers]) {
+      plants.traverse((object) => {
+        if (object instanceof THREE.InstancedMesh) object.dispose();
+      });
+      disposeTree(plants);
+    }
+    group.trees.texture.dispose();
+  }, [group]);
+
+  return <primitive object={group.scene} />;
 }
 
 useGLTF.preload(NATURE.url);

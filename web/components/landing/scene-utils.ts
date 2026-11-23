@@ -43,14 +43,40 @@ export function canvasTexture(w: number, h: number, draw: (g: CanvasRenderingCon
   return t;
 }
 
-/** Soft radial glow used for the door and its hover state. */
-export function glowTexture() {
-  return canvasTexture(128, 128, (g, w, h) => {
-    const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-    r.addColorStop(0, "rgba(255,236,190,0.85)");
-    r.addColorStop(1, "rgba(255,236,190,0)");
-    g.fillStyle = r;
-    g.fillRect(0, 0, w, h);
+/** Warm bloom drawn around the aperture, strongest at the lower seam. */
+export function entryGlowTexture() {
+  return canvasTexture(64, 128, (g, w, h) => {
+    const pixels = g.createImageData(w, h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const u = (x + 0.5) / w * 2 - 1;
+        const v = (y + 0.5) / h;
+        const shaft = 0.23 * Math.exp(-((u / 0.23) ** 2)) * Math.sin(Math.PI * v);
+        const foot = 0.40 * Math.exp(-((u / 0.54) ** 4) - (((v - 0.86) / 0.11) ** 2));
+        const bloom = 0.13 * Math.exp(-((u / 0.7) ** 2) - (((v - 0.64) / 0.41) ** 2));
+        const edge = Math.min(1, (1 - Math.abs(u)) * 6, v * 12, (1 - v) * 12);
+        pixels.data.set([255, 203, 130, Math.round(255 * (shaft + foot + bloom) * edge)], (y * w + x) * 4);
+      }
+    }
+    g.putImageData(pixels, 0, 0);
+  });
+}
+
+/** Soft pool which tapers as light travels outward across the porch. */
+export function entrySpillTexture() {
+  return canvasTexture(64, 64, (g, w, h) => {
+    const pixels = g.createImageData(w, h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const u = Math.abs((x + 0.5) / w * 2 - 1);
+        const v = (y + 0.5) / h;
+        const spread = 0.38 + v * 0.48;
+        const shape = Math.max(0, 1 - (u / spread) ** 2);
+        const alpha = 0.58 * shape ** 2 * (1 - v) ** 2.1 * Math.min(1, v * 19);
+        pixels.data.set([255, 187, 106, Math.round(alpha * 255)], (y * w + x) * 4);
+      }
+    }
+    g.putImageData(pixels, 0, 0);
   });
 }
 
@@ -94,4 +120,9 @@ export function disposeTree(root: THREE.Object3D) {
     const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
     for (const m of mats) m.dispose();
   });
+}
+
+/** Repeatable scatter so the landscaping is stable across reloads and device tiers. */
+export function seededRandom(seed: number) {
+  return () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 }

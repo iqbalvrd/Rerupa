@@ -19,36 +19,32 @@ export const RENDERER = {
 } as const;
 
 export const COLORS = {
-  horizon: "#f4c6a0",
-  skyMid: "#d08aa6",
-  skyTop: "#433c78",
-  sunGlow: [1.0, 0.82, 0.6] as Vec3,
-  hemiSky: "#ffdcec",
+  horizon: "#eaa46e",
+  skyMid: "#bf867c",
+  skyTop: "#4d5d81",
+  sunGlow: "#ffd18e",
+  cloudLight: "#f0af8b",
+  cloudShade: "#7b7486",
+  hemiSky: "#e1d6e0",
   hemiGround: "#6f7f4c",
-  sun: "#ffd6ac",
+  sun: "#ffca98",
   wall: "#f7f1e6",
   trim: "#fffbf3",
   base: "#e3dbcd",
-  roof: "#d8d1c6",
-  glass: "#37445a",
-  windowFrame: "#ece4d6",
   door: "#5a3a22",
   /** Darker recess around each raised panel, and the panel face itself. */
   doorPanelShadow: "#4a2f1b",
   doorPanel: "#664229",
   doorKnob: "#d8b26a",
   /** Fanlight glass: warm, lit from inside. */
-  fanlight: "#ffe9c2",
+  fanlight: "#fff1d3",
   doorLight: "#fff4dc",
-  doorLamp: "#ffd9a0",
-  steps: "#e9e2d6",
-  tympanum: "#eee7db",
+  doorLamp: "#ffcd8c",
   road: "#ece2d1",
   roadEdge: "#d2c6b2",
-  ground: "#6a9149",
+  ground: "#55733d",
   lampPost: "#2f2a26",
   lampBulb: "#fff0cf",
-  cloud: "255,236,232",
   bird: "#2e2433",
 } as const;
 
@@ -56,21 +52,12 @@ export const FOG = { near: 90, far: 260 } as const;
 
 export const SKY = {
   radius: 500,
-  sunDir: [-0.45, 0.12, -1] as Vec3,
-  cloudOpacity: 0.55,
-  /** [x, y, z, size] */
-  clouds: [
-    [-120, 70, -300, 120],
-    [60, 95, -320, 150],
-    [200, 60, -260, 110],
-    [-40, 120, -380, 170],
-  ] as const,
-  cloudWrapX: 300,
+  sunDir: [-0.60, 0.145, -1] as Vec3,
 } as const;
 
 export const LIGHTS = {
-  hemiIntensity: 0.9,
-  sunIntensity: 2.6,
+  hemiIntensity: 0.82,
+  sunIntensity: 2.18,
   sunPosition: [-28, 34, 30] as Vec3,
   shadowMapSize: 2048,
   shadowCamera: { left: -70, right: 70, top: 45, bottom: -45, near: 1, far: 180 },
@@ -80,10 +67,6 @@ export const LIGHTS = {
 } as const;
 
 export const MUSEUM = {
-  windowSpacing: 6.2,
-  /** Window bays from -7..7, skipping |i| < 3 (the portico). */
-  windowRange: 7,
-  windowSkip: 3,
   /** [width, depth, z] for the three steps, bottom first. */
   steps: [
     [36, 11, MZ + 5.5],
@@ -104,11 +87,14 @@ export const DOOR = {
   leafDepth: 0.22,
   /** Positive: the leaves swing in, into the lit passage cut behind the doorway (no clipping). */
   openAngle: 1.3,
-  lampIntensity: 40,
-  glowScale: 9,
-  glowGrow: 14,
-  /** Extra glow growth while the doorway floods the screen with white. */
-  glowFlood: 40,
+  lampIdle: 19,
+  lampPulse: 34,
+  pulseSeconds: 4.6,
+  lampOpen: 76,
+  glowWidth: 5.5,
+  glowHeight: 8.8,
+  spillWidth: 6.0,
+  spillDepth: 6.9,
 } as const;
 
 /**
@@ -169,16 +155,15 @@ export const STATUE = {
 } as const;
 
 export const GRASS = {
-  count: 40_000,
-  countLowEnd: 18_000,
-  bladeHeight: 0.62,
+  count: 68_000,
+  countLowEnd: 34_000,
+  bladeHeight: 0.44,
   areaHalfX: 35,
   zFrom: 20,
   zDepth: 48,
-  pathClearance: 3.3,
+  nearHalfX: 16,
+  nearDepth: 36,
   statueClearance: 3.6,
-  scaleMin: 0.55,
-  scaleRange: 0.5,
   fadeNear: 40,
   fadeFar: 120,
 } as const;
@@ -191,7 +176,6 @@ export const NATURE = {
     [-26, -30, 1.5, "CommonTree_1"],
     [-34, -36, 1.8, "CommonTree_3"],
     [26, -31, 1.6, "CommonTree_3"],
-    [36, -37, 1.9, "CommonTree_1"],
     [-52, -44, 2.1, "CommonTree_1"],
     [56, -46, 2.2, "CommonTree_3"],
     [-16, -6, 1.1, "CommonTree_1"],
@@ -200,17 +184,22 @@ export const NATURE = {
     [-64, -18, 2.3, "CommonTree_3"],
     [66, -16, 2.2, "CommonTree_1"],
   ] as const,
+  featureTrees: [
+    { x: 26, z: -31, height: 12.3, seed: 479, flower: "#d4a0c8" },
+    { x: 36, z: -37, height: 11.9, seed: 641, flower: "#c789b1" },
+  ],
   hedge: { from: -46, to: 46, step: 4.4, skipInside: 19, z: MZ + 1.6, flowering: 0.35, scaleMin: 1.3, scaleRange: 0.4 },
-  flowers: [
-    [-4.5, 9],
-    [4.8, 4],
-    [-5.5, -3],
-    [3.2, -16],
-    [-3.8, -21],
-    [4.2, 13],
-    [-6, 15],
-  ] as const,
-  flowerScale: 0.6,
+  flowerBeds: [
+    { x: -4.5, z: 9, petal: "#ecce73", count: 9, height: 0.77 },
+    { x: 4.8, z: 4, petal: "#d68d97", count: 11, height: 0.80 },
+    { x: 6.1, z: 5.7, petal: "#edc7a1", count: 8, height: 0.63 },
+    { x: 6.7, z: 1, petal: "#bb9bd4", count: 7, height: 0.59 },
+    { x: -5.5, z: -3, petal: "#e5c77d", count: 7, height: 0.67 },
+    { x: 3.8, z: -16, petal: "#d2aed5", count: 7, height: 0.73 },
+    { x: -4.2, z: -21, petal: "#edca91", count: 7, height: 0.67 },
+    { x: 4.2, z: 13, petal: "#e0a7b8", count: 7, height: 0.65 },
+    { x: -6, z: 15, petal: "#dba5b6", count: 6, height: 0.65 },
+  ],
   statueBushes: [
     [9.8, -4],
     [3.4, -9.6],

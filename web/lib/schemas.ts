@@ -486,3 +486,57 @@ export const StoryJobResult = z
   })
   .catchall(z.unknown());
 export type StoryJobResult = z.infer<typeof StoryJobResult>;
+
+// ── Akun & admin (routes/auth.py, routes/admin.py) ────────────────────────
+
+export const Role = z.enum(["user", "admin"]);
+export type Role = z.infer<typeof Role>;
+
+export const Me = z.object({ id: z.uuid(), email: z.string(), role: Role });
+export type Me = z.infer<typeof Me>;
+
+export const AdminUser = z.object({ id: z.uuid(), email: z.string(), role: Role, created_at: z.string() });
+export type AdminUser = z.infer<typeof AdminUser>;
+
+export const UsageBucket = z.object({
+  key: z.string(),
+  calls: z.number().int(),
+  cost_usd: z.number(),
+  input_tokens: z.number().int(),
+  output_tokens: z.number().int(),
+  image_count: z.number().int(),
+  failures: z.number().int(),
+});
+export type UsageBucket = z.infer<typeof UsageBucket>;
+
+export const AiUsage = z.object({
+  days: z.number().int(),
+  total: UsageBucket,
+  by_day: z.array(UsageBucket),
+  by_task: z.array(UsageBucket),
+  by_model: z.array(UsageBucket),
+});
+export type AiUsage = z.infer<typeof AiUsage>;
+
+export const PublishStatus = z.enum(["draft", "in_review", "published", "archived"]);
+export type PublishStatus = z.infer<typeof PublishStatus>;
+
+export const AdminContent = z.object({
+  id: z.uuid(),
+  slug: z.string(),
+  title: z.string(),
+  status: z.string(),
+  license: z.string(),
+  updated_at: z.string().nullable(),
+  lessons: z.array(z.object({ id: z.uuid(), version: z.number().int(), status: z.string(), created_at: z.string() })),
+  stories: z.array(
+    z.object({
+      id: z.uuid(),
+      lesson_version_id: z.uuid(),
+      title: z.string().nullable(),
+      status: z.string(),
+      review_status: z.string(),
+    }),
+  ),
+});
+export type AdminContent = z.infer<typeof AdminContent>;

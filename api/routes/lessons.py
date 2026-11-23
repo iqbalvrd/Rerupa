@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from core.auth import CurrentUser, claim_session, current_user
 from core.config import get_settings
 from core.errors import AppError
 from core.idempotency import idempotency_key
@@ -56,7 +57,9 @@ def generate_lesson(
     scope: str | None = Form(None, description='Opsional, JSON {"x","y","w","h"} pecahan 0–1: area satu figur'),
     key: str = Depends(idempotency_key),
     session: dict = Depends(current_session),
+    user: CurrentUser = Depends(current_user),
 ) -> JobOut:
+    claim_session(session, user)
     settings = get_settings()
     scope_obj = _parse_scope(scope)
     original = read_limited(file.file, settings.max_upload_bytes)

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireLogin } from "@/components/auth/require-login";
 import { FinishView } from "@/components/finish/finish-view";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function FinishPage() {
-  return <FinishView />;
+  return (
+    <RequireLogin>
+      <FinishView />
+    </RequireLogin>
+  );
 }

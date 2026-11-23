@@ -15,6 +15,10 @@ log = logging.getLogger("rerupa.errors")
 # Kode → pesan untuk pengguna (Bahasa Indonesia). Lihat SYSTEM_ARCHITECTURE.md §7.3.
 MESSAGES: dict[str, str] = {
     "session_required": "Sesi tidak ditemukan atau sudah berakhir. Mulai sesi baru.",
+    "login_required": "Masuk ke akunmu dulu untuk mulai latihan.",
+    "admin_required": "Halaman ini khusus admin.",
+    "cannot_change_own_role": "Kamu tidak bisa mengubah peranmu sendiri.",
+    "license_unknown": "Karya dengan lisensi belum jelas tidak bisa diterbitkan.",
     "not_found": "Data tidak ditemukan.",
     "validation_error": "Data yang dikirim tidak lengkap atau tidak sesuai.",
     "idempotency_key_required": "Permintaan ini butuh header Idempotency-Key.",

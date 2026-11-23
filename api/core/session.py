@@ -16,7 +16,7 @@ from core.supabase_client import get_supabase
 
 SESSION_COLUMNS = (
     "id, lesson_version_id, palette_id, canvas_size, current_stage_order, consent, safety_id, "
-    "created_at, last_seen_at, expires_at"
+    "created_at, last_seen_at, expires_at, user_id"
 )
 
 

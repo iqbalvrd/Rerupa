@@ -1,6 +1,8 @@
 /**
  * Rerupa API client. Contract: `api/API.md`.
  *
+ * - Signed-in users also send their Supabase access token as `Authorization: Bearer …`
+ *   (`lib/supabase.ts`). Practice (creating a session, uploads) needs it; browsing does not.
  * - Every request sends the httpOnly session cookie (`credentials: "include"`) and, as a
  *   fallback for browsers that block that cross-site cookie, the `X-Session-Token` header.
  * - Endpoints that create a job take an `idempotencyKey`: one new UUID per user
@@ -12,12 +14,16 @@
  */
 import { z } from "zod";
 import {
+  AdminContent,
+  AdminUser,
+  AiUsage,
   ApiErrorBody,
   ArtworkCard,
   ArtworkDetail,
   Checkpoint,
   Job,
   Lesson,
+  Me,
   Palette,
   Progress,
   Recipe,
@@ -27,6 +33,8 @@ import {
   type Corners,
   type EventName,
   type EventProps,
+  type PublishStatus,
+  type Role,
   type Scope,
   type SessionCreate,
   type SessionUpdate,
@@ -34,6 +42,7 @@ import {
 } from "./schemas";
 import { ApiError, isApiError } from "./api-error";
 import { getSessionToken } from "./session-token";
+import { getAccessToken } from "./supabase";
 import { DEV_MOCK_API, mockRequest } from "./dev-mock";
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(
@@ -88,6 +97,8 @@ async function request<T>(path: string, schema: z.ZodType<T> | null, opts: Reque
   if (opts.idempotencyKey) headers.set("Idempotency-Key", opts.idempotencyKey);
   const sessionToken = typeof window === "undefined" ? null : getSessionToken();
   if (sessionToken) headers.set("X-Session-Token", sessionToken);
+  const accessToken = typeof window === "undefined" ? null : await getAccessToken();
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
 
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
@@ -158,7 +169,21 @@ export const api = {
   getArtwork: (slug: string, signal?: AbortSignal) =>
     request(`/artworks/${encodeURIComponent(slug)}`, ArtworkDetail, { signal }),
 
-  // Guest session (cookie set by the API on create)
+  // Account (sign-up / sign-in happen in Supabase Auth, see lib/auth.ts)
+  me: (signal?: AbortSignal) => request("/auth/me", Me, { signal }),
+  logout: () => request("/auth/logout", null, { method: "POST" }),
+
+  // Admin (403 admin_required for everyone else)
+  adminUsers: (signal?: AbortSignal) => request("/admin/users", z.array(AdminUser), { signal }),
+  adminSetRole: (userId: string, role: Role) =>
+    request(`/admin/users/${userId}`, AdminUser, { method: "PATCH", json: { role } }),
+  adminAiUsage: (days: number, signal?: AbortSignal) =>
+    request("/admin/ai-usage", AiUsage, { query: { days: String(days) }, signal }),
+  adminContent: (signal?: AbortSignal) => request("/admin/content", z.array(AdminContent), { signal }),
+  adminSetStatus: (kind: "artworks" | "lessons" | "stories", id: string, status: PublishStatus) =>
+    request(`/admin/${kind}/${id}`, null, { method: "PATCH", json: { status } }),
+
+  // Practice session (needs a signed-in account; cookie set by the API on create)
   createSession: (body: SessionCreate = {}) =>
     request("/sessions", Session, { method: "POST", json: body }),
   getSession: (id: string, signal?: AbortSignal) => request(`/sessions/${id}`, Session, { signal }),

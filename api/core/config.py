@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     cookie_secure: bool = False
 
+    # Akun: email (dipisah koma) yang otomatis jadi admin setelah emailnya terverifikasi.
+    # Admin lain diangkat dari halaman admin (profiles.role). Menghapus email di sini tidak menurunkan peran.
+    admin_emails: str = ""
+
     # Unggahan
     max_upload_bytes: int = 10 * 1024 * 1024
     max_image_pixels: int = 25_000_000

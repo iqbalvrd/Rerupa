@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ChevronLeft, ChevronRight, Camera } from "lucide-react";
+import { AccountMenu } from "@/components/auth/account-menu";
 import { Logo } from "@/components/brand/logo";
 import {
   GALLERY_SOURCE,
@@ -247,7 +248,10 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
         <Link href="/" className={styles.brand}>
           <Logo className="h-7 w-auto" priority />
         </Link>
-        <span className={styles.roomLabel}>Ruang Galeri</span>
+        <div className={styles.topbarEnd}>
+          <span className={styles.roomLabel}>Ruang Galeri</span>
+          <AccountMenu />
+        </div>
       </header>
 
       <section aria-roledescription="carousel" aria-label="Galeri karya">

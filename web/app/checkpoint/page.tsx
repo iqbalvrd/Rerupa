@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireLogin } from "@/components/auth/require-login";
 import { Suspense } from "react";
 import { CheckpointView } from "@/components/checkpoint/checkpoint-view";
 
@@ -11,7 +12,9 @@ export default function CheckpointPage() {
   return (
     // useSearchParams needs a Suspense boundary for static rendering.
     <Suspense>
-      <CheckpointView />
+      <RequireLogin>
+        <CheckpointView />
+      </RequireLogin>
     </Suspense>
   );
 }

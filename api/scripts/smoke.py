@@ -6,12 +6,17 @@ Dari folder api/:
 
 Alur: health → galeri → sesi → unggah foto sintetis (mode bebas) → tunggu tutorial → baca lesson
 → progres → checkpoint sketsa sintetis → tunggu feedback → hapus sesi. Mencetak waktu tiap langkah.
-Data uji dihapus di akhir (DELETE /sessions). Tidak memakai rahasia apa pun.
+Data uji dihapus di akhir (DELETE /sessions).
+
+Latihan butuh akun: isi SMOKE_EMAIL dan SMOKE_PASSWORD (akun uji yang emailnya sudah terverifikasi)
+serta --supabase-url dan --anon-key (kunci publik/publishable project yang sama dengan API). Tanpa itu
+smoke test berhenti setelah galeri.
 """
 
 import argparse
 import io
 import json
+import os
 import sys
 import time
 import uuid
@@ -43,10 +48,26 @@ def wait_job(c: httpx.Client, job_id: str, limit: float) -> dict:
         time.sleep(1)
 
 
+def sign_in(supabase_url: str, anon_key: str) -> str | None:
+    email, password = os.environ.get("SMOKE_EMAIL"), os.environ.get("SMOKE_PASSWORD")
+    if not (supabase_url and anon_key and email and password):
+        return None
+    r = httpx.post(
+        supabase_url.rstrip("/") + "/auth/v1/token?grant_type=password",
+        headers={"apikey": anon_key},
+        json={"email": email, "password": password},
+        timeout=30,
+    )
+    r.raise_for_status()
+    return r.json()["access_token"]
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")  # konsol Windows
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", required=True)
+    ap.add_argument("--supabase-url", default=os.environ.get("SMOKE_SUPABASE_URL", ""))
+    ap.add_argument("--anon-key", default=os.environ.get("SMOKE_ANON_KEY", ""))
     args = ap.parse_args()
     results: list[tuple[str, str, float]] = []
 
@@ -62,6 +83,11 @@ def main() -> None:
         print("  ", health)
         arts = step("galeri", lambda: c.get("/artworks").json())
         print(f"   {len(arts)} materi terbit")
+        token = sign_in(args.supabase_url, args.anon_key)
+        if not token:
+            print("STOP: SMOKE_EMAIL/SMOKE_PASSWORD/--supabase-url/--anon-key kosong; latihan butuh akun.")
+            return
+        c.headers["Authorization"] = f"Bearer {token}"
         sess = step("buat sesi", lambda: c.post("/sessions", json={"canvas_size": "A4"}).json())
         sid = sess["id"]
         try:

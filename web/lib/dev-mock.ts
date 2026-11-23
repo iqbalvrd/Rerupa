@@ -293,5 +293,9 @@ export async function mockRequest(method: string, path: string, body: unknown, f
 
   if (path === "/events") return undefined;
 
+  // The mock acts as an already signed-in learner, so practice pages open without Supabase Auth.
+  if (path === "/auth/me") return { id: "00000000-0000-4000-8000-000000000001", email: "demo@rerupa.test", role: "user" };
+  if (path === "/auth/logout") return undefined;
+
   throw new ApiError("not_found", `Mock API belum mendukung ${method} ${path}.`, { status: 404 });
 }

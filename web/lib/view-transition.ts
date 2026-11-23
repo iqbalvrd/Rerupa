@@ -83,9 +83,22 @@ export function navigateToArtwork(frame: HTMLElement | null, navigate: () => voi
   });
 }
 
+/**
+ * Set while walking back from an artwork page, so a freshly mounted gallery
+ * reopens in front of that artwork instead of on the overview wall. Module
+ * state: it survives the client navigation and is false on a fresh load.
+ */
+let returning = false;
+export function takeGalleryReturn(): boolean {
+  const was = returning;
+  returning = false;
+  return was;
+}
+
 /** Artwork → gallery: the frame returns to its place on the wall. */
 export function navigateBackToGallery(slug: string, navigate: () => void): void {
   rememberArtwork(slug);
+  returning = true;
   const hero = document.querySelector<HTMLElement>("[data-artwork-hero]");
   if (!hero || !canAnimate()) {
     navigate();

@@ -4,11 +4,4 @@ floor-wood.webp
   "Wooden Floor 01" texture, diffuse map 2K, rotated 90°, softened and recompressed.
   https://polyhaven.com/a/wooden_floor_01
 
-frame-louis-xiv.webp
-  "Fancy Picture Frame 02", Rob Tuytel (scan & painting), Rico Cilliers (modeling).
-  Rendered front-on to a transparent PNG with the canvas hidden, then WebP.
-  https://polyhaven.com/a/fancy_picture_frame_02
-
-frame-louis-xvi.webp
-  "Fancy Picture Frame 01", same authors and process.
-  https://polyhaven.com/a/fancy_picture_frame_01
+The gilded frames are drawn in code (frame-ornament.tsx, framed-art.module.css).

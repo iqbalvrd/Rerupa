@@ -15,6 +15,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from ai import openai_client as oc
 from core.config import get_settings
 from core.supabase_client import get_supabase
 from services.storage import with_retry
@@ -115,7 +116,7 @@ def build_story(lesson_id: str, session_id: str | None, params: dict, *, safety_
         "status": "generating", "title": sb.title[:120], "summary": sb.summary[:400], "identity": identity,
         "hints": {k: params.get(f"{k}_hint") for k in ("title", "artist", "origin") if params.get(f"{k}_hint")},
         "claims": claims, "sources": srcs, "characters": [c.model_dump() for c in sb.characters],
-        "style_guide": sb.style_guide[:400], "text_model": settings.openai_vision_model, "image_model": image_model,
+        "style_guide": sb.style_guide[:400], "text_model": oc.model_for("storyboard", settings), "image_model": image_model,
     }).execute().data[0]
     db.table("story_panels").insert([
         {"story_id": story["id"], "order_no": p.order_no, "narration": p.narration, "scene": p.scene, "kind": "artwork_crop" if p.use_artwork_crop else "generated",

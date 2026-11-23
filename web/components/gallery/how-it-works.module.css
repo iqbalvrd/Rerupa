@@ -1,0 +1,276 @@
+/*
+ * "Cara kerja" card. Drawn like a lontar / keraton panel: warm paper, a gilded
+ * double rule like the gallery frames, a kawung batik band across the top and a
+ * row of tumpal triangles (the border motif of songket and batik pinggiran).
+ */
+
+.dialog {
+  --paper: #f8f0e0;
+  --ink: #1f1b17;
+  --ink-soft: #5e554b;
+  --navy: #0f1b33;
+  --gold: #c99a45;
+  --gold-deep: #8a6222;
+  --sogan: #5b3a1e;
+
+  inline-size: min(36rem, calc(100% - 2rem));
+  max-block-size: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 0.35rem;
+  background: var(--paper);
+  color: var(--ink);
+  /* gilded double rule: outer gold, thin paper gap, inner deep gold */
+  box-shadow:
+    0 0 0 3px var(--gold),
+    0 0 0 5px var(--paper),
+    0 0 0 6px var(--gold-deep),
+    0 1.5rem 3rem rgb(30 18 8 / 0.45);
+
+  opacity: 0;
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 0.28s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dialog {
+    transform: translateY(0.75rem) scale(0.97);
+  }
+}
+.dialog:is([open]):where(:not([data-closing])) {
+  opacity: 1;
+  @starting-style {
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    transform: none;
+    @starting-style {
+      transform: translateY(0.75rem) scale(0.97);
+    }
+  }
+}
+.dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgb(20 14 8 / 0);
+  transition-property: background-color, display, overlay;
+  transition-duration: 0.28s;
+  transition-behavior: allow-discrete;
+}
+.dialog:is([open]):where(:not([data-closing]))::backdrop {
+  background-color: rgb(20 14 8 / 0.55);
+  @starting-style {
+    background-color: rgb(20 14 8 / 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .dialog::backdrop {
+    transition-duration: 0.1s;
+  }
+}
+
+/* Kawung: four palm-fruit ovals around a point, set on the diagonal. */
+.kawung {
+  block-size: 3.25rem;
+  background-color: #ead9b6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg transform='rotate(45 14 14)' fill='%235b3a1e'%3E%3Cellipse cx='14' cy='6.2' rx='3.6' ry='5.6'/%3E%3Cellipse cx='14' cy='21.8' rx='3.6' ry='5.6'/%3E%3Cellipse cx='6.2' cy='14' rx='5.6' ry='3.6'/%3E%3Cellipse cx='21.8' cy='14' rx='5.6' ry='3.6'/%3E%3C/g%3E%3Cg fill='%23c99a45'%3E%3Ccircle cx='8.5' cy='8.5' r='1.1'/%3E%3Ccircle cx='19.5' cy='8.5' r='1.1'/%3E%3Ccircle cx='8.5' cy='19.5' r='1.1'/%3E%3Ccircle cx='19.5' cy='19.5' r='1.1'/%3E%3Ccircle cx='14' cy='14' r='1.4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 28px 28px;
+  background-position: center;
+  border-block-end: 2px solid var(--gold-deep);
+  /* fade the motif toward the edges so it reads as a band, not wallpaper */
+  mask-image: linear-gradient(to bottom, #000 55%, rgb(0 0 0 / 0.75));
+}
+
+/* Tumpal: a row of triangles, like a kain border. */
+.tumpal {
+  block-size: 0.75rem;
+  margin-block: 0.25rem 0;
+  background:
+    linear-gradient(135deg, var(--gold) 0 50%, transparent 50%) 0 0 / 0.75rem 0.75rem repeat-x,
+    linear-gradient(225deg, var(--gold) 0 50%, transparent 50%) 0 0 / 0.75rem 0.75rem repeat-x;
+  opacity: 0.75;
+}
+
+.close {
+  position: absolute;
+  inset-block-start: 0.4rem;
+  inset-inline-end: 0.4rem;
+  display: grid;
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--gold-deep);
+  background: var(--paper);
+  color: var(--sogan);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.close:hover {
+  background: #fff8ea;
+}
+
+.body {
+  padding: 1.25rem 1.4rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+.title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 1.2rem + 1.4vw, 1.9rem);
+  line-height: 1.15;
+  color: var(--navy);
+  text-wrap: balance;
+  margin-block-start: -0.5rem;
+}
+.lead {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  margin-block-start: -0.4rem;
+}
+
+.steps {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+@media (min-width: 34rem) {
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .step {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+}
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+/* A round medallion with a gold rim, like a carved keraton roundel. */
+.medallion {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff8ea, #ead9b6);
+  color: var(--sogan);
+  box-shadow:
+    inset 0 0 0 2px var(--gold),
+    inset 0 0 0 4px #fff8ea,
+    inset 0 0 0 5px var(--gold-deep);
+}
+.stepNo {
+  position: absolute;
+  inset-block-start: -0.2rem;
+  inset-inline-end: -0.3rem;
+  display: grid;
+  place-items: center;
+  inline-size: 1.3rem;
+  block-size: 1.3rem;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.stepText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.stepTitle {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--navy);
+  text-wrap: balance;
+}
+.stepBody {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+}
+.primary {
+  min-block-size: 44px;
+  padding-inline: 1.4rem;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(180deg, #d8ad5c, var(--gold));
+  color: #2a1a08;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  box-shadow: inset 0 0 0 1px rgb(90 58 30 / 0.35);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.primary:hover {
+  background: linear-gradient(180deg, #e2b968, #d2a24e);
+}
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  color: var(--navy);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.close:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible,
+.trigger:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+/* Header button that opens the card again. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-block-size: var(--target-size, 44px);
+  padding-inline: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #c9b48f;
+  background: rgb(255 251 244 / 0.9);
+  color: #3a2a1a;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.trigger:hover {
+  border-color: #8a6222;
+  background: #fff8ea;
+}

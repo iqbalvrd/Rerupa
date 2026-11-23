@@ -352,6 +352,11 @@
   align-items: center;
   gap: 0.75rem;
 }
+@media (max-width: 30rem) {
+  .roomLabel {
+    display: none;
+  }
+}
 .roomLabel {
   font-size: 0.75rem;
   letter-spacing: 0.08em;

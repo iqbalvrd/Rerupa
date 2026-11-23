@@ -19,6 +19,7 @@ import { clearGalleryEntrance, isGalleryEntrance } from "@/lib/gallery-entrance"
 import { lastArtwork, navigateToArtwork, rememberArtwork } from "@/lib/view-transition";
 import { DEFAULT_FRAME, type FrameStyleId } from "./frames";
 import { FramedArt } from "./framed-art";
+import { HowItWorks } from "./how-it-works";
 import styles from "./gallery.module.css";
 
 // The 3D room loads after the page is interactive. Until it is ready, or when
@@ -250,6 +251,8 @@ export function MuseumGallery({ frameStyle = DEFAULT_FRAME }: { frameStyle?: Fra
         </Link>
         <div className={styles.topbarEnd}>
           <span className={styles.roomLabel}>Ruang Galeri</span>
+          {/* Opens once on the first visit, after the doorway light has faded. */}
+          <HowItWorks autoOpen={entrance === null && !artworks.isPending} />
           <AccountMenu />
         </div>
       </header>

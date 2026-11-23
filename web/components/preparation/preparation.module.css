@@ -271,6 +271,40 @@
 }
 
 /* Tick-off list of what to lay out on the table. */
+.checklistHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-block-end: 0.85rem;
+}
+.checklistHead .hint {
+  flex: 1 1 14rem;
+  margin: 0;
+}
+/* One tap for "everything is on the table". */
+.checkAll {
+  flex: none;
+  min-block-size: var(--target-size, 44px);
+  padding-inline: 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--gold-deep);
+  background: var(--card);
+  color: var(--navy);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.checkAll:hover {
+  background: #fdf4e2;
+}
+.checkAll:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
 .checklist {
   display: flex;
   flex-direction: column;

@@ -59,7 +59,7 @@ export function FinishView() {
     staleTime: 20 * 60_000,
   });
   const progress = useQuery({
-    queryKey: ["progress", sessionId],
+    queryKey: ["progress", sessionId, lessonId],
     queryFn: ({ signal }) => api.getProgress(sessionId!, signal),
     enabled: Boolean(sessionId && lessonId) && !deleted,
   });

@@ -19,6 +19,7 @@ import {
   type GalleryArtworkDetail,
 } from "@/lib/artworks";
 import type { CultureClaim, Lesson } from "@/lib/schemas";
+import { useAuth } from "@/lib/auth";
 import { rememberSession, withSession } from "@/lib/session-store";
 import { useCollectionStory } from "@/lib/story";
 import styles from "./artwork-detail.module.css";
@@ -357,10 +358,17 @@ function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
   const queryClient = useQueryClient();
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const auth = useAuth();
   const lessonId = artwork.lesson_version_id;
+  const signInUrl = `/masuk?next=${encodeURIComponent(`/karya/${artwork.slug}`)}`;
 
   async function start() {
     if (!lessonId || starting) return;
+    // Guests may look around; practising needs an account (the API answers login_required too).
+    if (auth.status === "signedOut") {
+      router.push(signInUrl);
+      return;
+    }
     setStarting(true);
     setError(null);
     try {
@@ -368,6 +376,10 @@ function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
       rememberSession(queryClient, session);
       router.push(`/persiapan?karya=${encodeURIComponent(artwork.slug)}`);
     } catch (err) {
+      if (isApiError(err, "login_required")) {
+        router.push(signInUrl);
+        return;
+      }
       setError(isApiError(err) ? err.message : "Latihan belum bisa dimulai. Coba lagi.");
       setStarting(false);
     }
@@ -379,10 +391,10 @@ function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
         type="button"
         className={styles.startButton}
         onClick={start}
-        disabled={!lessonId || starting}
+        disabled={!lessonId || starting || auth.status === "loading"}
         aria-describedby="start-note"
       >
-        {starting ? "Menyiapkan…" : "Mulai latihan"}
+        {starting ? "Menyiapkan…" : auth.status === "signedOut" ? "Masuk untuk latihan" : "Mulai latihan"}
       </button>
       {error ? (
         <p id="start-note" className={styles.actionError} role="alert">
@@ -391,6 +403,10 @@ function StartBar({ artwork }: { artwork: GalleryArtworkDetail }) {
       ) : !lessonId ? (
         <p id="start-note" className={styles.actionNote}>
           Materi ini belum siap dilatih. Pilih karya lain atau foto lukisanmu.
+        </p>
+      ) : auth.status === "signedOut" ? (
+        <p id="start-note" className={styles.actionNote}>
+          Latihan butuh akun gratis. Setelah masuk, kamu kembali ke karya ini.
         </p>
       ) : (
         <p id="start-note" className={styles.actionNote}>

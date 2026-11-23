@@ -10,7 +10,7 @@ from core import ratelimit
 from core.config import get_settings
 from core.errors import message_for, register_error_handlers
 from core.logging_setup import setup_logging
-from routes import artworks, checkpoints, health, jobs, lessons, palettes, progress, sessions, stories
+from routes import admin, artworks, auth, checkpoints, health, jobs, lessons, palettes, progress, sessions, stories
 
 settings = get_settings()
 setup_logging()
@@ -60,7 +60,7 @@ async def security_and_rate_limit(request: Request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("X-Frame-Options", "DENY")
-    if request.url.path.startswith(("/sessions", "/jobs", "/lessons", "/events")):
+    if request.url.path.startswith(("/sessions", "/jobs", "/lessons", "/events", "/auth", "/admin")):
         # Respons berisi data sesi & signed URL: jangan disimpan cache browser/proxy.
         response.headers.setdefault("Cache-Control", "no-store")
     if settings.environment == "production":
@@ -88,7 +88,7 @@ app.add_middleware(
     allow_origin_regex=settings.frontend_origin_regex or None,
     allow_credentials=True,  # cookie sesi tamu
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "Idempotency-Key", "X-Session-Token"],
+    allow_headers=["Content-Type", "Idempotency-Key", "X-Session-Token", "Authorization"],
     expose_headers=["Retry-After"],
 )
 register_error_handlers(app)
@@ -102,3 +102,5 @@ app.include_router(palettes.router)
 app.include_router(progress.router)
 app.include_router(checkpoints.router)
 app.include_router(stories.router)
+app.include_router(auth.router)
+app.include_router(admin.router)

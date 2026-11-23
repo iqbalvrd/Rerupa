@@ -10,6 +10,7 @@ from core.config import get_settings
 from core.errors import AppError, message_for
 from core.idempotency import idempotency_key
 from core.security import payload_hash, sha256_hex
+from core.auth import CurrentUser, claim_session, current_user
 from core.session import current_session, require_own_session
 from core.supabase_client import get_supabase
 from routes.jobs import JobOut, to_job_out
@@ -63,8 +64,10 @@ def create_checkpoint(
     consent_ai_photo: bool = Form(False, description="Setuju foto progres dikirim ke penyedia AI"),
     key: str = Depends(idempotency_key),
     session: dict = Depends(current_session),
+    user: CurrentUser = Depends(current_user),
 ) -> JobOut:
     require_own_session(session, str(session_id))
+    claim_session(session, user)
     settings = get_settings()
     stage = progress_svc.find_stage(session, stage_code)
     if not stage["is_checkpoint"]:

@@ -12,6 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.auth import claim_session, current_user
 from core.config import get_settings
 from core.errors import AppError
 from core.idempotency import idempotency_key
@@ -94,6 +95,7 @@ def start_story(lesson_id: UUID, body: StoryRequest, response: Response, request
         return StoryStartOut(story_id=sid)
 
     session = current_session(request)
+    claim_session(session, current_user(request))
     if session["id"] != lesson["owner_session_id"]:
         raise AppError("not_found", 404)
 

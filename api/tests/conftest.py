@@ -49,9 +49,54 @@ def _supabase_ready() -> bool:
 integration = pytest.mark.skipif(not _supabase_ready(), reason="Supabase belum dikonfigurasi di .env")
 
 
+@pytest.fixture(scope="session")
+def user_factory():
+    """Akun Supabase Auth sungguhan (email terverifikasi) untuk tes. Return header Authorization.
+    Semua akun uji (beserta profil & sesinya, lewat cascade) dihapus di akhir sesi pytest."""
+    import uuid
+
+    from supabase import ClientOptions, create_client
+
+    from core.config import get_settings
+    from core.supabase_client import get_supabase
+
+    settings = get_settings()
+    admin_api = get_supabase().auth.admin
+    created: list[str] = []
+
+    def make(role: str = "user") -> dict:
+        email = f"pytest-{uuid.uuid4().hex[:12]}@rerupa.test"
+        password = uuid.uuid4().hex
+        user = admin_api.create_user({"email": email, "password": password, "email_confirm": True}).user
+        created.append(user.id)
+        if role != "user":
+            get_supabase().table("profiles").update({"role": role}).eq("id", user.id).execute()
+        # Klien terpisah: sign-in mengubah token klien, jangan sentuh klien service role bersama.
+        auth_client = create_client(
+            settings.supabase_url,
+            settings.supabase_service_role_key.get_secret_value(),
+            options=ClientOptions(auto_refresh_token=False, persist_session=False),
+        )
+        session = auth_client.auth.sign_in_with_password({"email": email, "password": password}).session
+        return {"id": user.id, "email": email, "headers": {"Authorization": f"Bearer {session.access_token}"}}
+
+    yield make
+
+    for uid in created:
+        try:
+            admin_api.delete_user(uid)
+        except Exception:
+            pass
+
+
+@pytest.fixture(scope="session")
+def test_user(user_factory) -> dict:
+    return user_factory()
+
+
 @pytest.fixture
-def client_factory():
-    """Membuat TestClient dengan sesi baru; semua sesi + file unggahan dibersihkan setelah tes."""
+def client_factory(test_user):
+    """Membuat TestClient dengan sesi baru milik akun uji; semua sesi + file unggahan dibersihkan setelah tes."""
     from fastapi.testclient import TestClient
 
     from core.supabase_client import get_supabase
@@ -59,8 +104,8 @@ def client_factory():
 
     created: list[str] = []
 
-    def make(with_session: bool = True):
-        client = TestClient(app)
+    def make(with_session: bool = True, user: dict | None = None):
+        client = TestClient(app, headers=(user or test_user)["headers"])
         if with_session:
             res = client.post("/sessions", json={})
             assert res.status_code == 201

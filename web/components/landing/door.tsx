@@ -4,7 +4,7 @@ import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { COLORS, DOOR, DOOR_STYLE, DOORWAY, DZ, MZ, TRAVEL } from "./landing-config";
-import { disposeTree, doorOpenAt, glowTexture, rbox, smooth, solid } from "./scene-utils";
+import { disposeTree, doorOpenAt, entryGlowTexture, entrySpillTexture, rbox, smooth, solid } from "./scene-utils";
 import { useTravel } from "./travel-state";
 
 /**
@@ -120,55 +120,64 @@ export function Door({ onEnter }: { onEnter: () => void }) {
     // Astragal: the moulding strip that covers the meeting edge, on the right leaf.
     rbox(right, 0.12, lh - 0.1, 0.06, wood, -lw + 0.04, 0, ld / 2 + 0.03, 0.02);
 
-    const lamp = new THREE.PointLight(COLORS.doorLamp, 0, 20, 1.5);
-    lamp.position.set(0, 4.8, DZ + 1.6);
+    // A warm local light exposes the panel relief and lights the landing outside.
+    const lamp = new THREE.PointLight(COLORS.doorLamp, DOOR.lampIdle, 17, 2);
+    lamp.position.set(0, 3.65, DZ + 1.53);
     root.add(lamp);
 
-    // The glow is a flat plane parallel to the door, not a sprite: a sprite
-    // faces the camera, so when the camera looks up at the door its lower half
-    // tilts behind the leaves and gets cut off by the panels (a hard, stepped
-    // "shadow" across the bottom of the door).
-    const tex = glowTexture();
-    const glow = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        toneMapped: false,
-        fog: false,
-      }),
+    const glowTex = entryGlowTexture();
+    const spillTex = entrySpillTexture();
+    const emission = (map: THREE.Texture, opacity: number) => new THREE.MeshBasicMaterial({
+      map, opacity, transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+    });
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), emission(glowTex, 0.76));
+    glow.scale.set(DOOR.glowWidth, DOOR.glowHeight, 1);
+    // Parallel to the facade, so the glow cannot tilt across the door as the camera rises.
+    glow.position.set(0, DOOR.y, DZ + 0.29);
+    glow.renderOrder = 2;
+
+    const spill = new THREE.Mesh(
+      new THREE.PlaneGeometry(DOOR.spillWidth, DOOR.spillDepth),
+      emission(spillTex, 0.35),
     );
-    glow.scale.set(DOOR.glowScale, DOOR.glowScale, 1);
-    // In front of the raised panels and pulls, behind the jambs' front face.
-    glow.position.set(0, DOOR.y, DZ + 0.3);
-    glow.renderOrder = 1;
-    root.add(glow);
-    return { root, left, right, lamp, glow, tex };
+    spill.rotation.x = -Math.PI / 2;
+    spill.position.set(0, DOORWAY.floorY - 0.017, DZ + DOOR.spillDepth / 2);
+    spill.renderOrder = 1;
+    // The porch lighting is decorative. The door keeps the interactive hit area.
+    spill.raycast = () => {};
+    glow.raycast = () => {};
+    root.add(glow, spill);
+    return { root, left, right, lamp, glow, spill, textures: [glowTex, spillTex] };
   }, []);
   useEffect(
     () => () => {
       disposeTree(parts.root);
-      parts.tex.dispose();
+      parts.textures.forEach((texture) => texture.dispose());
     },
     [parts],
   );
 
   useFrame(({ clock }) => {
-    const now = clock.getElapsedTime();
-    const pulse = travel.reduceMotion ? 1 : 0.85 + 0.15 * Math.sin(now * 2.2);
     const idle = travel.phase === "idle";
+    // Ease from the steady glow to a bright crest and back, without an off phase.
+    const cycle = clock.getElapsedTime() * Math.PI * 2 / DOOR.pulseSeconds;
+    const approach = idle ? 1 : 1 - smooth(0, TRAVEL.look[1], travel.t);
+    const pulse = travel.reduceMotion ? 0 : (0.5 - 0.5 * Math.cos(cycle)) * approach;
     const open = idle ? 0 : doorOpenAt(travel.t);
-    // Light floods from the passage as the camera walks in.
     const flood = idle ? 0 : smooth(TRAVEL.white[0], TRAVEL.white[1], travel.t);
-    // Positive rotation swings the left leaf's free edge to -z (into the building); the right leaf mirrors it.
+    // The leaves swing inward while the lighting widens with the opening.
     parts.left.rotation.y = open * DOOR.openAngle;
     parts.right.rotation.y = -open * DOOR.openAngle;
-    parts.lamp.intensity = open * DOOR.lampIntensity * (1 + flood * 2);
-    parts.glow.material.opacity = flood > 0 ? 1 : (travel.hovering ? 1 : 0.7) * pulse;
-    const g = DOOR.glowScale + open * DOOR.glowGrow + flood * DOOR.glowFlood;
-    parts.glow.scale.set(g, g, 1);
+    const hover = travel.hovering && idle ? 3 : 0;
+    parts.lamp.intensity = DOOR.lampIdle + pulse * DOOR.lampPulse + hover + open * DOOR.lampOpen + flood * 46;
+    parts.glow.material.opacity = Math.min(1, 0.76 + pulse * 0.24 + (hover ? 0.08 : 0) + open * 0.19 + flood * 0.05);
+    parts.glow.scale.set(
+      DOOR.glowWidth + pulse * 1.15 + open * 2.25,
+      DOOR.glowHeight + pulse * 0.45 + open * 0.8,
+      1,
+    );
+    parts.spill.material.opacity = 0.35 + pulse * 0.28 + open * 0.34;
   });
 
   const setHover = (on: boolean) => (e: ThreeEvent<PointerEvent>) => {

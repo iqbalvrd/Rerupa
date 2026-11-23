@@ -95,3 +95,8 @@ export function disposeTree(root: THREE.Object3D) {
     for (const m of mats) m.dispose();
   });
 }
+
+/** Repeatable scatter so the landscaping is stable across reloads and device tiers. */
+export function seededRandom(seed: number) {
+  return () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+}

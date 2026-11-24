@@ -170,7 +170,7 @@ function useMaterials() {
         roughness: 0.47, metalness: 0.5, envMapIntensity: 0.9,
       }),
       pedestalWood: S("#3d291e", 0.76),
-      paintedColumn: new THREE.MeshStandardMaterial({ color: "#3c594d", ...columnGrain, roughness: 0.72, bumpScale: 0.014 }),
+      paintedColumn: new THREE.MeshStandardMaterial({ color: "#3c594d", ...columnGrain, roughness: 0.82, bumpScale: 0.025 }),
       wallRelief: new THREE.MeshStandardMaterial({ map: wallRelief, bumpMap: wallRelief, bumpScale: 0.018, roughness: 0.88 }),
       contact: new THREE.MeshBasicMaterial({ map: softDiscTexture("rgba(34,26,17,0.5)"), transparent: true, depthWrite: false, opacity: 0.65 }),
       daylight: new THREE.MeshBasicMaterial({ map: softDiscTexture("rgba(255,234,191,0.4)"), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.28 }),
@@ -211,7 +211,7 @@ function Box({ m, size, at, r = 0.03 }: { m: THREE.Material; size: [number, numb
 
 /** Profiled piers use a few broad shapes instead of dense sculptural meshes. */
 function HallPier({ m, height }: { m: Materials; height: number }) {
-  return <group>
+  return <group scale={[0.8, 1, 0.8]}>
     <Box m={m.stone} size={[0.8, 0.22, 0.65]} at={[0, 0.11, 0]} />
     <Box m={m.trim} size={[0.64, 0.16, 0.52]} at={[0, 0.3, 0]} />
     <mesh position={[0, height / 2, 0]} material={m.paintedColumn}>

@@ -11,7 +11,12 @@ export function surfaceTextures(kind: Surface) {
   const ctx = color.getContext("2d")!, bumpCtx = relief.getContext("2d")!;
   const pixels = ctx.createImageData(size, size), heights = bumpCtx.createImageData(size, size);
   let seed = 71;
-  const base = kind === "oak" ? [151, 107, 65] : kind === "stone" ? [201, 192, 175] : [246, 243, 235];
+  const base = {
+    oak: [151, 107, 65],
+    stone: [201, 192, 175],
+    "painted-wood": [230, 235, 226],
+    plaster: [246, 243, 235],
+  }[kind];
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     const noise = (seed % 1024) / 1024 - 0.5;
@@ -27,8 +32,13 @@ export function surfaceTextures(kind: Surface) {
       height -= joint ? 70 : vein * 5;
     } else if (kind === "painted-wood") {
       const grain = Math.sin(u * Math.PI * 120 + Math.sin(v * Math.PI * 4) * 1.4);
-      shade = grain * 3 + noise * 2;
-      height = 128 + grain * 18 + noise * 7;
+      const broadGrain = Math.sin(
+        u * Math.PI * 14 + Math.sin(v * Math.PI * 2) * 0.7 +
+        Math.sin(u * Math.PI * 8 + v * Math.PI * 4) * 0.25,
+      );
+      const pores = Math.pow(Math.max(0, Math.sin(u * Math.PI * 174 + Math.sin(v * Math.PI * 6) * 0.3)), 12);
+      shade = broadGrain * 10 + grain * 6 + noise * 2 - pores * 5;
+      height = 128 + broadGrain * 12 + grain * 22 + noise * 7 - pores * 18;
     } else if (kind === "oak") {
       const grain = Math.sin(v * Math.PI * 150 + Math.sin(u * Math.PI * 4) * 1.3 + Math.sin(v * 20));
       shade = grain * 5 + cloud * 3 + noise * 3;

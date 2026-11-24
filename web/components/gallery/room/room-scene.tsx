@@ -12,8 +12,10 @@ import { ToneMappingMode } from "postprocessing";
 import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { PictureBeam, PictureSpotlights } from "./picture-lighting";
+import { SunsetWindows } from "./sunset-windows";
 import { frameTexture } from "./frame-texture";
-import { bronzeReliefTexture, carvedWoodTexture, centerpieceGeometry } from "./heritage-details";
+import { bronzeReliefTexture, carvedWoodTexture, centerpieceGeometry, wallReliefTexture } from "./heritage-details";
 import { softDiscTexture, surfaceTextures } from "./surface-textures";
 import {
   HALL,
@@ -94,6 +96,7 @@ export default function RoomScene({ plan, exhibits, control, anchors, onReady }:
       <Suspense fallback={null}>
         <Lighting />
         <Shell plan={plan} m={materials} />
+        <SunsetWindows plan={plan} control={control} />
         <Exhibits m={materials} plan={plan} exhibits={exhibits} control={control} anchors={anchors} />
         <EffectComposer multisampling={4} enableNormalPass={false}>
           <N8AO halfRes quality="performance" aoRadius={0.8} distanceFalloff={0.6} intensity={1.35} color="#3a2a1c" />
@@ -133,9 +136,9 @@ function Lighting() {
   return (
     <>
       {/* daylight from the skylight above, warm bounce from the stone floor */}
-      <hemisphereLight args={["#f1f3f5", "#9c7955", 0.74]} />
-      <directionalLight color="#fff2df" intensity={1.45} position={[-4, 16, -3]} />
-      <directionalLight color="#e6edf4" intensity={0.2} position={[5, 9, 6]} />
+      <hemisphereLight args={["#e7cfcb", "#9c7955", 0.68]} />
+      <directionalLight color="#ffd4a3" intensity={1.35} position={[-4, 16, -3]} />
+      <directionalLight color="#bcbdd8" intensity={0.28} position={[5, 9, 6]} />
     </>
   );
 }
@@ -151,6 +154,10 @@ function useMaterials() {
     const stone = surfaceTextures("stone");
     const carvedWood = carvedWoodTexture();
     const reliefFinish = bronzeReliefTexture();
+    const wallRelief = wallReliefTexture();
+    const columnGrain = surfaceTextures("painted-wood");
+    columnGrain.map.repeat.set(1, 2);
+    columnGrain.bumpMap.repeat.set(1, 2);
     return {
       wall: new THREE.MeshStandardMaterial({ color: C.wall, ...plaster, roughness: 0.94, bumpScale: 0.018 }),
       oak: new THREE.MeshStandardMaterial({ ...oak, roughness: 0.63, envMapIntensity: 0.3, bumpScale: 0.008 }),
@@ -163,6 +170,8 @@ function useMaterials() {
         roughness: 0.47, metalness: 0.5, envMapIntensity: 0.9,
       }),
       pedestalWood: S("#3d291e", 0.76),
+      paintedColumn: new THREE.MeshStandardMaterial({ color: "#3c594d", ...columnGrain, roughness: 0.72, bumpScale: 0.014 }),
+      wallRelief: new THREE.MeshStandardMaterial({ map: wallRelief, bumpMap: wallRelief, bumpScale: 0.018, roughness: 0.88 }),
       contact: new THREE.MeshBasicMaterial({ map: softDiscTexture("rgba(34,26,17,0.5)"), transparent: true, depthWrite: false, opacity: 0.65 }),
       daylight: new THREE.MeshBasicMaterial({ map: softDiscTexture("rgba(255,234,191,0.4)"), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.28 }),
       trim: S(C.trim, 0.7),
@@ -205,25 +214,38 @@ function HallPier({ m, height }: { m: Materials; height: number }) {
   return <group>
     <Box m={m.stone} size={[0.8, 0.22, 0.65]} at={[0, 0.11, 0]} />
     <Box m={m.trim} size={[0.64, 0.16, 0.52]} at={[0, 0.3, 0]} />
-    <mesh position={[0, height / 2, 0]} material={m.trim}>
-      <cylinderGeometry args={[0.21, 0.25, height - 0.8, 16]} />
+    <mesh position={[0, height / 2, 0]} material={m.paintedColumn}>
+      <cylinderGeometry args={[0.21, 0.25, height - 0.8, 32]} />
     </mesh>
+    {[0.43, height - 0.48].map(y => <mesh key={y} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]} material={m.goldDeep}>
+      <torusGeometry args={[y < 1 ? 0.25 : 0.215, 0.025, 6, 32]} />
+    </mesh>)}
     <Box m={m.trim} size={[0.56, 0.15, 0.48]} at={[0, height - 0.35, 0]} />
     <Box m={m.trim} size={[0.75, 0.24, 0.64]} at={[0, height - 0.15, 0]} />
   </group>;
 }
 
 /** Repeat one carved tile along all three walls while keeping the same motif size. */
-function CarvedFrieze({ length, material }: { length: number; material: THREE.Material }) {
+function CarvedFrieze({ length, material, height = 0.19 }: { length: number; material: THREE.Material; height?: number }) {
   const geometry = useMemo(() => {
-    const section = new THREE.PlaneGeometry(length, 0.19);
+    const section = new THREE.PlaneGeometry(length, height);
     const uv = section.getAttribute("uv");
-    const repeats = Math.max(1, Math.round(length / 0.96));
+    const repeats = Math.max(1, Math.round(length / (height * 4)));
     for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * repeats);
     return section;
-  }, [length]);
+  }, [length, height]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return <mesh geometry={geometry} material={material} />;
+}
+
+/** Low wooden panels leave the artwork and labels clear above the dado rail. */
+function WallPanels({ length, m }: { length: number; m: Materials }) {
+  return <group>
+    <Box m={m.pedestalWood} size={[length, 1.02, 0.06]} at={[0, 0.51, 0.03]} r={0.006} />
+    <group position={[0, 0.52, 0.065]}><CarvedFrieze length={length - 0.18} height={0.64} material={m.carvedWood} /></group>
+    <Box m={m.pedestalWood} size={[length, 0.09, 0.12]} at={[0, 1.055, 0.05]} r={0.012} />
+    <Box m={m.goldDeep} size={[length, 0.018, 0.015]} at={[0, 1.105, 0.09]} r={0.001} />
+  </group>;
 }
 
 // Architecture uses simple shared-material surfaces; no new asset downloads or shadow maps.
@@ -238,10 +260,11 @@ function Shell({ plan, m }: { plan: RoomPlan; m: Materials }) {
   return <group>
     <Floor plan={plan} />
     <Furnishings plan={plan} m={m} />
+    <group position={[0, 0, -D / 2 + 0.01]}><WallPanels length={W} m={m} /></group>
     <Box m={m.wall} size={[W, Y + 1.4, 0.24]} at={[0, (Y + 1.4) / 2, -D / 2 - 0.12]} />
     {/* Tall framed arcade and a fanlight give the end wall a monumental focal point. */}
     <group position={[0, entablatureY + 0.12, -D / 2 + 0.05]}>
-      <mesh material={m.glass}><circleGeometry args={[windowR, 48, 0, Math.PI]} /></mesh>
+
       <mesh position={[0, 0, 0.05]} material={m.trim}><torusGeometry args={[windowR + 0.07, 0.14, 8, 48, Math.PI]} /></mesh>
       {Array.from({length:7},(_,i)=> {
         const angle = (i + 1) * Math.PI / 8;
@@ -257,6 +280,10 @@ function Shell({ plan, m }: { plan: RoomPlan; m: Materials }) {
     </group>
     <Box m={m.stone} size={[W,0.22,0.45]} at={[0,0.11,-D/2+0.2]} />
     {[-1, 1].map(sign => <group key={sign}>
+      <group position={[sign * (W / 2 - 0.01), 0, 0]} rotation={[0, -sign * Math.PI / 2, 0]}><WallPanels length={D} m={m} /></group>
+      {plan.slots.filter(slot => slot.wall === (sign < 0 ? "left" : "right")).map(slot => <group key={slot.index} position={[sign * (W / 2 - 0.025), entablatureY + (Y - entablatureY) * 0.53, slot.center[2]]} rotation={[0, -sign * Math.PI / 2, 0]}>
+        <mesh material={m.wallRelief}><planeGeometry args={[2.2, 1.65]} /></mesh>
+      </group>)}
       <Box m={m.wall} size={[0.24, Y, D]} at={[sign * (W / 2 + 0.12), Y / 2, 0]} />
       <Box m={m.stone} size={[0.1, 0.22, D]} at={[sign * (W / 2 - 0.05), 0.11, 0]} />
       <Box m={m.iron} size={[0.12, 0.08, D]} at={[sign * (W / 2 - 0.06), Y - 0.12, 0]} r={0.01} />
@@ -265,6 +292,7 @@ function Shell({ plan, m }: { plan: RoomPlan; m: Materials }) {
       </mesh>
       <group position={[sign * (roofHalf + shoulder / 2), Y + rise / 2, 0]} rotation={[0, 0, -sign * slope]}>
         <mesh rotation={[Math.PI / 2, 0, 0]} material={m.ceiling}><planeGeometry args={[Math.hypot(shoulder, rise), D]} /></mesh>
+        {Array.from({ length: Math.ceil(D / 2.8) + 1 }, (_, i) => <Box key={i} m={m.pedestalWood} size={[Math.hypot(shoulder, rise), 0.12, 0.15]} at={[0, -0.055, -D / 2 + i * D / Math.ceil(D / 2.8)]} r={0.01} />)}
       </group>
       <Box m={m.iron} size={[0.08, 0.1, D]} at={[sign * roofHalf, Y + rise, 0]} r={0.01} />
       {/* Repeated piers between the paintings reinforce the hall's depth. */}
@@ -275,10 +303,6 @@ function Shell({ plan, m }: { plan: RoomPlan; m: Materials }) {
       </group>
       <Box m={m.trim} size={[0.65,0.24,D]} at={[sign*(W/2-0.32),Y-0.16,0]} />
     </group>)}
-    {/* Bright diffuse skylight, with physical ribs rather than costly glass reflections. */}
-    <mesh position={[0, Y + rise + 0.02, 0]} rotation={[Math.PI / 2, 0, 0]} material={m.glass}>
-      <planeGeometry args={[roofHalf * 2, D]} />
-    </mesh>
     {Array.from({length: Math.ceil(D / 2.8) + 1}, (_,i) => {
       const z = -D / 2 + i * D / Math.ceil(D / 2.8);
       return <Box key={i} m={m.iron} size={[roofHalf * 2, 0.07, 0.07]} at={[0, Y + rise - 0.02, z]} r={0.01} />;
@@ -361,6 +385,7 @@ function Exhibits({ plan, exhibits, control, anchors, m }: { plan: RoomPlan; m: 
       {plan.slots.map((slot, i) => (
         <Painting key={exhibits[i].key} slot={slot} size={sizes[i]} texture={textures[i]} title={exhibits[i].title} m={m} />
       ))}
+      <PictureSpotlights plan={plan} sizes={sizes} control={control} />
       <CameraRig plan={plan} sizes={sizes} control={control} anchors={anchors} />
     </>
   );
@@ -393,11 +418,12 @@ function Painting({
     <group position={slot.center} rotation={[0, slot.rotation, 0]}>
       {/* Physical fixture plus a soft projected wash: no per-picture shadow maps. */}
       <Box m={m.track} size={[0.12,0.18,0.05]} at={[0,h/2+0.72,0.04]} r={0.008} />
-      <Box m={m.track} size={[0.04,0.04,0.3]} at={[0,h/2+0.72,0.18]} r={0.005} />
-      <group position={[0,h/2+0.62,0.32]} rotation={[Math.PI/6,0,0]}>
+      <Box m={m.track} size={[0.04,0.04,0.54]} at={[0,h/2+0.72,0.3]} r={0.005} />
+      <group position={[0,h/2+0.62,0.56]} rotation={[Math.atan2(0.5, h/2+0.5),0,0]}>
         <mesh material={m.track}><cylinderGeometry args={[0.075,0.09,0.22,12]} /></mesh>
-        <mesh position={[0,-0.112,0]} rotation={[Math.PI/2,0,0]}><circleGeometry args={[0.068,12]} /><meshBasicMaterial color="#ffdfac" /></mesh>
+        <mesh position={[0,-0.112,0]} rotation={[Math.PI/2,0,0]}><circleGeometry args={[0.068,12]} /><meshStandardMaterial color="#fff0cc" emissive="#ffd296" emissiveIntensity={3} toneMapped={false} /></mesh>
       </group>
+      <PictureBeam height={h} />
       <Wash width={Math.max(ow * 1.5, 2.2)} top={HALL.levelH / 2 - 0.1} />
 
       {/* Sheva's carved gilt frame (see frame-texture.ts) on a dark wooden body that gives it depth */}

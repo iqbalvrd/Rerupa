@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HALL, angleDelta, lerpPose, overviewPose, paintingSize, planRoom, slotPose } from "./plan";
+import { HALL, adjacentGalleryIndex, galleryNavigationOrder, angleDelta, lerpPose, overviewPose, paintingSize, planRoom, slotPose } from "./plan";
 
 describe("three-wall plan", () => {
   it("distributes every exhibit once across the back, left and right walls", () => {
@@ -57,5 +57,33 @@ describe("guided camera", () => {
       expect(s.w).toBeLessThanOrEqual(HALL.maxW);
       expect(s.h).toBeLessThanOrEqual(HALL.maxH);
     }
+  });
+});
+
+
+describe("left and right navigation", () => {
+  it("walks left wall near-to-far, across the back, then right wall far-to-near", () => {
+    expect(galleryNavigationOrder(planRoom(6))).toEqual([3, 2, 0, 1, 4, 5]);
+  });
+
+  it("follows the same route on a phone and visits each work exactly once", () => {
+    for (const count of [1, 2, 3, 6, 11, 24]) {
+      const desktop = galleryNavigationOrder(planRoom(count, 16 / 9));
+      const phone = galleryNavigationOrder(planRoom(count, 9 / 19));
+      expect(desktop).toEqual(phone);
+      expect([...desktop].sort((a, b) => a - b)).toEqual(Array.from({ length: count }, (_, i) => i));
+    }
+  });
+
+  it("reverses direction exactly and stops at both ends", () => {
+    const order = galleryNavigationOrder(planRoom(6));
+    expect(adjacentGalleryIndex(order, order[0], -1)).toBe(order[0]);
+    expect(adjacentGalleryIndex(order, order.at(-1)!, 1)).toBe(order.at(-1));
+    for (let i = 0; i < order.length - 1; i++) {
+      const next = adjacentGalleryIndex(order, order[i], 1);
+      expect(next).toBe(order[i + 1]);
+      expect(adjacentGalleryIndex(order, next, -1)).toBe(order[i]);
+    }
+    expect(adjacentGalleryIndex([], 0, 1)).toBe(0);
   });
 });

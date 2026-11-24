@@ -137,3 +137,39 @@ export function centerpieceGeometry() {
   geometry.translate(0, 0, -0.04);
   return geometry;
 }
+
+/** Decorative plaster panel inspired by petal and tendril carving. */
+export function wallReliefTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#ddd2b9";
+  ctx.fillRect(0, 0, 512, 512);
+  for (const inset of [12, 20, 34]) {
+    ctx.strokeStyle = inset === 20 ? "#f1e4c5" : "#998368";
+    ctx.lineWidth = inset === 20 ? 3 : 2;
+    ctx.strokeRect(inset, inset, 512 - inset * 2, 512 - inset * 2);
+  }
+  const leaf = new Path2D("M0 0 C-58 -38 -48 -92 0 -140 C48 -92 58 -38 0 0 Z");
+  ctx.translate(256, 256);
+  for (let i = 0; i < 8; i++) {
+    ctx.save();
+    ctx.rotate(i * Math.PI / 4);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#9c886d";
+    ctx.stroke(leaf);
+    ctx.translate(-1, -2);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#f7e8c9";
+    ctx.stroke(leaf);
+    ctx.restore();
+  }
+  ctx.fillStyle = "#b39865";
+  ctx.beginPath();
+  ctx.arc(0, 0, 13, 0, Math.PI * 2);
+  ctx.fill();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}

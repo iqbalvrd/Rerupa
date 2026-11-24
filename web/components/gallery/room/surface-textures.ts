@@ -1,10 +1,10 @@
 import * as THREE from "three";
 
-type Surface = "plaster" | "stone" | "oak";
+type Surface = "plaster" | "stone" | "oak" | "painted-wood";
 
 /** Small, deterministic textures: no photo downloads, and no visible random changes on navigation. */
 export function surfaceTextures(kind: Surface) {
-  const size = kind === "plaster" ? 256 : 512;
+  const size = kind === "stone" || kind === "oak" ? 512 : 256;
   const color = document.createElement("canvas");
   const relief = document.createElement("canvas");
   color.width = color.height = relief.width = relief.height = size;
@@ -25,6 +25,10 @@ export function surfaceTextures(kind: Surface) {
       const joint = x % (size / 2) < 2 || y % (size / 2) < 2;
       shade += [0, -4, 3, -2][tile] - vein * 5 - (joint ? 20 : 0);
       height -= joint ? 70 : vein * 5;
+    } else if (kind === "painted-wood") {
+      const grain = Math.sin(u * Math.PI * 120 + Math.sin(v * Math.PI * 4) * 1.4);
+      shade = grain * 3 + noise * 2;
+      height = 128 + grain * 18 + noise * 7;
     } else if (kind === "oak") {
       const grain = Math.sin(v * Math.PI * 150 + Math.sin(u * Math.PI * 4) * 1.3 + Math.sin(v * 20));
       shade = grain * 5 + cloud * 3 + noise * 3;

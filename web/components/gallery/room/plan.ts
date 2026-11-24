@@ -97,6 +97,21 @@ export function planRoom(count: number, aspect = 16 / 9): RoomPlan {
   return { cols, rows, arcadeW, arcadeH, width, depth, springY, slots };
 }
 
+/** Follow the perimeter from the entrance's left side to its right side. */
+export function galleryNavigationOrder(plan: RoomPlan): number[] {
+  const left = plan.slots.filter(slot => slot.wall === "left").sort((a, b) => b.center[2] - a.center[2]);
+  const back = plan.slots.filter(slot => slot.wall === "back").sort((a, b) => a.row - b.row || a.center[0] - b.center[0]);
+  const right = plan.slots.filter(slot => slot.wall === "right").sort((a, b) => a.center[2] - b.center[2]);
+  return [...left, ...back, ...right].map(slot => slot.index);
+}
+
+/** Resolve from the most recently requested target, including during an interrupted walk. */
+export function adjacentGalleryIndex(order: number[], current: number, direction: -1 | 1): number {
+  const position = order.indexOf(current);
+  if (position < 0) return current;
+  return order[Math.max(0, Math.min(order.length - 1, position + direction))];
+}
+
 /** Painting size in meters: the image's aspect ratio fitted into HALL.maxW × HALL.maxH. */
 export function paintingSize(aspect: number): { w: number; h: number } {
   const a = Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 5;

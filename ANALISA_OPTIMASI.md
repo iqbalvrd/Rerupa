@@ -73,3 +73,31 @@ Pengguna (Indonesia)
 | 3 | B3 + B4 (worker 2 thread, unggah paralel) | Kapasitas & waktu tunggu tutorial |
 | 4 | Pindah Supabase ke Singapura (keputusan tim, butuh project baru) | Latensi semua request |
 | 5 | B5–B8, A5 | Penghalusan |
+
+## D. Memori GPU halaman 3D (web)
+
+Diukur 24–25 Nov 2026 di dev server lokal, viewport 1280×800, DPR 2 (layar Retina), dengan penghitung yang membungkus panggilan WebGL (tekstur, renderbuffer, buffer, plus framebuffer bawaan kanvas). Angka ini perkiraan memori GPU milik halaman, bukan kolom Chrome Task Manager.
+
+| Halaman | Sebelum | Sesudah | Perubahan |
+| --- | --- | --- | --- |
+| `/` (landing) | 152,9 MB | 58,6 MB | MSAA kanvas hanya bila DPR < 1,5 (−70 MB); shadow map 2048 → 1024 (−24 MB) |
+| `/galeri` (interior tiga sisi, PR #44) | 490,6 MB | 297,6 MB | `EffectComposer multisampling` 4 → 0, diganti SMAA (−211 MB renderbuffer MSAA, +26 MB target SMAA) |
+| `/karya/<slug>` dari galeri | 490,6 MB + gambar | 297,6 MB + gambar | Detail tampil sebagai modal di atas galeri, jadi kanvas galeri tetap hidup (sengaja, supaya kembali ke galeri instan) |
+
+Tampilan dibandingkan lewat screenshot sebelum/sesudah di viewport yang sama: tepi, bayangan, AO, dan jari-jari jendela lengkung tidak terlihat berbeda. Bagian baru interior (jendela senja, lampu sorot, ornamen keraton) hanya menambah ±18 MB tekstur kecil, jadi tidak perlu diubah.
+
+Yang sengaja **tidak** diubah:
+
+- **Batas DPR galeri (1,5).** Menurunkannya ke 1,25 menghemat ±55 MB lagi, tetapi label dan lukisan di dinding jadi lebih lembut. Bisa dipertimbangkan khusus HP.
+- **Batas frame rate landing.** Ini soal CPU/baterai, bukan memori, dan perjalanan kamera ke pintu jadi patah-patah. rAF sudah berhenti sendiri saat tab disembunyikan.
+- **Buffer half-float composer/N8AO** (5 × 17,6 MB di 1920×1200). Kalau diganti 8-bit, gradasi dinding bisa jadi belang setelah tone mapping ACES.
+
+### Catatan untuk API (Iqbal): gambar turunan ±1600 px
+
+Halaman detail memuat `image_url` asli. Contoh: *Penangkapan Pangeran Diponegoro* berukuran 4000×2517, 3,3 MB unduhan, ±38 MB setelah di-decode, padahal tampil hanya 966×608 px device (DPR 2). `usePrefetchArtwork` juga mengunduh gambar asli untuk karya di depan pengunjung dan dua tetangganya. Unduhan ini tidak di-decode sebelum dipajang, jadi yang membengkak adalah jaringan, bukan RAM.
+
+Usulan di `api/scripts/import_collection.py`, di sebelah `thumbnail()`:
+
+1. Buat turunan `artworks/<slug>/display.jpg`, sisi terpanjang 1600 px, JPEG q≈82 (perkiraan 250–400 KB, ±6 MB setelah decode).
+2. Simpan di kolom baru, misalnya `display_path`, lalu kirim sebagai `display_url` di respons detail karya. File asli tetap ada untuk zoom atau unduhan.
+3. Setelah itu, web cukup mengganti `image_url ?? thumbnail_url` menjadi `display_url ?? image_url ?? thumbnail_url` di `components/artwork/artwork-detail.tsx` dan `lib/artworks.ts`.

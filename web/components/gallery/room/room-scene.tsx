@@ -7,7 +7,7 @@
  */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { RoundedBox, useTexture } from "@react-three/drei";
-import { EffectComposer, N8AO, ToneMapping } from "@react-three/postprocessing";
+import { EffectComposer, N8AO, SMAA, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three";
@@ -98,9 +98,11 @@ export default function RoomScene({ plan, exhibits, control, anchors, onReady }:
         <Shell plan={plan} m={materials} />
         <SunsetWindows plan={plan} control={control} />
         <Exhibits m={materials} plan={plan} exhibits={exhibits} control={control} anchors={anchors} />
-        <EffectComposer multisampling={4} enableNormalPass={false}>
+        {/* No MSAA in the composer (~160 MB on a 2x screen): SMAA after tone mapping instead. */}
+        <EffectComposer multisampling={0} enableNormalPass={false}>
           <N8AO halfRes quality="performance" aoRadius={0.8} distanceFalloff={0.6} intensity={1.35} color="#3a2a1c" />
           <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+          <SMAA />
         </EffectComposer>
         <ReadySignal onReady={onReady} />
       </Suspense>

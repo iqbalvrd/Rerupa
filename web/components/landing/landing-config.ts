@@ -14,6 +14,8 @@ export const DZ = MZ + 1.06;
 export const RENDERER = {
   exposure: 0.95,
   maxDpr: 1.5,
+  /** MSAA only on screens below this device pixel ratio. */
+  msaaBelowDpr: 1.5,
   envIntensity: 0.35,
   envBlur: 0.04,
 } as const;
@@ -59,7 +61,7 @@ export const LIGHTS = {
   hemiIntensity: 0.82,
   sunIntensity: 2.18,
   sunPosition: [-28, 34, 30] as Vec3,
-  shadowMapSize: 2048,
+  shadowMapSize: 1024,
   shadowCamera: { left: -70, right: 70, top: 45, bottom: -45, near: 1, far: 180 },
   shadowBias: -0.0005,
   shadowNormalBias: 0.04,

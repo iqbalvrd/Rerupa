@@ -26,7 +26,7 @@
  */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { RoundedBox, useTexture } from "@react-three/drei";
-import { EffectComposer, N8AO, ToneMapping } from "@react-three/postprocessing";
+import { EffectComposer, N8AO, SMAA, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { Suspense, useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import * as THREE from "three";
@@ -91,10 +91,12 @@ export default function Room3D({ trackRef, bayCount, onReady }: RoomProps) {
     >
       <Suspense fallback={null}>
         <Scene trackRef={trackRef} bayCount={bayCount} />
-        <EffectComposer multisampling={4} enableNormalPass={false}>
+        {/* No MSAA in the composer (~160 MB on a 2x screen): SMAA after tone mapping instead. */}
+        <EffectComposer multisampling={0} enableNormalPass={false}>
           {/* Contact shading in corners and joints. Half resolution keeps it light on phones. */}
           <N8AO halfRes quality="performance" aoRadius={0.9} distanceFalloff={0.6} intensity={2.2} color="#3a2a1c" />
           <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+          <SMAA />
         </EffectComposer>
         <ReadySignal onReady={onReady} />
       </Suspense>

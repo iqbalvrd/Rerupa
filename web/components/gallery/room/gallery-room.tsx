@@ -11,7 +11,7 @@ import { HowItWorks } from "../how-it-works";
 import { GALLERY_SOURCE, artworkByline, howtoSample, licenseLabel, useArtworks, usePrefetchArtwork, type GalleryArtwork } from "@/lib/artworks";
 import { clearGalleryEntrance, isGalleryEntrance } from "@/lib/gallery-entrance";
 import { lastArtwork, navigateToArtwork, rememberArtwork, takeGalleryReturn } from "@/lib/view-transition";
-import { planRoom } from "./plan";
+import { adjacentGalleryIndex, galleryNavigationOrder, planRoom } from "./plan";
 import type { Exhibit, RoomControl, RoomTarget } from "./room-scene";
 import styles from "./gallery-room.module.css";
 
@@ -23,19 +23,7 @@ const ENTRANCE_MAX_HOLD_MS = 7000;
 type Mode = "overview" | "single";
 type Item = { exhibit: Exhibit; artwork: GalleryArtwork | null };
 
-/**
- * The gallery as a real 3D hall. The visitor arrives at the entrance (through
- * the landing's white light) facing one wall where the whole collection hangs,
- * every painting in view and facing them, and picks one: the camera walks up
- * to it like the landing's walk to the museum door. There is no free looking
- * around (guided, point-to-point movement is easier to use and to stomach
- * than first-person controls). In front of a painting, previous/next
- * (buttons, swipe, arrow keys) step along the arcade; "Lihat semua" or Esc
- * walks back. Choosing the painting in front opens the artwork page.
- *
- * Every painting has a real link in the HTML layer, kept over the painting by
- * the scene, so the room works with a keyboard and a screen reader.
- */
+/** Guided visits to paintings on the back, left and right walls of the hall. */
 export function GalleryRoom() {
   const artworks = useArtworks();
   const items: Item[] = useMemo(() => {
@@ -57,6 +45,7 @@ export function GalleryRoom() {
   }, []);
   const plan = useMemo(() => planRoom(items.length, aspect), [items.length, aspect]);
   const count = items.length;
+  const navigationOrder = useMemo(() => items.length ? galleryNavigationOrder(plan) : [], [plan, items.length]);
 
   // Arriving through the landing's doorway: stay white until the room and
   // every painting have loaded, then lift the light and walk in.
@@ -81,6 +70,7 @@ export function GalleryRoom() {
   const anchors = useRef<(HTMLAnchorElement | null)[]>([]);
   const [mode, setMode] = useState<Mode>("overview");
   const [current, setCurrent] = useState(0);
+  const navigationPosition = navigationOrder.indexOf(current);
   const [walking, setWalking] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
@@ -131,21 +121,25 @@ export function GalleryRoom() {
       if (target.kind === "slot") {
         setMode("single");
         setCurrent(target.index);
-        setAnnouncement(`Di depan ${nameOf(target.index)}, karya ${target.index + 1} dari ${count}`);
+        setAnnouncement(`Di depan ${nameOf(target.index)}, karya ${navigationOrder.indexOf(target.index) + 1} dari ${count}`);
       } else {
         setMode("overview");
-        setAnnouncement("Kembali ke pintu masuk. Semua karya terlihat.");
+        setAnnouncement("Kembali ke pintu masuk. Pilih dinding atau lukisan untuk mendekat.");
       }
     };
-  }, [count, nameOf]);
+  }, [count, nameOf, navigationOrder]);
 
-  const step = useCallback(
-    (dir: -1 | 1) => {
-      const next = Math.max(0, Math.min(count - 1, current + dir));
-      if (next !== current) go({ kind: "slot", index: next });
-    },
-    [count, current, go],
-  );
+  const step = useCallback((direction: -1 | 1) => {
+    const target = control.current.target;
+    if (target.kind === "overview") {
+      const wall = direction < 0 ? "left" : "right";
+      const index = navigationOrder.find(i => plan.slots[i].wall === wall);
+      if (index !== undefined) go({ kind: "slot", index });
+      return;
+    }
+    const next = adjacentGalleryIndex(navigationOrder, target.index, direction);
+    if (next !== target.index) go({ kind: "slot", index: next });
+  }, [navigationOrder, plan, go]);
 
   // Keyboard: arrows walk along the walls, Esc goes back to the doorway (not while an artwork is open on top).
   useEffect(() => {
@@ -155,7 +149,7 @@ export function GalleryRoom() {
       // Esc in an open dialog (Cara kerja, account) only closes that dialog.
       if (document.querySelector("dialog[open]")) return;
       if (e.key === "Escape" && mode === "single") go({ kind: "overview" });
-      else if (mode === "single" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
         step(e.key === "ArrowLeft" ? -1 : 1);
       }
@@ -169,16 +163,16 @@ export function GalleryRoom() {
   const router = useRouter();
   useEffect(() => {
     if (mode !== "single") return;
-    for (const i of [current, current + 1, current - 1]) {
+    for (const i of [current, adjacentGalleryIndex(navigationOrder, current, 1), adjacentGalleryIndex(navigationOrder, current, -1)]) {
       const a = items[i]?.artwork;
       if (!a) continue;
       prefetchArtwork(a.slug);
       router.prefetch(`/karya/${a.slug}`);
     }
-  }, [mode, current, items, prefetchArtwork, router]);
+  }, [mode, current, items, navigationOrder, prefetchArtwork, router]);
 
   // In front of a painting, a horizontal swipe walks to the next one. There is no looking around:
-  // every painting faces the visitor from the start.
+  // the camera turns to face the destination wall.
   const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -189,7 +183,13 @@ export function GalleryRoom() {
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
     if (!d || d.id !== e.pointerId || d.moved) return;
-    if (Math.abs(e.clientX - d.x) > 10) {
+    const dx = Math.abs(e.clientX - d.x);
+    const dy = Math.abs(e.clientY - d.y);
+    if (dy > 10 && dy > dx) {
+      drag.current = null;
+      return;
+    }
+    if (dx > 10 && dx > dy) {
       d.moved = true;
       e.currentTarget.setPointerCapture(e.pointerId);
     }
@@ -201,7 +201,7 @@ export function GalleryRoom() {
     suppressClick.current = true;
     const dx = e.clientX - d.x;
     const dy = e.clientY - d.y;
-    if (mode === "single" && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1);
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1);
   };
   const onClickCapture = (e: MouseEvent) => {
     if (!suppressClick.current) return;
@@ -247,6 +247,7 @@ export function GalleryRoom() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={() => (drag.current = null)}
+        onLostPointerCapture={() => (drag.current = null)}
         onClickCapture={onClickCapture}
       >
         <nav aria-label="Karya di ruang galeri">
@@ -314,9 +315,12 @@ export function GalleryRoom() {
         )}
 
         {mode === "overview" && count > 0 && !walking && (
-          <p className={styles.hint}>
-            Pilih lukisan untuk mendekat
-          </p>
+          <nav className={styles.actions} aria-label="Pilih dinding galeri">
+            {([["left", "Dinding kiri"], ["back", "Dinding depan"], ["right", "Dinding kanan"]] as const).map(([wall, label]) => {
+              const slot = navigationOrder.map(i => plan.slots[i]).find(s => s.wall === wall);
+              return slot ? <button key={wall} className={styles.pill} onClick={() => go({ kind: "slot", index: slot.index })}>{label}</button> : null;
+            })}
+          </nav>
         )}
 
         {here && (
@@ -359,17 +363,17 @@ export function GalleryRoom() {
 
         {mode === "single" && count > 1 && (
           <div className={styles.navRow}>
-            <button type="button" className={styles.navButton} onClick={() => step(-1)} disabled={current === 0} aria-label="Karya sebelumnya">
+            <button type="button" className={styles.navButton} onClick={() => step(-1)} disabled={navigationPosition <= 0} aria-label="Karya sebelumnya">
               <ChevronLeft aria-hidden="true" />
             </button>
             <nav className={styles.markers} aria-label="Pilih karya">
-              {items.map((item, i) => (
+              {navigationOrder.map((i, position) => (
                 <button
-                  key={item.exhibit.key}
+                  key={items[i].exhibit.key}
                   type="button"
                   className={styles.marker}
                   aria-current={i === current ? "true" : undefined}
-                  aria-label={item.artwork ? `Ke karya ${i + 1}: ${item.exhibit.title}` : "Ke bingkai Foto lukisanmu"}
+                  aria-label={items[i].artwork ? `Ke karya ${position + 1}: ${items[i].exhibit.title}` : "Ke bingkai Foto lukisanmu"}
                   onClick={() => i !== current && go({ kind: "slot", index: i })}
                 />
               ))}
@@ -378,7 +382,7 @@ export function GalleryRoom() {
               type="button"
               className={styles.navButton}
               onClick={() => step(1)}
-              disabled={current === count - 1}
+              disabled={navigationPosition === navigationOrder.length - 1}
               aria-label="Karya berikutnya"
             >
               <ChevronRight aria-hidden="true" />

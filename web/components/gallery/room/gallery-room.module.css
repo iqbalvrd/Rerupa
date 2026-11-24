@@ -12,7 +12,8 @@
   position: relative;
   block-size: 100dvh;
   min-block-size: 32rem;
-  overflow: hidden;
+  /* Projected links outside the view must never scroll the 3D viewport on focus. */
+  overflow: clip;
   isolation: isolate;
   background: #ece4d6;
   color: var(--ink);
@@ -47,6 +48,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 .hit[data-in-view="false"] {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
 }

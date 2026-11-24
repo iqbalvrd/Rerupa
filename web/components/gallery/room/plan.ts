@@ -1,19 +1,4 @@
-/**
- * Floor plan and camera poses of the 3D gallery hall. Pure functions, so the
- * layout can be unit tested without WebGL.
- *
- * A grand skylit hall after the great museum courts: the visitor enters at
- * the front and faces one wall where the whole collection hangs in an arcade,
- * row above row, so every painting is in view at once and faces the visitor.
- * Nothing hangs on the side walls, and there is no looking around: choosing a
- * painting walks the camera straight up to it.
- *
- * The arcade's columns and rows follow the screen: wide on a laptop, tall on a
- * phone held upright, so the wall always fills the view.
- *
- * Axes: x right, y up, z toward the entrance. The hung wall is the plane
- * z = -depth/2. Yaw 0 looks at it.
- */
+/** A skylit gallery with paintings on the back and both side walls. */
 
 import { DEFAULT_FRAME, FRAME_STYLES } from "../frames";
 
@@ -40,6 +25,8 @@ export type Slot = {
   row: number;
   col: number;
   center: Vec3;
+  wall: "back" | "left" | "right";
+  rotation: number;
 };
 
 export type RoomPlan = {
@@ -55,28 +42,6 @@ export type RoomPlan = {
   springY: number;
   slots: Slot[];
 };
-
-/**
- * Columns for `count` paintings: the arcade whose shape is closest to the
- * screen's, with few empty bays.
- */
-export function arcadeColumns(count: number, aspect: number) {
-  const n = Math.max(1, count);
-  let best = 1;
-  let bestScore = Infinity;
-  for (let cols = 1; cols <= n; cols++) {
-    const rows = Math.ceil(n / cols);
-    if (rows > 4) continue;
-    const shape = (cols * HALL.bayW) / (rows * HALL.levelH);
-    const empty = cols * rows - n;
-    const score = Math.abs(Math.log(shape / Math.max(0.3, aspect * 0.9))) + empty * 0.35;
-    if (score < bestScore) {
-      bestScore = score;
-      best = cols;
-    }
-  }
-  return best;
-}
 
 /** Vertical field of view (degrees) by viewport aspect, like the landing. */
 export function fovFor(aspect: number) {
@@ -101,28 +66,50 @@ function overviewDistance(arcadeW: number, arcadeH: number, aspect: number) {
   return Math.max(h / (2 * tanV * 0.6), w / (2 * tanH * 0.8));
 }
 
-/** Lay out `count` paintings on the hung wall, reading order: left to right, top to bottom. */
+/** Balance exhibits across three walls; preserve the collection's navigation order. */
 export function planRoom(count: number, aspect = 16 / 9): RoomPlan {
   const n = Math.max(1, count);
-  const cols = arcadeColumns(n, aspect);
-  const rows = Math.ceil(n / cols);
+  const backCount = Math.ceil(n / 3);
+  const leftCount = Math.ceil((n - backCount) / 2);
+  const rightCount = n - backCount - leftCount;
+  const cols = Math.min(3, backCount);
+  const rows = Math.ceil(backCount / cols);
   const arcadeW = cols * HALL.bayW;
   const arcadeH = rows * HALL.levelH;
-  const width = arcadeW + 2 * HALL.sideMargin;
-  const springY = HALL.plinth + arcadeH + 1.6;
+  const width = Math.max(10.8, arcadeW + 3.2);
+  const springY = Math.max(8.6, HALL.plinth + arcadeH + 4.2);
   const view = overviewDistance(arcadeW, arcadeH, aspect);
-  const depth = Math.max(14, view + 6);
+  // Leave room behind the overview camera so the wider entrance view stays indoors.
+  const depth = Math.max(20, view + 7, Math.max(leftCount, rightCount) * 3.8 + 6);
   const slots: Slot[] = [];
-  for (let i = 0; i < n; i++) {
-    const row = Math.floor(i / cols);
-    const col = i % cols;
-    // The last row is centered when it is not full.
-    const inRow = row === rows - 1 ? n - row * cols : cols;
-    const x = (col - (inRow - 1) / 2) * HALL.bayW;
-    const y = HALL.plinth + arcadeH - (row + 0.5) * HALL.levelH;
-    slots.push({ index: i, row, col, center: [x, y, -depth / 2] });
+  for (let i = 0; i < backCount; i++) {
+    const row = Math.floor(i / cols), col = i % cols;
+    const inRow = Math.min(cols, backCount - row * cols);
+    slots.push({ index: slots.length, row, col, wall: "back", rotation: 0,
+      center: [(col - (inRow - 1) / 2) * HALL.bayW, 2.65 + (rows - row - 1) * HALL.levelH, -depth / 2 + 0.04] });
+  }
+  for (const [wall, amount, sign] of [["left", leftCount, -1], ["right", rightCount, 1]] as const) {
+    for (let i = 0; i < amount; i++) {
+      slots.push({ index: slots.length, row: 0, col: i, wall, rotation: -sign * Math.PI / 2,
+        center: [sign * (width / 2 - 0.04), 2.65, -depth / 2 + 3.6 + i * 3.8] });
+    }
   }
   return { cols, rows, arcadeW, arcadeH, width, depth, springY, slots };
+}
+
+/** Follow the perimeter from the entrance's left side to its right side. */
+export function galleryNavigationOrder(plan: RoomPlan): number[] {
+  const left = plan.slots.filter(slot => slot.wall === "left").sort((a, b) => b.center[2] - a.center[2]);
+  const back = plan.slots.filter(slot => slot.wall === "back").sort((a, b) => a.row - b.row || a.center[0] - b.center[0]);
+  const right = plan.slots.filter(slot => slot.wall === "right").sort((a, b) => a.center[2] - b.center[2]);
+  return [...left, ...back, ...right].map(slot => slot.index);
+}
+
+/** Resolve from the most recently requested target, including during an interrupted walk. */
+export function adjacentGalleryIndex(order: number[], current: number, direction: -1 | 1): number {
+  const position = order.indexOf(current);
+  if (position < 0) return current;
+  return order[Math.max(0, Math.min(order.length - 1, position + direction))];
 }
 
 /** Painting size in meters: the image's aspect ratio fitted into HALL.maxW × HALL.maxH. */
@@ -138,13 +125,13 @@ export function frameWidth(size: { w: number; h: number }) {
 
 export type Pose = { pos: Vec3; yaw: number; pitch: number };
 
-/** Standing at the front of the hall, the whole arcade in view. */
+/** Stand far enough back to show the side walls and the skylight. */
 export function overviewPose(plan: RoomPlan, aspect: number): Pose {
-  const d = overviewDistance(plan.arcadeW, plan.arcadeH, aspect);
+  const d = Math.max(overviewDistance(plan.arcadeW, plan.arcadeH, aspect), plan.depth * 0.9);
   // Look at a point a little above the arcade's middle, from standing height, so
   // the view takes in the floor, the arcade and the start of the vault.
-  const cy = HALL.plinth + plan.arcadeH * 0.6;
-  const y = HALL.eye + 0.8;
+  const cy = Math.min(plan.springY * 0.52, 4.4 + (plan.rows - 1) * 1.5);
+  const y = HALL.eye + 0.25;
   const pitch = Math.atan2(cy - y, d);
   return { pos: [0, y, -plan.depth / 2 + d], yaw: 0, pitch };
 }
@@ -169,7 +156,8 @@ export function slotPose(plan: RoomPlan, slot: Slot, size: { w: number; h: numbe
   const widthShare = aspect < 0.8 ? 0.86 : 0.7;
   const d = Math.min(Math.max(h / (2 * tanV * 0.46), w / (2 * tanH * widthShare)), plan.depth - 1);
   const [cx, cy, cz] = slot.center;
-  return { pos: [cx, cy - h * 0.3, cz + d], yaw: 0, pitch: 0 };
+  const distance = Math.min(d, slot.wall === "back" ? plan.depth - 1 : plan.width - 1);
+  return { pos: [cx + Math.sin(slot.rotation) * distance, cy - h * 0.3, cz + Math.cos(slot.rotation) * distance], yaw: -slot.rotation, pitch: 0 };
 }
 
 /** Shortest signed angle from `a` to `b`. */

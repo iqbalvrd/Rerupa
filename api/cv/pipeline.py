@@ -9,6 +9,7 @@ from contextlib import contextmanager
 
 import numpy as np
 
+from cv import landmarks as landmarks_mod
 from cv import lineart as lineart_mod
 from cv import normalize as norm
 from cv import quality as quality_mod
@@ -100,6 +101,17 @@ def run(
         outline_edges = lineart_mod.edge_map(img, method, resolution=lineart_mod.OUTLINE_RES[method])
         outline = lineart_mod.outline_lines(outline_edges)
         del outline_edges
+    # Bentuk kasar (tingkat 1) + titik patokan: langkah pertama sketsa hanya beberapa garis panjang.
+    with _timer(t, "coarse"):
+        coarse_edges = lineart_mod.edge_map(img, method, resolution=lineart_mod.COARSE_RES[method])
+        coarse = lineart_mod.coarse_lines(coarse_edges, mask)
+        del coarse_edges
+        block_in, background_lines = lineart_mod.split_by_object(coarse, mask)
+        points = landmarks_mod.find_landmarks(coarse, background_lines, mask)
+        contour_new = lineart_mod.subtract_lines(outline, coarse)
+        full_contour = np.maximum(coarse, contour_new)
+        detail_candidates = lineart_mod.subtract_lines(lines, full_contour)
+        del lines
 
     with _timer(t, "regions"):
         seg = segment(img, mask, canvas_size=canvas_size, max_colors=max_colors)
@@ -115,12 +127,20 @@ def run(
             value.assign_region_levels(seg, quant)
             value_body = value.value_svg_body(seg, quant)
 
+    # Detail (tingkat 3): hanya garis sungguhan; lipatan/bayangan diajarkan lewat warna. Karya datar
+    # (tanpa gradasi, gaya garis) memang menggambar lipatan sebagai garis → ambang dilonggarkan.
+    with _timer(t, "detail_select"):
+        detail = lineart_mod.select_detail_lines(detail_candidates, img, flat=not shading)
+        del detail_candidates
     with _timer(t, "render"):
         regions_svg = render.regions_svg(seg, w, h)
-        sketch = render.sketch_svg(outline, mask, w, h)
+        sketch = render.sketch_svg(full_contour, mask, w, h)
+        block_in_svg = render.lines_svg(block_in, w, h, "block_in") if block_in.any() else None
+        background_svg = render.lines_svg(background_lines, w, h, "background_lines")
+        landmarks_svg = render.svg_doc(w, h, landmarks_mod.landmarks_svg_body(points, w, h), "landmarks")
         obj_svg = render.main_object_svg(mask, w, h)
         numbered = norm.encode_png(render.numbered_image(seg))
-        lines_png = norm.encode_png(lineart_mod.lines_png(lines))
+        lines_png = norm.encode_png(lineart_mod.lines_png(detail))
         ai_jpeg = norm.encode_jpeg(norm.resize_max_side(img, norm.AI_MAX_SIDE), quality=88)
         original = norm.encode_jpeg(img)
 
@@ -137,6 +157,11 @@ def run(
         lineart_png=lines_png,
         regions_svg=regions_svg,
         sketch_svg=sketch,
+        block_in_svg=block_in_svg,
+        background_lines_svg=background_svg,
+        landmarks=landmarks_mod.to_dicts(points),
+        landmarks_svg=landmarks_svg,
+        line_counts={k: _count_lines(v) for k, v in (("block_in", block_in), ("background_lines", background_lines), ("contour_new", contour_new), ("detail", detail))},
         main_object_svg=obj_svg,
         value_svg=render.svg_doc(w, h, value_body, "value") if value_body else None,
         numbered_png=numbered,
@@ -150,3 +175,9 @@ def run(
 def is_blank(img: np.ndarray) -> bool:
     """Bidang hampir polos (bukan karya) — dipakai bersama hasil kualitas untuk 'not_artwork'."""
     return float(img.std()) < 6.0
+
+
+def _count_lines(binary: np.ndarray) -> int:
+    import cv2
+
+    return int(cv2.connectedComponents((binary > 0).astype(np.uint8), connectivity=8)[0] - 1)

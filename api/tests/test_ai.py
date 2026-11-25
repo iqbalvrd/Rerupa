@@ -299,3 +299,63 @@ def test_task_models_parse_from_env(monkeypatch):
     s = Settings(_env_file=None)
     assert s.openai_task_models == {"feedback": "gpt-6-luna"}
     assert s.openai_model_prices == {"gpt-6-luna": (0.10, 0.50)}
+
+
+# ---------- tutorial bertahap (v2): templat, kotak grid, panjang ----------
+
+def _v2_stages():
+    from cv.stage_planner import PlannedStage
+
+    return [
+        PlannedStage(code="step_1", order_no=1, kind="landmarks", layers=["grid", "landmarks"], phase="sketch", grid_cells=["B1", "C4"]),
+        PlannedStage(code="step_2", order_no=2, kind="paint_mix", layers=["sketch", "regions"], phase="color", grid_cells=["A2", "B2"], mix_id="m2", region_codes=["r01"]),
+    ]
+
+
+def test_v2_templates_fill_cell_and_mix_from_data():
+    from ai.templates import template_lesson_text
+
+    out = template_lesson_text(_v2_stages(), False, {"m2": {"order_no": 2, "name": "cokelat tua"}}, ["B1", "C4"])
+    assert "kotak B1" in out.stages[0].action
+    assert out.stages[1].title == "Campuran 2: cokelat tua" and "kotak A2" in out.stages[1].action
+
+
+def test_v2_validator_rejects_invented_grid_cells_and_long_actions():
+    from ai.schemas import LessonText, StageText, StyleAnalysis
+    from ai.validators import find_errors, sanitize
+
+    def text(action):
+        return LessonText(
+            style=StyleAnalysis(technique="garis_bidang_datar", use_shading=False, reason="x"), skill_goal="x", culture_goal="",
+            stages=[StageText(stage_code="step_1", title="Titik", action=action, tools=[], done_when="ok", common_mistakes=[]),
+                    StageText(stage_code="step_2", title="Campur", action="Warnai mulai dari kotak A2.", tools=[], done_when="ok", common_mistakes=[])],
+            region_labels=[], culture_claims=[], reflection=None)
+
+    stages = _v2_stages()
+    good = text("Tandai titik 1 di kotak B1. Ukuran kertas A4.")  # "A4" bukan nama kotak
+    assert find_errors(good, stages, {"r01"}, set(), False, {"B1", "C4"}) == []
+    bad = text("Tandai titik di kotak D9.")
+    assert any("D9" in e for e in find_errors(bad, stages, {"r01"}, set(), False, {"B1", "C4"}))
+    assert any("terlalu panjang" in e for e in find_errors(text("x " * 150), stages, {"r01"}, set(), False, set()))
+    fixed, fixes = sanitize(bad, stages, {"r01"}, set(), False, {}, ["B1", "C4"])
+    assert "D9" not in fixed.stages[0].action and fixes
+
+
+def test_v2_prompt_is_used_for_phased_stages():
+    from ai import lesson_text
+
+    assert lesson_text.prompt_version(_v2_stages()) == "stage_text.v2"
+    assert "kotak" in lesson_text.INSTRUCTIONS_V2 and "lipatan" in lesson_text.INSTRUCTIONS_V2
+
+
+def test_v2_paint_mix_title_matches_mix_card():
+    from ai.schemas import LessonText, StageText, StyleAnalysis
+    from ai.validators import sanitize
+
+    out = LessonText(
+        style=StyleAnalysis(technique="garis_bidang_datar", use_shading=False, reason="x"), skill_goal="x", culture_goal="",
+        stages=[StageText(stage_code="step_1", title="Titik", action="Tandai di kotak B1.", tools=[], done_when="ok", common_mistakes=[]),
+                StageText(stage_code="step_2", title="Campuran 2: krem persik", action="Warnai mulai dari kotak A2.", tools=[], done_when="ok", common_mistakes=[])],
+        region_labels=[], culture_claims=[], reflection=None)
+    fixed, _ = sanitize(out, _v2_stages(), {"r01"}, set(), False, {"m2": {"order_no": 2, "name": "krem"}}, ["B1"])
+    assert fixed.stages[1].title == "Campuran 2: krem"

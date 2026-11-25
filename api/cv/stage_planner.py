@@ -58,6 +58,11 @@ class PlannedStage:
     is_checkpoint: bool = False
     focus_bbox: list[int] | None = None
     part: int = 0  # >0 bila tahap hasil belahan (bagian ke-n)
+    # Tutorial bertahap (structure_version 2, cv/step_planner.py); kosong pada planner lama.
+    phase: str | None = None  # sketch | color | finishing
+    new_lines: str | None = None  # lapisan yang garisnya baru di langkah ini
+    grid_cells: list[str] = field(default_factory=list)
+    mix_id: str | None = None
 
 
 def plan_stages(

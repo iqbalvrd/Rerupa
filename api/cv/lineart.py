@@ -223,6 +223,159 @@ def outline_lines(edges: np.ndarray) -> np.ndarray:
     return thin_lines(binary) * 255
 
 
+# Bentuk kasar (tingkat 1): peta tepi dari gambar SANGAT kecil, lalu hanya garis panjang.
+# Prototipe 23 Nov: model 160 px terbaca sebagai bentuk tokoh (Bali, Diponegoro). TEED perlu lebih besar.
+COARSE_RES = {"model": 160, "teed": 224, "xdog": 160, "canny": 160}
+COARSE_MIN_LENGTH = 0.12  # pecahan sisi terpanjang (batas awal; dinaikkan bila garis terlalu banyak)
+COARSE_DENSE_LENGTH = 7.0  # panjang total > sekian × (lebar + tinggi) = kisi rapat. Kalibrasi 25 Nov: karya yang terbaca 4,1–5,4; kisi TEED (sawah, adegan ramai) 8,6–10,9
+COARSE_MAX_LENGTH = 1.5  # jatah panjang untuk kisi rapat: segmen terpanjang diambil sampai jatah ini
+COARSE_MIN_LENGTH_TOTAL = 0.6  # bila panjang total garis < sekian × (lebar + tinggi), tambahkan siluet objek utama
+SILHOUETTE_EPS = 0.015  # penyederhanaan siluet objek utama: pecahan keliling
+
+
+def _skeleton_length(binary: np.ndarray) -> int:
+    from skimage.morphology import skeletonize
+
+    return int(skeletonize(binary > 0).sum())
+
+
+def longest_segments(binary: np.ndarray, budget_px: float, min_len_px: int, max_segments: int = 40) -> np.ndarray:
+    """Pecah jaringan garis di titik percabangan, lalu ambil segmen terpanjang sampai panjang total
+    mencapai `budget_px`. Kisi rapat (petak sawah, motif) tersambung jadi satu jaringan besar yang
+    selalu lolos filter "garis panjang"; dengan memecahnya, yang tersisa hanya beberapa kurva panjang.
+    Return biner 0/1 (sudah dipertebal seragam)."""
+    from skimage.morphology import skeletonize
+
+    h, w = binary.shape
+    sk = skeletonize(binary > 0).astype(np.uint8)
+    neigh = cv2.filter2D(sk, -1, np.ones((3, 3), np.float32)) - sk
+    junctions = cv2.dilate(((sk == 1) & (neigh >= 3)).astype(np.uint8), np.ones((3, 3), np.uint8))
+    segs = sk & (1 - junctions)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(segs, connectivity=8)
+    lengths = stats[1:, cv2.CC_STAT_AREA]
+    keep = np.zeros(count, dtype=bool)
+    total = 0
+    for i in np.argsort(-lengths)[:max_segments]:
+        if lengths[i] < min_len_px or total >= budget_px:
+            break
+        keep[i + 1] = True
+        total += int(lengths[i])
+    out = keep[labels].astype(np.uint8)
+    # Sambung lagi celah percabangan kecil di antara segmen terpilih, lalu pertebal.
+    out = cv2.morphologyEx(out, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+    return thin_lines(out)
+
+
+def coarse_lines(edges: np.ndarray, mask: np.ndarray | None = None) -> np.ndarray:
+    """Garis bentuk kasar untuk langkah pertama sketsa: sedikit garis panjang.
+    `edges` = edge_map(..., resolution=COARSE_RES[method]). Return biner uint8 0/255.
+
+    Jumlah garis dibatasi lewat PANJANG TOTAL, bukan jumlah komponen: jaringan yang tersambung
+    dihitung sesuai panjangnya. Siluet objek utama hanya dipakai bila garis panjangnya terlalu sedikit:
+    di uji 25 Nov, siluet u2net yang disederhanakan jadi poligon bergerigi yang membingungkan."""
+    h, w = edges.shape
+    strong = adaptive_threshold(edges)
+    weak = max(MIN_THRESHOLD * 0.6, min(strong, float(np.percentile(edges, 100 - WEAK_DENSITY_PCT))))
+    base = hysteresis(edges, strong, weak)
+    base = cv2.morphologyEx(base, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)))
+    # Utamakan garis panjang UTUH (bentuk tokoh terbaca: Bali, Diponegoro, Batik). Hanya bila hasilnya
+    # kisi rapat (petak sawah: panjang total jauh di atas jatah), pecah jaringan dan ambil segmen terpanjang.
+    binary = thin_lines(_drop_short(base, round(max(h, w) * COARSE_MIN_LENGTH)))
+    if _skeleton_length(binary) > COARSE_DENSE_LENGTH * (w + h):
+        binary = longest_segments(base, COARSE_MAX_LENGTH * (w + h), round(max(h, w) * COARSE_MIN_LENGTH * 0.5))
+    few = _skeleton_length(binary) < COARSE_MIN_LENGTH_TOTAL * (w + h)
+    if few and mask is not None and mask.any():
+        silhouette = np.zeros((h, w), np.uint8)
+        contours, _ = cv2.findContours((mask > 0).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for c in contours:
+            if cv2.contourArea(c) < 0.02 * h * w:
+                continue
+            approx = cv2.approxPolyDP(c, SILHOUETTE_EPS * cv2.arcLength(c, True), True)
+            cv2.polylines(silhouette, [approx], True, 1, stroke_width(h, w), cv2.LINE_AA)
+        binary = np.maximum(binary, silhouette)
+    return (binary > 0).astype(np.uint8) * 255
+
+
+def split_by_object(lines: np.ndarray, mask: np.ndarray | None) -> tuple[np.ndarray, np.ndarray]:
+    """(garis objek utama, garis latar): komponen yang menyentuh objek utama (mask dilebarkan sedikit)
+    masuk objek; sisanya latar. Tanpa objek utama: semua jadi latar."""
+    if mask is None or not mask.any():
+        return np.zeros_like(lines), lines
+    h, w = lines.shape
+    k = max(3, round(max(h, w) * 0.01)) | 1
+    near = cv2.dilate((mask > 0).astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
+    count, labels = cv2.connectedComponents((lines > 0).astype(np.uint8), connectivity=8)
+    touches = np.zeros(count, dtype=bool)
+    touches[np.unique(labels[near > 0])] = True
+    touches[0] = False
+    obj = touches[labels]
+    return np.where(obj, lines, 0).astype(np.uint8), np.where(obj, 0, lines).astype(np.uint8)
+
+
+def subtract_lines(lines: np.ndarray, *earlier: np.ndarray, radius: int = 4) -> np.ndarray:
+    """Garis `lines` tanpa yang sudah ada di tingkat sebelumnya (dalam jarak `radius` px), supaya
+    tiap langkah hanya menampilkan garis baru."""
+    if not earlier:
+        return lines
+    old = np.zeros_like(lines)
+    for e in earlier:
+        old = np.maximum(old, e)
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * radius + 1, 2 * radius + 1))
+    out = lines.copy()
+    out[cv2.dilate(old, k) > 0] = 0
+    return out
+
+
+# Garis sungguhan: minimal sekian lebih gelap (L*, 0–100) dari KEDUA sisinya, diukur RIDGE_PROBE_PX ke kiri/kanan.
+# Kalibrasi 25 Nov: Bali (gaya garis) ±50% kandidat lolos; Diponegoro (cat minyak) hampir tidak ada,
+# karena wajah dan tangan sudah ada di kontur dan lipatannya tonal (diajarkan lewat warna).
+RIDGE_DELTA_L = 4.0
+RIDGE_PROBE_PX = 5
+
+
+def select_detail_lines(lines: np.ndarray, img: np.ndarray, flat: bool, min_length_px: int | None = None) -> np.ndarray:
+    """Pilah garis detail: simpan GARIS SUNGGUHAN (lebih gelap dari kedua sisinya: mata, alis, motif),
+    buang TEPI NADA (gelap di satu sisi, terang di sisi lain: lipatan, bayangan) karena itu diajarkan
+    lewat warna/terang-gelap. Karya datar (`flat`, gaya garis Kamasan): ambang dilonggarkan.
+
+    Per piksel garis: bandingkan L* di titik itu dengan rata-rata L* di kedua sisi, tegak lurus arah
+    garis (arah dari gradien peta garis). Keputusan diambil per segmen (mayoritas piksel)."""
+    h, w = lines.shape
+    binary = (lines > 0).astype(np.uint8)
+    if not binary.any():
+        return lines
+    lab_l = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)[..., 0].astype(np.float32) * (100.0 / 255.0)
+    lab_l = cv2.GaussianBlur(lab_l, (3, 3), 0)
+    # Normal garis ≈ arah gradien dari peta garis yang dihaluskan.
+    soft = cv2.GaussianBlur(binary.astype(np.float32), (0, 0), 2.0)
+    gx, gy = cv2.Sobel(soft, cv2.CV_32F, 1, 0, ksize=3), cv2.Sobel(soft, cv2.CV_32F, 0, 1, ksize=3)
+    ys, xs = np.nonzero(binary)
+    nx, ny = gx[ys, xs], gy[ys, xs]
+    norm = np.hypot(nx, ny) + 1e-6
+    nx, ny = nx / norm, ny / norm
+    d = RIDGE_PROBE_PX
+
+    def sample(px, py):
+        return lab_l[np.clip(np.round(py).astype(int), 0, h - 1), np.clip(np.round(px).astype(int), 0, w - 1)]
+
+    center = sample(xs, ys)
+    side_a = sample(xs + nx * d, ys + ny * d)
+    side_b = sample(xs - nx * d, ys - ny * d)
+    delta = RIDGE_DELTA_L * (0.5 if flat else 1.0)
+    ridge = (np.minimum(side_a, side_b) - center) >= delta
+
+    count, labels = cv2.connectedComponents(binary, connectivity=8)
+    seg = labels[ys, xs]
+    votes = np.bincount(seg, weights=ridge.astype(np.float64), minlength=count)
+    totals = np.bincount(seg, minlength=count).astype(np.float64)
+    keep = votes >= 0.5 * np.maximum(totals, 1)
+    keep[0] = False
+    out = keep[labels].astype(np.uint8)
+    if min_length_px is None:
+        min_length_px = max(8, round(max(h, w) * 0.01))
+    return _drop_short(out, min_length_px) * 255
+
+
 def lines_svg_body(binary: np.ndarray, stroke: str = "#1E1E1E", width: int | None = None, epsilon: float = 1.2) -> str:
     """Garis biner → <path> SVG (M/L/Z saja, dibaca ulang cv/svgpath.py untuk checkpoint).
     Tiap garis dilacak sebagai kontur tertutup di sekeliling kerangka 1 px, jadi bila digoreskan

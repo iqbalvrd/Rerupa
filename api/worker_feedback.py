@@ -105,12 +105,14 @@ def handle_feedback(job: dict) -> JobOutcome:
         return JobOutcome("failed", error_code="file_invalid")
     stage = stage[0]
     params = job.get("params") or {}
+    # Tutorial bertahap: checkpoint sketsa bernama `sketch_check`, checkpoint warna `paint_mix`.
+    cv_kind = "sketch" if stage["kind"] in ("sketch", "sketch_check") else stage["kind"]
 
     with heartbeat(job):
         job_service.set_progress(job["id"], "cv")
         photo = _download(BUCKET, upload[0]["raw_path"])
         lesson, target, labels = load_target(stage["lesson_version_id"])
-        res = cp.run(photo, params["corners"], target, stage["kind"], open_region_codes(lesson["id"], stage["order_no"]))
+        res = cp.run(photo, params["corners"], target, cv_kind, open_region_codes(lesson["id"], stage["order_no"]))
 
         if res.needs_retake:
             _save_result(job, stage["id"], res, None, None)
@@ -119,7 +121,7 @@ def handle_feedback(job: dict) -> JobOutcome:
         job_service.set_progress(job["id"], "writing")
         time_left = settings.feedback_deadline_seconds - (time.monotonic() - started)
         text, source, notes = write_feedback(
-            stage_kind=stage["kind"],
+            stage_kind=cv_kind,
             stage_title=stage["title"],
             candidates=res.candidates,
             metrics=res.metrics,

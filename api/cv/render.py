@@ -35,6 +35,11 @@ def main_object_svg(mask: np.ndarray | None, width: int, height: int) -> str | N
     return svg_doc(width, height, body, "main_object")
 
 
+def lines_svg(binary: np.ndarray, width: int, height: int, layer: str) -> str:
+    """Lapisan garis biner → SVG path (dibaca ulang svgpath bila perlu)."""
+    return svg_doc(width, height, lineart.lines_svg_body(binary), layer)
+
+
 def sketch_svg(outline: np.ndarray, mask: np.ndarray | None, width: int, height: int) -> str:
     """Lapisan tahap sketsa: garis KONTUR objek (lineart.outline_lines, tanpa lipatan/motif) +
     siluet objek utama. Rincian baru muncul di tahap detail lewat lapisan `lineart`.

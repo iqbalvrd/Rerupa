@@ -43,7 +43,7 @@ class SessionUpdate(BaseModel):
     lesson_version_id: UUID | None = None
     palette_id: UUID | None = None
     canvas_size: CanvasSize | None = None
-    current_stage_order: int | None = Field(default=None, ge=1, le=8)
+    current_stage_order: int | None = Field(default=None, ge=1, le=20)
 
 
 class SessionOut(BaseModel):

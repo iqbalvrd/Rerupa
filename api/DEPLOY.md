@@ -35,6 +35,7 @@ Dua service, **dua image**: `api` dari `Dockerfile.api` (ringan, tanpa torch) da
 | `OPENAI_PRICE_INPUT_PER_M`, `OPENAI_PRICE_OUTPUT_PER_M` | ✅ | ✅ | `1.0`, `5.0` — **wajib** bila key diisi (dipakai menghitung batas biaya) |
 | `OPENAI_TASK_MODELS` | ✅ | ✅ | `{"feedback": "gpt-6-luna"}` — model per tugas (nama tugas = `ai_usage.task`); tugas lain memakai `OPENAI_VISION_MODEL` |
 | `OPENAI_MODEL_PRICES` | ✅ | ✅ | `{"gpt-6-luna": [0.10, 0.50]}` — **wajib** untuk setiap model di `OPENAI_TASK_MODELS`; tanpa itu API menolak start di produksi |
+| `TUTORIAL_V2` | ✅ | ✅ | `false` — tutorial bertahap (3 fase, ±16 langkah). Nyalakan **setelah** migrasi `20261125000100_tutorial_bertahap` diterapkan; lesson lama tetap terbaca |
 | `OPENAI_REASONING_EFFORT` | ✅ | ✅ | `low` |
 | `DAILY_AI_BUDGET_USD` | ✅ | ✅ | `5` (atau sesuai kesepakatan tim) |
 | `FEATURE_STORY`, `FEATURE_RECOGNITION` | ✅ | ✅ | `false` sampai cerita materi demo ditinjau; `true` untuk demo. Biaya storyline foto unggahan ±$0,30–0,37 |

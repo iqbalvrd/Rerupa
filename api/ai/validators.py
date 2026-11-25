@@ -110,10 +110,12 @@ def sanitize(
             fixes.append(f"{s.code}: teks diganti templat")
             texts.append(stage_text_for(s, mixes, landmark_cells))
             continue
+        # Langkah campuran: judul selalu dari data ("Campuran 2: cokelat tua"), sama dengan kartu campurannya.
+        title = stage_text_for(s, mixes, landmark_cells).title if s.kind == "paint_mix" else t.title
         texts.append(
             StageText(
                 stage_code=s.code,
-                title=_cut(t.title, LIMITS["title"]),
+                title=_cut(title, LIMITS["title"]),
                 action=_cut(t.action, LIMITS["action"]),
                 tools=[_cut(x, LIMITS["tool"]) for x in t.tools if x.strip()][:MAX_TOOLS],
                 done_when=_cut(t.done_when, LIMITS["done_when"]),

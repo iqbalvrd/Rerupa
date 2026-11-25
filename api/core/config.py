@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     frontend_origin_regex: str = ""
     # P1: storyline cerita & pencocokan foto ke koleksi (RENCANA §4.8)
     feature_story: bool = False
+    # Tutorial bertahap (structure_version 2: 3 fase, ±16 langkah, maks 6 campuran). Nyalakan HANYA setelah
+    # migrasi 20261125000100_tutorial_bertahap diterapkan ke DB tersebut. Mati = planner lama (8 tahap).
+    tutorial_v2: bool = False
     feature_recognition: bool = False
     story_max_web_searches: int = 3
 

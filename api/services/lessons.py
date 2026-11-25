@@ -7,7 +7,8 @@ from dataclasses import asdict
 
 from ai.schemas import LessonText
 from core.supabase_client import get_supabase
-from cv.grid import grid_dims
+from color.mixes import to_payload as mixes_to_payload
+from cv.grid import cells_for_bbox, grid_dims
 from cv.stage_planner import PlannedStage
 from cv.types import CvResult
 from services.storage import is_duplicate, with_retry
@@ -25,7 +26,7 @@ def grid_svg(width: int, height: int, cells_short_side: int = 4) -> tuple[str, d
     return svg, {"cols": cols, "rows": rows}
 
 
-def upload_layers(cv: CvResult, bucket: str, prefix: str) -> list[dict]:
+def upload_layers(cv: CvResult, bucket: str, prefix: str, v2: bool = False) -> list[dict]:
     """Unggah semua lapisan; return daftar layer untuk create_lesson."""
     storage = get_supabase().storage.from_(bucket)
     grid, grid_meta = grid_svg(cv.width, cv.height)
@@ -40,6 +41,11 @@ def upload_layers(cv: CvResult, bucket: str, prefix: str) -> list[dict]:
         files.append(("main_object", "main_object.svg", cv.main_object_svg.encode(), "image/svg+xml", "svg", {}))
     if cv.value_svg:
         files.append(("value", "value.svg", cv.value_svg.encode(), "image/svg+xml", "svg", {"levels": 4}))
+    if v2:
+        files.append(("background_lines", "background_lines.svg", cv.background_lines_svg.encode(), "image/svg+xml", "svg", {"line_level": 1}))
+        files.append(("landmarks", "landmarks.svg", cv.landmarks_svg.encode(), "image/svg+xml", "svg", {"count": len(cv.landmarks)}))
+        if cv.block_in_svg:
+            files.append(("block_in", "block_in.svg", cv.block_in_svg.encode(), "image/svg+xml", "svg", {"line_level": 1}))
 
     def put(item: tuple) -> dict:
         kind, name, data, mime, fmt, meta = item
@@ -74,7 +80,12 @@ def build_payload(
     session_id: str | None,
     extra_claims: list[dict] | None = None,
     region_colors: list[dict] | None = None,
+    mixes: list | None = None,
+    mix_colors: list[dict] | None = None,
 ) -> dict:
+    """`mixes` (list[color.mixes.MixGroup]) diisi → lesson tutorial bertahap (structure_version 2)."""
+    v2 = mixes is not None
+    region_mix = {code: g.mix_id for g in mixes or [] for code in g.region_codes}
     labels = {lbl.region_code: lbl.label for lbl in text.region_labels}
     texts = {t.stage_code: t for t in text.stages}
     regions = []
@@ -82,6 +93,10 @@ def build_payload(
         d = asdict(r)
         d.pop("path_svg")
         d["label"] = labels.get(r.code)
+        if v2:
+            x, y, w, h = r.bbox
+            d["mix_id"] = region_mix.get(r.code)
+            d["grid_cells"] = cells_for_bbox([x, y, x + w, y + h], cv.width, cv.height)
         regions.append(d)
 
     stage_rows = []
@@ -102,6 +117,7 @@ def build_payload(
                 "focus_bbox": s.focus_bbox,
                 "text_source": text_source,
                 "region_codes": s.region_codes,
+                **({"phase": s.phase, "new_lines": s.new_lines, "grid_cells": s.grid_cells, "mix_id": s.mix_id} if v2 else {}),
             }
         )
 
@@ -132,6 +148,7 @@ def build_payload(
             "skill_goal": text.skill_goal or None,
             "culture_goal": text.culture_goal or None,
             "ai_text_status": text_source,
+            **({"structure_version": 2, "landmarks": cv.landmarks} if v2 else {}),
         },
         "regions": regions,
         "layers": layers,
@@ -139,7 +156,39 @@ def build_payload(
         "claims": claims,
         "reflection": reflection,
         "region_colors": region_colors or [],
+        **({"mixes": mixes_to_payload(mixes), "mix_colors": mix_colors or []} if v2 else {}),
         "session_id": session_id,
+    }
+
+
+def plan_tutorial(cv: CvResult, *, checkpoint_count: int, v2: bool) -> dict:
+    """Langkah + warna untuk satu tutorial, dipakai worker (mode bebas) dan impor koleksi.
+
+    v2 (TUTORIAL_V2): 3 fase ±16 langkah, maks 6 campuran (resep per campuran).
+    v1: planner lama 8 tahap, resep per region.
+    Return dict: stages, mixes (MixGroup | None), mix_ctx (untuk teks), region_colors, mix_colors."""
+    from color.mixes import group_regions, mix_colors_for, region_mix_map
+    from color.palettes import region_colors_for
+    from cv.stage_planner import plan_stages
+    from cv.step_planner import plan_steps
+
+    if not v2:
+        stages = plan_stages(cv.regions, use_shading=cv.use_shading, checkpoint_count=checkpoint_count,
+                             has_main_object_layer=cv.main_object_svg is not None)
+        return {"stages": stages, "mixes": None, "mix_ctx": None, "region_colors": region_colors_for(cv.regions), "mix_colors": None}
+    groups = group_regions(cv.regions)
+    stages = plan_steps(
+        cv.regions, region_mix_map(groups), [g.mix_id for g in groups],
+        use_shading=cv.use_shading, width=cv.width, height=cv.height,
+        has_block_in=cv.block_in_svg is not None, has_main_object_layer=cv.main_object_svg is not None,
+        landmark_cells=[p["grid_cell"] for p in cv.landmarks],
+    )
+    return {
+        "stages": stages,
+        "mixes": groups,
+        "mix_ctx": {g.mix_id: {"order_no": g.order_no, "name": g.name} for g in groups},
+        "region_colors": [],
+        "mix_colors": mix_colors_for(groups),
     }
 
 

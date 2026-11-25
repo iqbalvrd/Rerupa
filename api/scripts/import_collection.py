@@ -22,13 +22,11 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from ai.lesson_text import PROMPT_VERSION, write_lesson_text  # noqa: E402
-from color.palettes import region_colors_for  # noqa: E402
+from ai.lesson_text import prompt_version, write_lesson_text  # noqa: E402
 from core.config import get_settings  # noqa: E402
 from core.supabase_client import get_supabase  # noqa: E402
 from cv import pipeline  # noqa: E402
-from cv.stage_planner import plan_stages  # noqa: E402
-from services.lessons import build_payload, save_lesson, upload_layers  # noqa: E402
+from services.lessons import build_payload, plan_tutorial, save_lesson, upload_layers  # noqa: E402
 
 REQUIRED = ["slug", "title", "license", "image", "sources"]
 
@@ -107,9 +105,9 @@ def main() -> None:
         mask_model=settings.mask_model,
         use_shading=meta.get("use_shading"),
     )
-    stages = plan_stages(cv.regions, use_shading=cv.use_shading, checkpoint_count=settings.checkpoint_count,
-                         has_main_object_layer=cv.main_object_svg is not None)
-    text, source, notes = write_lesson_text(cv, stages, use_ai=True, safety_id="rs_collection", job_id=None)
+    plan = plan_tutorial(cv, checkpoint_count=settings.checkpoint_count, v2=settings.tutorial_v2)
+    stages = plan["stages"]
+    text, source, notes = write_lesson_text(cv, stages, use_ai=True, safety_id="rs_collection", job_id=None, mixes=plan["mix_ctx"])
     if meta.get("skill_goal"):
         text.skill_goal = meta["skill_goal"]
     if meta.get("culture_goal"):
@@ -124,7 +122,7 @@ def main() -> None:
     # 5. Versi baru lesson
     last = db.table("lesson_versions").select("version").eq("artwork_id", artwork["id"]).order("version", desc=True).limit(1).execute().data
     version = (last[0]["version"] + 1) if last else 1
-    layers = upload_layers(cv, "catalog", f"artworks/{slug}/v{version}")
+    layers = upload_layers(cv, "catalog", f"artworks/{slug}/v{version}", v2=plan["mixes"] is not None)
     payload = build_payload(
         cv, stages, text, source, layers,
         lesson={
@@ -133,19 +131,22 @@ def main() -> None:
             "version": version,
             "scope": meta.get("scope"),
             "checkpoint_count": settings.checkpoint_count,
-            "prompt_version": PROMPT_VERSION if source == "ai" else None,
+            "prompt_version": prompt_version(stages) if source == "ai" else None,
             "status": status,
             "reviewer": meta.get("reviewer"),
         },
         session_id=None,
         extra_claims=curated,
-        region_colors=region_colors_for(cv.regions),
+        region_colors=plan["region_colors"],
+        mixes=plan["mixes"],
+        mix_colors=plan["mix_colors"],
     )
     lesson_id = save_lesson(payload, layers)
     print(json.dumps({
         "artwork": slug, "status": status, "lesson_version_id": lesson_id, "version": version,
         "text_source": source, "notes": notes, "regions": len(cv.regions), "stages": len(stages),
         "use_shading": cv.use_shading, "warnings": cv.warnings, "timings_ms": cv.timings_ms,
+        "structure_version": 2 if plan["mixes"] is not None else 1, "mixes": len(plan["mixes"] or []),
     }, ensure_ascii=False, indent=2))
 
 

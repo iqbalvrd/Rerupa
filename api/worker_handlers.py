@@ -12,15 +12,13 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from ai.lesson_text import PROMPT_VERSION, write_lesson_text
-from color.palettes import region_colors_for
+from ai.lesson_text import prompt_version, write_lesson_text
 from core.config import get_settings
 from core.session import now_utc
 from core.supabase_client import get_supabase
 from cv import pipeline
-from cv.stage_planner import plan_stages
 from services import jobs as job_service
-from services.lessons import build_payload, save_lesson, upload_layers
+from services.lessons import build_payload, plan_tutorial, save_lesson, upload_layers
 from services.storage import with_retry
 
 log = logging.getLogger("rerupa.worker")
@@ -154,15 +152,9 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
             return JobOutcome("needs_retake", error_code=code, result={"reasons": cv.quality.reasons})
 
         job_service.set_progress(job["id"], "planning")
-        stages = plan_stages(
-            cv.regions,
-            use_shading=cv.use_shading,
-            checkpoint_count=settings.checkpoint_count,
-            has_main_object_layer=cv.main_object_svg is not None,
-        )
-
         job_service.set_progress(job["id"], "colors")
-        colors = region_colors_for(cv.regions)
+        plan = plan_tutorial(cv, checkpoint_count=settings.checkpoint_count, v2=settings.tutorial_v2)
+        stages = plan["stages"]
 
         job_service.set_progress(job["id"], "writing")
         text, source, notes = write_lesson_text(
@@ -172,6 +164,7 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
             safety_id=session["safety_id"],
             job_id=job["id"],
             still_allowed=lambda: _session_alive(job["session_id"]),
+            mixes=plan["mix_ctx"],
         )
 
         # Sesi dihapus selama proses → jangan simpan apa pun.
@@ -183,7 +176,7 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
 
         job_service.set_progress(job["id"], "saving")
         prefix = f"{job['session_id']}/{uuid.uuid4()}"
-        layers = upload_layers(cv, "derived", prefix)
+        layers = upload_layers(cv, "derived", prefix, v2=plan["mixes"] is not None)
         payload = build_payload(
             cv,
             stages,
@@ -196,11 +189,13 @@ def handle_generate_lesson(job: dict) -> JobOutcome:
                 "source_upload_id": job["upload_id"],
                 "scope": params.get("scope"),
                 "checkpoint_count": settings.checkpoint_count,
-                "prompt_version": PROMPT_VERSION if source == "ai" else None,
+                "prompt_version": prompt_version(stages) if source == "ai" else None,
                 "status": "session_private",
             },
             session_id=job["session_id"],
-            region_colors=colors,
+            region_colors=plan["region_colors"],
+            mixes=plan["mixes"],
+            mix_colors=plan["mix_colors"],
         )
         lesson_id = save_lesson(payload, layers)
         if source == "ai":

@@ -303,15 +303,18 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
         if hit and time.monotonic() - hit[0] < _CACHE_TTL:
             return hit[1]
 
+    v2 = (lesson.get("structure_version") or 1) == 2
+    region_cols = "id, code, hex, area_pct, bbox, centroid, is_main_object, is_background, value_level, label" + (", mix_id, grid_cells" if v2 else "")
     q = {
         "layers": lambda: db.table("visual_layers").select("kind, bucket, asset_path, format, meta, purged_at").eq("lesson_version_id", lid).execute().data,
-        "regions": lambda: db.table("regions").select("id, code, hex, area_pct, bbox, centroid, is_main_object, is_background, value_level, label, mix_id, grid_cells").eq("lesson_version_id", lid).order("code").execute().data,
+        "regions": lambda: db.table("regions").select(region_cols).eq("lesson_version_id", lid).order("code").execute().data,
         "stages": lambda: db.table("stages").select("*, stage_regions(regions(code))").eq("lesson_version_id", lid).order("order_no").execute().data,
         "claims": lambda: db.table("culture_claims").select("text, type, order_no, stage_id, culture_claim_sources(sources(code, title, url))").eq("lesson_version_id", lid).order("order_no").execute().data,
         "refl": lambda: db.table("reflection_questions").select("question, options, correct_option, sources(code, title, url)").eq("lesson_version_id", lid).limit(1).execute().data,
-        "colors": lambda: _color_rows(db, lid, pid),
-        "mixes": lambda: db.table("lesson_mixes").select("mix_id, order_no, name, target_hex, max_region_delta_e").eq("lesson_version_id", lid).order("order_no").execute().data,
-        "mix_colors": lambda: _mix_color_rows(db, lid, pid),
+        "colors": lambda: [] if v2 else _color_rows(db, lid, pid),
+        # Tabel v2 hanya dibaca untuk lesson v2: DB tanpa migrasi tutorial bertahap tetap aman.
+        "mixes": lambda: db.table("lesson_mixes").select("mix_id, order_no, name, target_hex, max_region_delta_e").eq("lesson_version_id", lid).order("order_no").execute().data if v2 else [],
+        "mix_colors": lambda: _mix_color_rows(db, lid, pid) if v2 else [],
         "paints": lambda: db.table("paints").select("id, code, name, hex").eq("palette_id", pid).execute().data if pid else [],
     }
     futures = {k: _POOL.submit(f) for k, f in q.items()}
@@ -344,7 +347,7 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
             LayerOut(kind=l["kind"], format=l["format"], url=None if l["purged_at"] else urls.get(l["asset_path"]), meta=l["meta"], purged=bool(l["purged_at"]))
             for l in layers
         ],
-        regions=[RegionOut(**{k: x[k] for k in RegionOut.model_fields}) for x in regions],
+        regions=[RegionOut(**{k: x[k] for k in RegionOut.model_fields if k in x}) for x in regions],
         stages=[
             StageOut(
                 **{k: s[k] for k in ("code", "order_no", "kind", "is_checkpoint", "layers", "title", "action", "tools", "done_when", "common_mistakes", "focus_bbox", "text_source")},

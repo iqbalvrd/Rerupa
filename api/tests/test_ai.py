@@ -346,3 +346,16 @@ def test_v2_prompt_is_used_for_phased_stages():
 
     assert lesson_text.prompt_version(_v2_stages()) == "stage_text.v2"
     assert "kotak" in lesson_text.INSTRUCTIONS_V2 and "lipatan" in lesson_text.INSTRUCTIONS_V2
+
+
+def test_v2_paint_mix_title_matches_mix_card():
+    from ai.schemas import LessonText, StageText, StyleAnalysis
+    from ai.validators import sanitize
+
+    out = LessonText(
+        style=StyleAnalysis(technique="garis_bidang_datar", use_shading=False, reason="x"), skill_goal="x", culture_goal="",
+        stages=[StageText(stage_code="step_1", title="Titik", action="Tandai di kotak B1.", tools=[], done_when="ok", common_mistakes=[]),
+                StageText(stage_code="step_2", title="Campuran 2: krem persik", action="Warnai mulai dari kotak A2.", tools=[], done_when="ok", common_mistakes=[])],
+        region_labels=[], culture_claims=[], reflection=None)
+    fixed, _ = sanitize(out, _v2_stages(), {"r01"}, set(), False, {"m2": {"order_no": 2, "name": "krem"}}, ["B1"])
+    assert fixed.stages[1].title == "Campuran 2: krem"

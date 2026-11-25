@@ -109,7 +109,7 @@ def post_event(body: EventIn, request: Request) -> Response:
     for k, v in body.props.items():
         if k not in events.ALLOWED_PROPS:
             continue
-        if k == "stage_order" and isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= 8:
+        if k == "stage_order" and isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= 20:
             props[k] = v
         elif k == "origin" and v in ("collection", "free_mode"):
             props[k] = v

@@ -114,6 +114,8 @@ class RegionOut(BaseModel):
     is_background: bool
     value_level: int | None
     label: str | None
+    mix_id: str | None = None  # v2: campuran untuk region ini
+    grid_cells: list[str] = []  # v2: kotak grid yang disentuh region
 
 
 class StageOut(BaseModel):
@@ -130,6 +132,26 @@ class StageOut(BaseModel):
     common_mistakes: list[str]
     focus_bbox: list[int] | None
     text_source: str
+    # v2 (structure_version 2); null/kosong pada lesson lama
+    phase: str | None = None  # sketch | color | finishing
+    new_lines: str | None = None  # lapisan yang garisnya baru di langkah ini
+    grid_cells: list[str] = []
+    mix_id: str | None = None
+
+
+class PhaseOut(BaseModel):
+    code: str
+    title: str
+    stage_codes: list[str]
+
+
+class LandmarkOut(BaseModel):
+    no: int
+    x: int
+    y: int
+    grid_cell: str
+    kind: str
+    label: str | None = None
 
 
 class SourceRef(BaseModel):
@@ -172,6 +194,24 @@ class RegionColorOut(BaseModel):
     tips: list[str]
 
 
+class MixOut(BaseModel):
+    mix_id: str
+    order_no: int
+    name: str | None
+    target_hex: str
+    palette_id: UUID | None
+    reachability: str | None
+    label: str | None
+    recipe_id: UUID | None
+    components: list[ColorComponent]
+    mixed_hex: str | None
+    delta_e: float | None
+    explanation: str | None
+    tips: list[str]
+    region_codes: list[str]
+    max_region_delta_e: float | None
+
+
 REACH_LABEL = {"recipe": "Resep teruji", "estimate": "Perkiraan, uji sedikit dulu", "hard": "Sulit dicapai dengan palet ini"}
 
 
@@ -193,7 +233,15 @@ class LessonOut(BaseModel):
     culture_claims: list[ClaimOut]
     reflection: ReflectionOut | None
     palette_id: UUID | None
-    region_colors: list[RegionColorOut]
+    region_colors: list[RegionColorOut]  # v1; kosong pada v2 (warna region = mixes[mix_id])
+    # v2 (lihat API.md "Tutorial bertahap")
+    structure_version: int = 1
+    phases: list[PhaseOut] = []
+    landmarks: list[LandmarkOut] = []
+    mixes: list[MixOut] = []
+
+
+PHASE_TITLES = {"sketch": "Sketsa", "color": "Warna", "finishing": "Finishing"}
 
 
 def _optional_session(request: Request) -> dict | None:
@@ -257,11 +305,13 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
 
     q = {
         "layers": lambda: db.table("visual_layers").select("kind, bucket, asset_path, format, meta, purged_at").eq("lesson_version_id", lid).execute().data,
-        "regions": lambda: db.table("regions").select("id, code, hex, area_pct, bbox, centroid, is_main_object, is_background, value_level, label").eq("lesson_version_id", lid).order("code").execute().data,
+        "regions": lambda: db.table("regions").select("id, code, hex, area_pct, bbox, centroid, is_main_object, is_background, value_level, label, mix_id, grid_cells").eq("lesson_version_id", lid).order("code").execute().data,
         "stages": lambda: db.table("stages").select("*, stage_regions(regions(code))").eq("lesson_version_id", lid).order("order_no").execute().data,
         "claims": lambda: db.table("culture_claims").select("text, type, order_no, stage_id, culture_claim_sources(sources(code, title, url))").eq("lesson_version_id", lid).order("order_no").execute().data,
         "refl": lambda: db.table("reflection_questions").select("question, options, correct_option, sources(code, title, url)").eq("lesson_version_id", lid).limit(1).execute().data,
         "colors": lambda: _color_rows(db, lid, pid),
+        "mixes": lambda: db.table("lesson_mixes").select("mix_id, order_no, name, target_hex, max_region_delta_e").eq("lesson_version_id", lid).order("order_no").execute().data,
+        "mix_colors": lambda: _mix_color_rows(db, lid, pid),
         "paints": lambda: db.table("paints").select("id, code, name, hex").eq("palette_id", pid).execute().data if pid else [],
     }
     futures = {k: _POOL.submit(f) for k, f in q.items()}
@@ -298,6 +348,10 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
         stages=[
             StageOut(
                 **{k: s[k] for k in ("code", "order_no", "kind", "is_checkpoint", "layers", "title", "action", "tools", "done_when", "common_mistakes", "focus_bbox", "text_source")},
+                phase=s.get("phase"),
+                new_lines=s.get("new_lines"),
+                grid_cells=s.get("grid_cells") or [],
+                mix_id=s.get("mix_id"),
                 new_region_codes=sorted(sr["regions"]["code"] for sr in s.get("stage_regions") or [] if sr.get("regions")),
             )
             for s in stages
@@ -323,11 +377,77 @@ def get_lesson(lesson_id: UUID, request: Request, palette_id: UUID | None = Quer
         ),
         palette_id=pid,
         region_colors=_region_colors(r["colors"], r["paints"]),
+        structure_version=lesson.get("structure_version") or 1,
+        phases=_phases(stages),
+        landmarks=[LandmarkOut(**m) for m in lesson.get("landmarks") or []],
+        mixes=_mixes(r["mixes"], r["mix_colors"], r["paints"], regions),
     )
     if cacheable:
         if len(_CACHE) >= _CACHE_MAX:
             _CACHE.pop(min(_CACHE, key=lambda k: _CACHE[k][0]))
         _CACHE[(lid, pid)] = (time.monotonic(), out)
+    return out
+
+
+def _phases(stages: list[dict]) -> list[PhaseOut]:
+    """Fase urut tampil (Sketsa, Warna, Finishing) dari stages[].phase; kosong pada lesson lama."""
+    out = []
+    for code, title in PHASE_TITLES.items():
+        codes = [s["code"] for s in stages if s.get("phase") == code]
+        if codes:
+            out.append(PhaseOut(code=code, title=title, stage_codes=codes))
+    return out
+
+
+def _mix_color_rows(db, lesson_id: str, pid: str | None) -> list[dict]:
+    if not pid:
+        return []
+    return (
+        db.table("mix_colors")
+        .select("mix_id, palette_id, recipe_id, estimate, reachability, explanation, color_recipes(target_hex, delta_e, components)")
+        .eq("lesson_version_id", lesson_id)
+        .eq("palette_id", pid)
+        .execute()
+        .data
+    )
+
+
+def _components(raw: list[dict], paints: dict[str, dict]) -> list[ColorComponent]:
+    comps = [
+        ColorComponent(paint_code=paints[c["paint_id"]]["code"], name=paints[c["paint_id"]]["name"], hex=paints[c["paint_id"]]["hex"], parts=int(c["parts"]))
+        for c in raw
+        if c.get("paint_id") in paints
+    ]
+    return sorted(comps, key=lambda c: -c.parts)
+
+
+def _mixes(mix_rows: list[dict], color_rows: list[dict], paint_rows: list[dict], regions: list[dict]) -> list[MixOut]:
+    """Kartu campuran v2 untuk satu palet. Angka dari mixer/uji fisik, bukan AI."""
+    paints = {p["id"]: p for p in paint_rows}
+    colors = {c["mix_id"]: c for c in color_rows}
+    out = []
+    for m in mix_rows:
+        c = colors.get(m["mix_id"]) or {}
+        est = c.get("estimate") or {}
+        rec = c.get("color_recipes") or {}
+        reach = c.get("reachability")
+        out.append(MixOut(
+            mix_id=m["mix_id"],
+            order_no=m["order_no"],
+            name=m["name"],
+            target_hex=m["target_hex"],
+            palette_id=c.get("palette_id"),
+            reachability=reach,
+            label=REACH_LABEL.get(reach) if reach else None,
+            recipe_id=c.get("recipe_id"),
+            components=_components(est.get("components") or rec.get("components") or [], paints),
+            mixed_hex=est.get("mixed_hex") or rec.get("target_hex"),
+            delta_e=est.get("delta_e", rec.get("delta_e")),
+            explanation=c.get("explanation"),
+            tips=est.get("tips") or [],
+            region_codes=sorted(r["code"] for r in regions if r.get("mix_id") == m["mix_id"]),
+            max_region_delta_e=m["max_region_delta_e"],
+        ))
     return out
 
 
@@ -351,12 +471,7 @@ def _region_colors(rows: list[dict], paint_rows: list[dict]) -> list[RegionColor
     for row in rows:
         est = row.get("estimate") or {}
         rec = row.get("color_recipes") or {}
-        raw = est.get("components") or rec.get("components") or []
-        comps = [
-            ColorComponent(paint_code=paints[c["paint_id"]]["code"], name=paints[c["paint_id"]]["name"], hex=paints[c["paint_id"]]["hex"], parts=int(c["parts"]))
-            for c in raw
-            if c.get("paint_id") in paints
-        ]
+        comps = _components(est.get("components") or rec.get("components") or [], paints)
         out.append(
             RegionColorOut(
                 region_code=row["regions"]["code"],
@@ -364,7 +479,7 @@ def _region_colors(rows: list[dict], paint_rows: list[dict]) -> list[RegionColor
                 reachability=row["reachability"],
                 label=REACH_LABEL[row["reachability"]],
                 recipe_id=row["recipe_id"],
-                components=sorted(comps, key=lambda c: -c.parts),
+                components=comps,
                 mixed_hex=est.get("mixed_hex") or rec.get("target_hex"),
                 delta_e=est.get("delta_e", rec.get("delta_e")),
                 explanation=row["explanation"],

@@ -7,6 +7,7 @@ from dataclasses import asdict
 
 from ai.schemas import LessonText
 from core.supabase_client import get_supabase
+from cv.grid import grid_dims
 from cv.stage_planner import PlannedStage
 from cv.types import CvResult
 from services.storage import is_duplicate, with_retry
@@ -15,9 +16,8 @@ log = logging.getLogger("rerupa.lessons")
 
 
 def grid_svg(width: int, height: int, cells_short_side: int = 4) -> tuple[str, dict]:
-    """Grid kotak hampir persegi: sisi pendek dibagi 4."""
-    cell = min(width, height) / cells_short_side
-    cols, rows = max(1, round(width / cell)), max(1, round(height / cell))
+    """Grid kotak hampir persegi: sisi pendek dibagi 4 (nama kotak: cv/grid.py)."""
+    cols, rows = grid_dims(width, height, cells_short_side)
     lines = [f'<line x1="{width * i / cols:.1f}" y1="0" x2="{width * i / cols:.1f}" y2="{height}"/>' for i in range(1, cols)]
     lines += [f'<line x1="0" y1="{height * j / rows:.1f}" x2="{width}" y2="{height * j / rows:.1f}"/>' for j in range(1, rows)]
     body = f'<g stroke="#9A9A9A" stroke-width="1.5" stroke-dasharray="6 6">{"".join(lines)}</g>'

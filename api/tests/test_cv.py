@@ -234,3 +234,78 @@ def test_rembg_mask_runs(model):
 
     mask = main_object_mask(figure_image(), model)
     assert mask is None or mask.shape == (1200, 900)
+
+
+# ---------- tutorial bertahap: tingkat garis, patokan, grid ----------
+
+def test_grid_cell_names():
+    from cv import grid
+
+    assert grid.grid_dims(800, 1200) == (4, 6)
+    assert grid.cell_name(0, 0, 800, 1200) == "A1"
+    assert grid.cell_name(799, 1199, 800, 1200) == "D6"
+    assert grid.cells_for_bbox([150, 150, 250, 250], 800, 1200) == ["A1", "B1", "A2", "B2"]
+
+
+def test_coarse_keeps_long_shapes_and_drops_short_marks():
+    edges = np.zeros((600, 600), np.float32)
+    cv2.circle(edges, (300, 300), 200, 0.9, 3)  # bentuk besar
+    for x in range(60, 540, 40):  # coretan pendek
+        edges[30:40, x] = 0.9
+    out = lineart.coarse_lines(edges)
+    assert out[300, 100:104].max() == 255  # sisi kiri lingkaran
+    assert out[30:40, 300].max() == 0
+
+
+def test_coarse_breaks_dense_lattice_into_few_long_segments():
+    """Kisi rapat (petak sawah) tidak boleh lolos utuh sebagai 'garis panjang'."""
+    edges = np.zeros((600, 600), np.float32)
+    for v in range(0, 600, 20):
+        edges[v, :] = 0.9
+        edges[:, v] = 0.9
+    out = lineart.coarse_lines(edges)
+    assert lineart._skeleton_length(out) <= lineart.COARSE_MAX_LENGTH * 1200 * 1.2
+
+
+def test_split_by_object_and_subtract():
+    lines = np.zeros((300, 300), np.uint8)
+    cv2.line(lines, (50, 50), (250, 50), 255, 3)  # menyentuh objek
+    cv2.line(lines, (50, 250), (250, 250), 255, 3)  # latar
+    mask = np.zeros((300, 300), np.uint8)
+    mask[40:150, 40:260] = 1
+    obj, bg = lineart.split_by_object(lines, mask)
+    assert obj[50, 150] == 255 and bg[50, 150] == 0 and bg[250, 150] == 255
+    assert lineart.subtract_lines(lines, obj)[50, 150] == 0
+
+
+def test_detail_keeps_dark_lines_and_drops_tone_edges():
+    """Garis gelap tipis (mata, motif) tetap; tepi antara dua nada (lipatan, bayangan) dibuang."""
+    img = np.full((300, 300, 3), 200, np.uint8)
+    img[:, 150:] = 90  # tepi nada di x=150
+    cv2.line(img, (20, 60), (120, 60), (20, 20, 20), 2)  # garis gelap sungguhan
+    lines = np.zeros((300, 300), np.uint8)
+    cv2.line(lines, (20, 60), (120, 60), 255, 3)
+    cv2.line(lines, (150, 100), (150, 280), 255, 3)
+    out = lineart.select_detail_lines(lines, img, flat=False)
+    assert out[60, 70] == 255 and out[200, 150] == 0
+
+
+def test_landmarks_are_spread_named_and_inside():
+    from cv import landmarks
+
+    coarse = np.zeros((600, 400), np.uint8)
+    cv2.ellipse(coarse, (200, 300), (120, 220), 0, 0, 360, 255, 3)
+    mask = np.zeros((600, 400), np.uint8)
+    cv2.ellipse(mask, (200, 300), (120, 220), 0, 0, 360, 1, -1)
+    pts = landmarks.find_landmarks(coarse, np.zeros_like(coarse), mask)
+    assert landmarks.MIN_POINTS <= len(pts) <= landmarks.MAX_POINTS
+    assert all(re.fullmatch(r"[A-D][1-6]", p.grid_cell) for p in pts)
+    assert [p.no for p in pts] == list(range(1, len(pts) + 1))
+
+
+def test_pipeline_produces_line_levels_and_landmarks():
+    res = pipeline.run(to_jpeg(figure_image()), mask_model=None, lineart_method="xdog")
+    assert res.background_lines_svg.startswith("<svg") and 'data-layer="background_lines"' in res.background_lines_svg
+    assert res.landmarks_svg.startswith("<svg")
+    assert set(res.line_counts) == {"block_in", "background_lines", "contour_new", "detail"}
+    assert res.block_in_svg is None  # tanpa objek utama: semua garis tingkat 1 jadi latar

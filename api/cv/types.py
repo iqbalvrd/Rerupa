@@ -39,9 +39,9 @@ class CvResult:
     quality: Quality
     regions: list[Region]
     # Lapisan: SVG (string) atau PNG (bytes) — semuanya ukuran width × height
-    lineart_png: bytes  # garis gelap, latar transparan
+    lineart_png: bytes  # garis DETAIL terpilih (tingkat 3): hanya garis sungguhan, tanpa lipatan/bayangan
     regions_svg: str
-    sketch_svg: str  # garis kontur objek (tanpa lipatan/motif) + siluet objek utama
+    sketch_svg: str  # kontur LENGKAP (tingkat 1 + 2) + siluet objek utama; acuan checkpoint sketsa
     main_object_svg: str | None
     value_svg: str | None
     numbered_png: bytes  # region berwarna + nomor, ≤1024 px, untuk AI
@@ -49,6 +49,12 @@ class CvResult:
     original_jpeg: bytes  # foto ternormalisasi (untuk toggle "Foto asli")
     timings_ms: dict[str, int] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    # Tutorial bertahap (structure_version 2): tingkat garis 1 + titik patokan
+    block_in_svg: str | None = None  # bentuk kasar objek utama; None bila tidak ada objek utama
+    background_lines_svg: str = ""  # garis besar latar
+    landmarks: list[dict] = field(default_factory=list)  # [{no, x, y, grid_cell, kind, label}]
+    landmarks_svg: str = ""
+    line_counts: dict[str, int] = field(default_factory=dict)  # jumlah garis per tingkat (evaluasi)
 
     def summary(self) -> dict:
         """Ringkasan tanpa data biner (untuk log, laporan evaluasi, dan prompt AI)."""

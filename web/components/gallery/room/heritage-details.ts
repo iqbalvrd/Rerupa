@@ -1,5 +1,67 @@
 import * as THREE from "three";
 
+/** A single stone mosaic sheet keeps the border and central rosette in one draw call. */
+export function floorInlayTexture(width: number, length: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = Math.min(2048, Math.round(1024 * length / width));
+  const ctx = canvas.getContext("2d")!;
+  ctx.scale(canvas.width / width, canvas.height / length);
+  ctx.fillStyle = "#c9bda5";
+  ctx.fillRect(0, 0, width, length);
+  let seed = 93;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const tile = 1.2;
+  for (let y = 0; y < length; y += tile) for (let x = 0; x < width; x += tile) {
+    const shade = Math.round(random() * 12);
+    ctx.fillStyle = `rgb(${201 + shade},${191 + shade},${173 + shade})`;
+    ctx.fillRect(x + 0.008, y + 0.008, tile - 0.016, tile - 0.016);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, tile, tile); ctx.clip();
+    for (let i = 0; i < 5; i++) {
+      const vy = y + random() * tile;
+      ctx.strokeStyle = i % 2 ? "#fff4db25" : "#82735f18";
+      ctx.lineWidth = 0.008 + random() * 0.012;
+      ctx.beginPath(); ctx.moveTo(x, vy);
+      ctx.bezierCurveTo(x + 0.4, vy - 0.15, x + 0.75, vy + 0.2, x + tile, vy - 0.1);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  for (const [inset, weight, color] of [[0.65, 0.21, "#526052"], [0.82, 0.035, "#a17e4f"], [1.02, 0.035, "#a17e4f"]] as const) {
+    ctx.lineWidth = weight; ctx.strokeStyle = color;
+    ctx.strokeRect(inset, inset, width - inset * 2, length - inset * 2);
+  }
+  // Small brass and terracotta inserts punctuate the green stone perimeter.
+  for (const x of [0.65, width - 0.65]) for (let y = 1.6; y < length - 1; y += 1.2) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = "#bfa373"; ctx.fillRect(-0.075, -0.075, 0.15, 0.15);
+    ctx.restore();
+  }
+  ctx.save(); ctx.translate(width / 2, length * 0.34);
+  for (const [radius, weight, color] of [[1.42, 0.12, "#526052"], [1.29, 0.025, "#a17e4f"], [0.99, 0.025, "#a17e4f"]] as const) {
+    ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = color; ctx.lineWidth = weight; ctx.stroke();
+  }
+  for (let i = 0; i < 8; i++) {
+    ctx.save(); ctx.rotate(i * Math.PI / 4);
+    ctx.beginPath(); ctx.moveTo(0, -0.06);
+    ctx.bezierCurveTo(-0.32, -0.35, -0.22, -0.72, 0, -0.93);
+    ctx.bezierCurveTo(0.22, -0.72, 0.32, -0.35, 0, -0.06);
+    ctx.fillStyle = i % 2 ? "#a47e5b" : "#64705e"; ctx.fill();
+    ctx.strokeStyle = "#c4ab7d"; ctx.lineWidth = 0.018; ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
 export function carvedWoodTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 512;

@@ -15,7 +15,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { PictureBeam, PictureSpotlights } from "./picture-lighting";
 import { SunsetWindows } from "./sunset-windows";
 import { frameTexture } from "./frame-texture";
-import { bronzeReliefTexture, carvedWoodTexture, centerpieceGeometry, wallReliefTexture } from "./heritage-details";
+import { bronzeReliefTexture, carvedWoodTexture, centerpieceGeometry, floorInlayTexture, wallReliefTexture } from "./heritage-details";
 import { softDiscTexture, surfaceTextures } from "./surface-textures";
 import {
   HALL,
@@ -33,7 +33,7 @@ import {
   type Slot,
 } from "./plan";
 
-export type Exhibit = { key: string; title: string } & ({ kind: "artwork"; src: string } | { kind: "upload" });
+export type Exhibit = { key: string; title: string } & ({ kind: "artwork"; src: string } | { kind: "upload" } | { kind: "placeholder"; aspect: number });
 
 export type RoomTarget = { kind: "overview" } | { kind: "slot"; index: number };
 
@@ -281,9 +281,6 @@ function Shell({ plan, m }: { plan: RoomPlan; m: Materials }) {
     <Box m={m.stone} size={[W,0.22,0.45]} at={[0,0.11,-D/2+0.2]} />
     {[-1, 1].map(sign => <group key={sign}>
       <group position={[sign * (W / 2 - 0.01), 0, 0]} rotation={[0, -sign * Math.PI / 2, 0]}><WallPanels length={D} m={m} /></group>
-      {plan.slots.filter(slot => slot.wall === (sign < 0 ? "left" : "right")).map(slot => <group key={slot.index} position={[sign * (W / 2 - 0.025), entablatureY + (Y - entablatureY) * 0.53, slot.center[2]]} rotation={[0, -sign * Math.PI / 2, 0]}>
-        <mesh material={m.wallRelief}><planeGeometry args={[2.2, 1.65]} /></mesh>
-      </group>)}
       <Box m={m.wall} size={[0.24, Y, D]} at={[sign * (W / 2 + 0.12), Y / 2, 0]} />
       <Box m={m.stone} size={[0.1, 0.22, D]} at={[sign * (W / 2 - 0.05), 0.11, 0]} />
       <Box m={m.iron} size={[0.12, 0.08, D]} at={[sign * (W / 2 - 0.06), Y - 0.12, 0]} r={0.01} />
@@ -296,7 +293,7 @@ function Shell({ plan, m }: { plan: RoomPlan; m: Materials }) {
       </group>
       <Box m={m.iron} size={[0.08, 0.1, D]} at={[sign * roofHalf, Y + rise, 0]} r={0.01} />
       {/* Repeated piers between the paintings reinforce the hall's depth. */}
-      {[ -D / 2 + 0.4, ...plan.slots.filter(slot => slot.wall === (sign < 0 ? "left" : "right")).slice(1).map(slot=>slot.center[2]-1.9)].map((z,i)=><group key={i} position={[sign*(W/2-0.24),0,z]} rotation={[0,-sign*Math.PI/2,0]}><HallPier m={m} height={entablatureY - 0.08} /></group>)}
+      {[ -D / 2 + 0.4, ...plan.slots.filter(slot => slot.wall === (sign < 0 ? "left" : "right") && !slot.upper).slice(1).map(slot=>slot.center[2]-1.9)].map((z,i)=><group key={i} position={[sign*(W/2-0.24),0,z]} rotation={[0,-sign*Math.PI/2,0]}><HallPier m={m} height={entablatureY - 0.08} /></group>)}
       {[[-0.12,0.16,0.4],[0.08,0.2,0.52],[0.28,0.12,0.64]].map(([dy,h,w],i)=><Box key={`side-cornice${i}`} m={m.trim} size={[w,h,D]} at={[sign*(W/2-w/2),entablatureY+dy,0]} />)}
       <group position={[sign * (W / 2 - 0.521), entablatureY + 0.08, 0]} rotation={[0, -sign * Math.PI / 2, 0]}>
         <CarvedFrieze length={D} material={m.carvedWood} />
@@ -350,7 +347,9 @@ function Floor({ plan }: { plan: RoomPlan }) {
     const textures = surfaceTextures("stone");
     textures.map.repeat.set(W / 3.6, len / 3.6);
     textures.bumpMap.repeat.copy(textures.map.repeat);
-    return new THREE.MeshStandardMaterial({ ...textures, roughness: 0.7, metalness: 0, bumpScale: 0.018, envMapIntensity: 0.4 });
+    textures.map.dispose();
+    const inlay = floorInlayTexture(W, len);
+    return new THREE.MeshStandardMaterial({ map: inlay, bumpMap: textures.bumpMap, roughness: 0.66, metalness: 0, bumpScale: 0.012, envMapIntensity: 0.4 });
   }, [W, len]);
   useEffect(() => () => { material.map?.dispose(); material.bumpMap?.dispose(); material.dispose(); }, [material]);
   return <mesh position={[0,0,4]} rotation={[-Math.PI/2,0,0]} material={material}><planeGeometry args={[W,len]} /></mesh>;
@@ -366,6 +365,7 @@ function Exhibits({ plan, exhibits, control, anchors, m }: { plan: RoomPlan; m: 
     let k = 0;
     return exhibits.map((e) => {
       if (e.kind === "upload") return uploadTexture();
+      if (e.kind === "placeholder") return blankTexture();
       const tex = list[k++];
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -374,11 +374,13 @@ function Exhibits({ plan, exhibits, control, anchors, m }: { plan: RoomPlan; m: 
   }, [loaded, exhibits]);
   const sizes = useMemo(
     () =>
-      textures.map((tex) => {
+      textures.map((tex, i) => {
+        const exhibit = exhibits[i];
+        if (exhibit.kind === "placeholder") return paintingSize(exhibit.aspect);
         const img = tex.image as { width?: number; height?: number } | undefined;
         return paintingSize(img?.width && img?.height ? img.width / img.height : 4 / 5);
       }),
-    [textures],
+    [textures, exhibits],
   );
   return (
     <>
@@ -528,6 +530,19 @@ function wrap(g: CanvasRenderingContext2D, text: string, maxW: number, maxLines:
     return kept;
   }
   return lines;
+}
+
+let blankTex: THREE.CanvasTexture | null = null;
+function blankTexture() {
+  if (blankTex) return blankTex;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#f4efe5";
+  ctx.fillRect(0, 0, 256, 256);
+  blankTex = new THREE.CanvasTexture(canvas);
+  blankTex.colorSpace = THREE.SRGBColorSpace;
+  return blankTex;
 }
 
 let uploadTex: THREE.CanvasTexture | null = null;

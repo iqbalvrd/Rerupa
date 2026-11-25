@@ -11,7 +11,7 @@ import { HowItWorks } from "../how-it-works";
 import { GALLERY_SOURCE, artworkByline, howtoSample, licenseLabel, useArtworks, usePrefetchArtwork, type GalleryArtwork } from "@/lib/artworks";
 import { clearGalleryEntrance, isGalleryEntrance } from "@/lib/gallery-entrance";
 import { lastArtwork, navigateToArtwork, rememberArtwork, takeGalleryReturn } from "@/lib/view-transition";
-import { adjacentGalleryIndex, galleryNavigationOrder, planRoom } from "./plan";
+import { adjacentGalleryIndex, galleryNavigationOrder, planRoom, withUpperShowcases } from "./plan";
 import type { Exhibit, RoomControl, RoomTarget } from "./room-scene";
 import styles from "./gallery-room.module.css";
 
@@ -32,6 +32,10 @@ export function GalleryRoom() {
       a.thumbnail_url ? [{ exhibit: { key: a.id, kind: "artwork" as const, src: a.thumbnail_url, title: a.title }, artwork: a }] : [],
     );
     list.push({ exhibit: { key: "upload", kind: "upload", title: "Foto lukisanmu" }, artwork: null });
+    const upper = withUpperShowcases(planRoom(list.length)).slots.filter(s => s.upper);
+    for (const [i, slot] of upper.entries()) list.push({
+      exhibit: { key: `showcase-atas-${i + 1}`, kind: "placeholder", title: `Koleksi mendatang ${i + 1}`, aspect: slot.wall === "back" ? 0.65 : 1.35 }, artwork: null,
+    });
     return list;
   }, [artworks.isPending, artworks.data]);
   const exhibits = useMemo(() => items.map((i) => i.exhibit), [items]);
@@ -43,7 +47,7 @@ export function GalleryRoom() {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
   }, []);
-  const plan = useMemo(() => planRoom(items.length, aspect), [items.length, aspect]);
+  const plan = useMemo(() => withUpperShowcases(planRoom(items.filter(i => i.exhibit.kind !== "placeholder").length, aspect)), [items, aspect]);
   const count = items.length;
   const navigationOrder = useMemo(() => items.length ? galleryNavigationOrder(plan) : [], [plan, items.length]);
 
@@ -254,12 +258,13 @@ export function GalleryRoom() {
           {items.map((item, i) => {
             const a = item.artwork;
             const isHere = mode === "single" && i === current && !walking;
-            const label = isHere ? (a ? `Buka ${item.exhibit.title}` : "Unggah foto lukisanmu") : `Dekati ${item.exhibit.title}`;
+            const placeholder = item.exhibit.kind === "placeholder";
+            const label = isHere ? (placeholder ? `Buka ${item.exhibit.title}` : a ? `Buka ${item.exhibit.title}` : "Unggah foto lukisanmu") : `Dekati ${item.exhibit.title}`;
             return (
               <Link
                 key={item.exhibit.key}
                 ref={(el) => void (anchors.current[i] = el)}
-                href={a ? `/karya/${a.slug}` : "/unggah"}
+                href={a ? `/karya/${a.slug}` : placeholder ? `/galeri/koleksi-mendatang/${item.exhibit.key}` : "/unggah"}
                 className={styles.hit}
                 aria-label={label}
                 aria-current={isHere ? "true" : undefined}
@@ -316,6 +321,7 @@ export function GalleryRoom() {
 
         {mode === "overview" && count > 0 && !walking && (
           <nav className={styles.actions} aria-label="Pilih dinding galeri">
+            <button className={styles.pill} onClick={() => { const slot = plan.slots.find(s => s.upper); if (slot) go({ kind: "slot", index: slot.index }); }}>Showcase atas</button>
             {([["left", "Dinding kiri"], ["back", "Dinding depan"], ["right", "Dinding kanan"]] as const).map(([wall, label]) => {
               const slot = navigationOrder.map(i => plan.slots[i]).find(s => s.wall === wall);
               return slot ? <button key={wall} className={styles.pill} onClick={() => go({ kind: "slot", index: slot.index })}>{label}</button> : null;
@@ -332,7 +338,7 @@ export function GalleryRoom() {
                   {artworkByline(here.artwork)} · {licenseLabel(here.artwork.license)}
                 </span>
               ) : (
-                <span className={styles.plaqueMeta}>Mode bebas · foto dari HP atau galeri</span>
+                <span className={styles.plaqueMeta}>{here.exhibit.kind === "placeholder" ? "Karya akan segera hadir" : "Mode bebas · foto dari HP atau galeri"}</span>
               )}
             </div>
             <div className={styles.actions}>
@@ -353,8 +359,8 @@ export function GalleryRoom() {
                   Pelajari karya ini
                 </Link>
               ) : (
-                <Link href="/unggah" className={`${styles.pill} ${styles.primary}`}>
-                  Unggah foto
+                <Link href={here.exhibit.kind === "placeholder" ? `/galeri/koleksi-mendatang/${here.exhibit.key}` : "/unggah"} className={`${styles.pill} ${styles.primary}`}>
+                  {here.exhibit.kind === "placeholder" ? "Lihat showcase" : "Unggah foto"}
                 </Link>
               )}
             </div>
@@ -373,7 +379,7 @@ export function GalleryRoom() {
                   type="button"
                   className={styles.marker}
                   aria-current={i === current ? "true" : undefined}
-                  aria-label={items[i].artwork ? `Ke karya ${position + 1}: ${items[i].exhibit.title}` : "Ke bingkai Foto lukisanmu"}
+                  aria-label={items[i].artwork ? `Ke karya ${position + 1}: ${items[i].exhibit.title}` : `Ke bingkai ${items[i].exhibit.title}`}
                   onClick={() => i !== current && go({ kind: "slot", index: i })}
                 />
               ))}

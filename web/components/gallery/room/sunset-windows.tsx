@@ -40,11 +40,14 @@ function eveningSky() {
   return canvas;
 }
 
-/** One small animated texture shared by both windows. The geometry clips birds to the glazing. */
+/** Both windows share the sky palette; only the front window animates birds. */
 export function SunsetWindows({ plan, control }: { plan: RoomPlan; control: RefObject<RoomControl> }) {
   const invalidate = useThree(state => state.invalidate);
   const sky = useMemo(() => {
     const background = eveningSky();
+    const roofTexture = new THREE.CanvasTexture(background);
+    roofTexture.colorSpace = THREE.SRGBColorSpace;
+    const roofMaterial = new THREE.MeshBasicMaterial({ map: roofTexture, toneMapped: false });
     const canvas = document.createElement("canvas");
     canvas.width = 1024;
     canvas.height = 512;
@@ -58,9 +61,9 @@ export function SunsetWindows({ plan, control }: { plan: RoomPlan; control: RefO
       ctx.lineWidth = 2.3;
       ctx.lineCap = "round";
       for (let i = 0; i < 5; i++) {
-        const x = ((seconds * 12 + i * 62) % 1450) - 200;
+        const x = ((seconds * 30 + i * 62) % 1450) - 200;
         const y = 170 + i * 20 + Math.sin(seconds * 0.6 + i) * 8;
-        const wing = 4 + Math.sin(seconds * 3.8 + i) * 5;
+        const wing = 4 + Math.sin(seconds * 5.2 + i) * 5;
         const span = 9 + i % 3 * 2;
         ctx.beginPath();
         ctx.moveTo(x - span, y - wing);
@@ -70,8 +73,8 @@ export function SunsetWindows({ plan, control }: { plan: RoomPlan; control: RefO
       }
       texture.needsUpdate = true;
     };
-    draw(37);
-    return { texture, material, draw };
+    draw(15);
+    return { texture, material, roofTexture, roofMaterial, draw };
   }, []);
   const fanlight = useMemo(() => {
     const geometry = new THREE.CircleGeometry(Math.min(3.3, plan.width * 0.3), 48, 0, Math.PI);
@@ -79,6 +82,13 @@ export function SunsetWindows({ plan, control }: { plan: RoomPlan; control: RefO
     for (let i = 0; i < uv.count; i++) uv.setY(i, (uv.getY(i) - 0.5) * 2);
     return geometry;
   }, [plan.width]);
+  const skylight = useMemo(() => {
+    const geometry = new THREE.PlaneGeometry(plan.width * 0.48, plan.depth);
+    const uv = geometry.getAttribute("uv");
+    // The roof looks up into the violet sky, rather than down toward the orange horizon.
+    for (let i = 0; i < uv.count; i++) uv.setY(i, 0.5 + uv.getY(i) * 0.5);
+    return geometry;
+  }, [plan.width, plan.depth]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -89,7 +99,7 @@ export function SunsetWindows({ plan, control }: { plan: RoomPlan; control: RefO
       if (document.hidden || reducedMotion.matches) return;
       timer = setInterval(() => {
         if (control.current.target.kind !== "overview") return;
-        sky.draw((performance.now() - started) / 1000 + 37);
+        sky.draw((performance.now() - started) / 1000 + 15);
         invalidate();
       }, 100);
     };
@@ -102,14 +112,18 @@ export function SunsetWindows({ plan, control }: { plan: RoomPlan; control: RefO
       reducedMotion.removeEventListener("change", update);
     };
   }, [control, invalidate, sky]);
-  useEffect(() => () => { sky.material.dispose(); sky.texture.dispose(); }, [sky]);
+  useEffect(() => () => {
+    sky.material.dispose();
+    sky.texture.dispose();
+    sky.roofMaterial.dispose();
+    sky.roofTexture.dispose();
+  }, [sky]);
   useEffect(() => () => fanlight.dispose(), [fanlight]);
+  useEffect(() => () => skylight.dispose(), [skylight]);
 
   const fanY = 4.97 + (plan.rows - 1) * HALL.levelH;
   return <group>
     <mesh position={[0, fanY, -plan.depth / 2 + 0.05]} geometry={fanlight} material={sky.material} />
-    <mesh position={[0, plan.springY + 1.42, 0]} rotation={[Math.PI / 2, 0, 0]} material={sky.material}>
-      <planeGeometry args={[plan.width * 0.48, plan.depth]} />
-    </mesh>
+    <mesh position={[0, plan.springY + 1.42, 0]} rotation={[Math.PI / 2, 0, 0]} geometry={skylight} material={sky.roofMaterial} />
   </group>;
 }

@@ -170,4 +170,64 @@ const mockLesson = {
 };
 await writeFile(path.join(outDir, "api", "lesson_mock.json"), JSON.stringify(mockLesson, null, 2));
 console.log(`wrote synthetic lesson (${regions.length} regions) to public/_dev/api/`);
+
+// ── Synthetic v2 lesson (tutorial bertahap: 3 phases, ±16 steps) ───────────
+// From api/examples/lesson_detail_v2.json: its region boxes are real, its layer
+// URLs are placeholders. Draw simple line layers per line level so the step
+// UI (new lines black + drawn, old lines grey, landmarks, grid zoom) can be
+// built before the backend runs v2. Shown as "Mock (dev)" in the app.
+{
+  const v2 = JSON.parse(await readFile(path.join(examplesDir, "lesson_detail_v2.json"), "utf8"));
+  const W2 = v2.image_width;
+  const H2 = v2.image_height;
+  const svg2 = (body, layer) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W2} ${H2}" width="${W2}" height="${H2}" data-layer="${layer}">${body}</svg>`;
+  const ellipse = ([x, y, w, h]) => blob([x, y, w, h]);
+  const main = v2.regions.filter((r) => r.is_main_object);
+  const back = v2.regions.filter((r) => !r.is_main_object);
+  const dir = path.join(outDir, "api", "layers-v2");
+  await mkdir(dir, { recursive: true });
+  const g = v2.layers.find((l) => l.kind === "grid")?.meta ?? { cols: 4, rows: 6 };
+  const gl = [
+    ...Array.from({ length: g.cols - 1 }, (_, i) => `<line x1="${((i + 1) * W2) / g.cols}" y1="0" x2="${((i + 1) * W2) / g.cols}" y2="${H2}"/>`),
+    ...Array.from({ length: g.rows - 1 }, (_, i) => `<line x1="0" y1="${((i + 1) * H2) / g.rows}" x2="${W2}" y2="${((i + 1) * H2) / g.rows}"/>`),
+  ].join("");
+  await writeFile(path.join(dir, "grid.svg"), svg2(`<g stroke="#4A6FA5" stroke-width="2" opacity="0.6">${gl}</g>`, "grid"));
+  // Level 1: a few long straight strokes around the main object (block-in) and the big background edges.
+  const box = ([x, y, w, h]) => `M${x},${y} L${x + w},${y + h * 0.08} L${x + w * 0.94},${y + h} L${x + w * 0.04},${y + h * 0.95} Z`;
+  await writeFile(path.join(dir, "block_in.svg"), svg2(main.map((r) => `<path fill="none" stroke="#111" stroke-width="3" d="${box(r.bbox)}"/>`).join(""), "block_in"));
+  await writeFile(
+    path.join(dir, "background_lines.svg"),
+    svg2(back.map((r) => `<path fill="none" stroke="#111" stroke-width="3" d="M${r.bbox[0]},${r.bbox[1] + r.bbox[3]} L${r.bbox[0] + r.bbox[2]},${r.bbox[1] + r.bbox[3] * 0.9}"/>`).join(""), "background_lines"),
+  );
+  // Level 2: full contours.
+  await writeFile(path.join(dir, "sketch.svg"), svg2(v2.regions.map((r) => `<path fill="none" stroke="#1E1E1E" stroke-width="2" d="${ellipse(r.bbox)}"/>`).join(""), "sketch"));
+  await writeFile(
+    path.join(dir, "regions.svg"),
+    svg2(v2.regions.toSorted((a, b) => b.area_pct - a.area_pct).map((r) => `<path id="${r.code}" fill="${r.hex}" d="${ellipse(r.bbox)}"/>`).join(""), "regions"),
+  );
+  // Level 3: selected detail lines, small marks inside the main object.
+  await writeFile(
+    path.join(dir, "lineart.svg"),
+    svg2(main.map((r) => `<path fill="none" stroke="#111" stroke-width="1.5" d="M${r.centroid[0] - 30},${r.centroid[1]} q30,-25 60,0 M${r.centroid[0] - 20},${r.centroid[1] + 30} q20,15 40,0"/>`).join(""), "lineart"),
+  );
+  const url2 = {
+    grid: "/_dev/api/layers-v2/grid.svg",
+    block_in: "/_dev/api/layers-v2/block_in.svg",
+    background_lines: "/_dev/api/layers-v2/background_lines.svg",
+    sketch: "/_dev/api/layers-v2/sketch.svg",
+    regions: "/_dev/api/layers-v2/regions.svg",
+    lineart: "/_dev/api/layers-v2/lineart.svg",
+    original_photo: "/_dev/artworks/lukisan-kain-bali-goteborg.webp",
+  };
+  const mockV2 = {
+    ...v2,
+    _mock: true,
+    culture_claims: v2.culture_claims ?? [],
+    layers: v2.layers.map((l) => ({ ...l, format: l.kind === "lineart" ? "svg" : l.format, url: url2[l.kind] ?? null, meta: { ...l.meta, _mock: true } })),
+    reflection: v2.reflection ?? mockLesson.reflection,
+  };
+  await writeFile(path.join(outDir, "api", "lesson_mock_v2.json"), JSON.stringify(mockV2, null, 2));
+  console.log(`wrote synthetic v2 lesson (${v2.stages.length} steps, ${v2.mixes.length} mixes) to public/_dev/api/`);
+}
 console.log(`wrote ${cards.length} fixtures to public/_dev/`);

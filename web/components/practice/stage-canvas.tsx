@@ -11,16 +11,39 @@
  * alone. Pinch, drag and the zoom buttons work through react-zoom-pan-pinch.
  */
 import { useQuery } from "@tanstack/react-query";
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { TransformComponent, TransformWrapper, type ReactZoomPanPinchContentRef } from "react-zoom-pan-pinch";
 import type { Lesson, Stage } from "@/lib/schemas";
-import { parseRegionsSvg, regionNumber, regionsByCode, type LayerKey } from "@/lib/stages";
+import {
+  LINE_LAYERS,
+  cellsBox,
+  columnName,
+  gridSize,
+  isStepped,
+  parseRegionsSvg,
+  regionNumber,
+  regionsByCode,
+  type LayerKey,
+} from "@/lib/stages";
+import { DrawnLines } from "./drawn-lines";
 import styles from "./practice.module.css";
 
 export type StageCanvasHandle = {
   zoomToFocus: () => void;
   reset: () => void;
+  /** Draw this step's new lines again. */
+  replayLines: () => void;
 };
+
+/**
+ * Where "Zoom ke area ini" goes: in a v2 step, the grid cells it works in
+ * (unless that is the whole grid); otherwise the stage's focus box.
+ */
+export function stageFocus(lesson: Lesson, stage: Stage): [number, number, number, number] | null {
+  const grid = gridSize(lesson);
+  const cells = isStepped(lesson) && grid ? cellsBox(stage.grid_cells, grid, lesson.image_width, lesson.image_height) : null;
+  return cells ?? (stage.focus_bbox as [number, number, number, number] | null);
+}
 
 type Props = {
   lesson: Lesson;
@@ -59,12 +82,16 @@ export const StageCanvas = forwardRef<StageCanvasHandle, Props>(function StageCa
   const paths = regionPaths.data;
   const newCodes = stage.new_region_codes;
 
+  const [drawRun, setDrawRun] = useState(0);
   useImperativeHandle(ref, () => ({
     zoomToFocus: () => {
       if (focusRect.current) transform.current?.zoomToElement(focusRect.current as unknown as HTMLElement, undefined, 400);
     },
     reset: () => transform.current?.resetTransform(400),
+    replayLines: () => setDrawRun((n) => n + 1),
   }));
+  const stepped = isStepped(lesson);
+  const grid = gridSize(lesson);
 
   // Painted regions in lesson order (largest first from the backend), so small ones sit on top.
   const paintedOrdered = lesson.regions.filter((r) => painted.has(r.code));
@@ -85,7 +112,9 @@ export const StageCanvas = forwardRef<StageCanvasHandle, Props>(function StageCa
       />
     );
   };
-  const focus = stage.focus_bbox;
+  const focus = stageFocus(lesson, stage);
+  const cells = stepped && grid ? cellsBox(stage.grid_cells, grid, W, H) : null;
+  const unit = Math.max(W, H);
 
   return (
     <TransformWrapper ref={transform} minScale={1} maxScale={6} centerOnInit doubleClick={{ mode: "toggle", step: 2 }}>
@@ -112,10 +141,59 @@ export const StageCanvas = forwardRef<StageCanvasHandle, Props>(function StageCa
                 ))}
 
           {imageLayer("value", { opacity: 0.55, style: { mixBlendMode: "multiply" } })}
-          {imageLayer("sketch")}
-          {imageLayer("lineart")}
-          {imageLayer("main_object")}
-          {imageLayer("grid", { opacity: 0.7 })}
+          {stepped ? (
+            <>
+              {imageLayer("main_object", { opacity: 0.45 })}
+              {/* Lines from rough to fine: this step's new lines black and drawn, earlier ones grey. */}
+              {LINE_LAYERS.map((kind) => {
+                const l = layer(kind);
+                if (!visible[kind] || !l?.url) return null;
+                if (stage.new_lines === kind) {
+                  return <DrawnLines key={`${kind}-${stage.code}-${drawRun}`} layer={l} width={W} height={H} onError={onLayerError} />;
+                }
+                return imageLayer(kind, { opacity: 0.32 });
+              })}
+              {imageLayer("grid", { opacity: 0.7 })}
+              {visible.grid && grid && <GridLabels cols={grid.cols} rows={grid.rows} width={W} height={H} />}
+              {/* The cells this step works in. */}
+              {cells && (
+                <rect
+                  x={cells[0]}
+                  y={cells[1]}
+                  width={cells[2]}
+                  height={cells[3]}
+                  fill="rgb(255 214 120 / 0.12)"
+                  stroke="#b07d1f"
+                  strokeWidth={unit * 0.004}
+                  strokeDasharray={`${unit * 0.014} ${unit * 0.009}`}
+                />
+              )}
+              {visible.landmarks &&
+                (lesson.landmarks ?? []).map((p) => {
+                  const r = unit * 0.022;
+                  return (
+                    <g
+                      key={`lm-${p.no}`}
+                      transform={`translate(${p.x} ${p.y})`}
+                      className={stage.new_lines === "landmarks" ? styles.popIn : undefined}
+                      style={{ animationDelay: `${(p.no - 1) * 0.18}s` }}
+                    >
+                      <circle r={r} fill="#b4231c" stroke="#fff" strokeWidth={r * 0.22} />
+                      <text textAnchor="middle" dominantBaseline="central" fontSize={r * 1.1} fontWeight={700} fill="#fff">
+                        {p.no}
+                      </text>
+                    </g>
+                  );
+                })}
+            </>
+          ) : (
+            <>
+              {imageLayer("sketch")}
+              {imageLayer("lineart")}
+              {imageLayer("main_object")}
+              {imageLayer("grid", { opacity: 0.7 })}
+            </>
+          )}
 
           {/* This stage's new regions: dashed outline + number (never colour alone). */}
           {newCodes.map((code) => {
@@ -158,3 +236,23 @@ export const StageCanvas = forwardRef<StageCanvasHandle, Props>(function StageCa
     </TransformWrapper>
   );
 });
+
+/** Column letters along the top and row numbers down the left, so "mulai dari kotak B3" can be found. */
+function GridLabels({ cols, rows, width, height }: { cols: number; rows: number; width: number; height: number }) {
+  const size = Math.max(width, height) * 0.024;
+  const pad = size * 0.35;
+  const label = (key: string, x: number, y: number, text: string) => (
+    <g key={key} transform={`translate(${x} ${y})`}>
+      <rect x={-size * 0.62} y={-size * 0.62} width={size * 1.24} height={size * 1.24} rx={size * 0.3} fill="rgb(255 253 248 / 0.92)" />
+      <text textAnchor="middle" dominantBaseline="central" fontSize={size} fontWeight={700} fill="#2c4f86">
+        {text}
+      </text>
+    </g>
+  );
+  return (
+    <g aria-hidden="true">
+      {Array.from({ length: cols }, (_, c) => label(`c${c}`, ((c + 0.5) * width) / cols, size * 0.62 + pad, columnName(c)))}
+      {Array.from({ length: rows }, (_, r) => label(`r${r}`, size * 0.62 + pad, ((r + 0.5) * height) / rows, String(r + 1)))}
+    </g>
+  );
+}

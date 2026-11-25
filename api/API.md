@@ -78,6 +78,60 @@ Perkiraan waktu (laptop, CPU): ±10–15 s sampai `succeeded` tanpa AI.
 - `region_colors[]` (satu per region) untuk `palette_id` yang dipakai: palet dari `?palette_id=`, lalu palet sesi (`PATCH /sessions` `palette_id`), lalu palet demo pertama. Isi: `label` ("Perkiraan, uji sedikit dulu" / "Sulit dicapai dengan palet ini" / "Resep teruji"), `components` (cat + `parts`, urut dari bagian terbesar), `mixed_hex` (pratinjau warna campuran), `delta_e`, `explanation` (kalimat siap tampil), `tips` (cara koreksi). Angka berasal dari model pencampuran pigmen, bukan AI.
 - Bila foto dan cakupan yang sama dikirim lagi dalam sesi yang sama, backend memakai tutorial lama (`result.cached = true`) tanpa proses atau biaya ulang.
 
+## Tutorial bertahap (`structure_version: 2`) — RANCANGAN
+
+> Status: kontrak disepakati dulu, backend menyusul. Contoh lengkap: [`examples/lesson_detail_v2.json`](examples/lesson_detail_v2.json). Rencana: `docs/RENCANA_TUTORIAL_BERTAHAP.md`.
+
+Lesson tanpa `structure_version` (atau `1`) = struktur lama 8 tahap, tetap didukung. Lesson `2` dibagi 3 fase dan 14–20 langkah kecil.
+
+**Field baru di tingkat lesson**
+
+| Field | Isi |
+| --- | --- |
+| `structure_version` | `2` |
+| `phases[]` | `{code, title, stage_codes[]}` urut tampil: `sketch` (Sketsa), `color` (Warna), `finishing` (Finishing). Untuk header 3 fase + progres |
+| `landmarks[]` | 3–5 titik patokan: `{no, x, y, grid_cell, kind, label}`. `x, y` di ruang `image_width × image_height`; `kind` = `top`/`bottom`/`left`/`right`/`corner`/`horizon`; `label` boleh `null` |
+| `mixes[]` | Maks 6 campuran untuk palet aktif, urut `order_no` (latar → depan, besar → kecil): `mix_id`, `name`, `target_hex`, `mixed_hex`, `delta_e`, `reachability`, `label`, `components[]`, `explanation`, `region_codes[]`, `max_region_delta_e` (selisih terbesar antara warna asli region dan campurannya) |
+| `regions[].mix_id` | Campuran yang dipakai region itu |
+| `regions[].grid_cells` | Kotak grid yang disentuh region |
+
+Di v2, `region_colors[]` (resep per region) **tidak dikirim**: warna region = `mixes[mix_id]`.
+
+**Nama kotak grid**: kolom huruf `A…` dari kiri, baris angka `1…` dari atas (`B3` = kolom 2, baris 3). Jumlahnya dari `layers[kind=grid].meta.cols/rows`.
+
+**Lapisan baru** (`layers[].kind`)
+
+| `kind` | Tingkat garis | Isi | Dipakai langkah |
+| --- | --- | --- | --- |
+| `landmarks` | – | Titik patokan bernomor (SVG) | `landmarks` |
+| `block_in` | 1 | Bentuk kasar objek utama, ±5–15 garis panjang (SVG) | `block_in` |
+| `background_lines` | 1 | Garis besar latar: cakrawala, batas bidang besar (SVG) | `background_lines` |
+| `sketch` | 2 | Kontur lengkap (SVG), juga acuan checkpoint sketsa | `contour`, `sketch_check`, langkah warna |
+| `lineart` | 3 | Garis detail **terpilih**: hanya garis yang memang garis di karya asli (mata, motif). Lipatan dan bayangan TIDAK digambar sebagai garis, tetapi diajarkan lewat warna/terang-gelap (PNG) | `small_and_detail`, `compare` |
+
+`meta.line_level` (1–3) ada di lapisan garis. Lapisan lain (`grid`, `main_object`, `regions`, `value`, `original_photo`) tetap.
+
+**Field baru di `stages[]`**
+
+| Field | Isi |
+| --- | --- |
+| `phase` | `sketch` / `color` / `finishing` |
+| `kind` | Sketsa: `preparation`, `grid`, `landmarks`, `block_in`, `background_lines`, `contour`, `sketch_check`. Warna: `color_prep`, `paint_mix` (satu per campuran; dibelah bila > 5 region besar), `value` (hanya `use_shading`). Finishing: `small_and_detail`, `accents` (hanya `use_shading`), `compare` |
+| `new_lines` | Lapisan yang garisnya **baru** di langkah ini: tampil hitam + animasi garis tergambar. Lapisan garis lain di `layers` tampil abu-abu. `null` = tidak ada garis baru |
+| `grid_cells[]` | Kotak grid yang dikerjakan langkah ini (untuk zoom). Teks instruksi hanya boleh menyebut kotak dari daftar ini atau dari `landmarks` |
+| `mix_id` | Langkah `paint_mix`: campuran yang dipakai (tampilkan satu kartu campuran) |
+| `new_region_codes[]` | Maks ±5 region baru per langkah |
+
+**Checkpoint**: `sketch_check` (akhir fase Sketsa) dan langkah `paint_mix` terakhir (setelah warna dasar). `is_checkpoint` tetap jadi penanda.
+
+**Urutan langkah**
+
+| Fase | Langkah (urut) | Jumlah |
+| --- | --- | --- |
+| Sketsa | preparation → grid → landmarks → block_in → background_lines → contour → sketch_check | 7 (6 bila tanpa objek utama: `block_in` digabung ke `background_lines`) |
+| Warna | color_prep → paint_mix × jumlah campuran (≤6) → value (bila `use_shading`) | 2–8 |
+| Finishing | small_and_detail → accents (bila `use_shading`) → compare | 2–3 |
+
 ## Progres latihan
 
 - Materi koleksi: ambil `lesson_version_id` dari kartu `GET /artworks`, lalu `POST /sessions` (atau `PATCH /sessions/{id}`) dengan `lesson_version_id`. Mode bebas: terpasang otomatis setelah tutorial jadi.

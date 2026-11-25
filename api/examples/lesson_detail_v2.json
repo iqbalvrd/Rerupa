@@ -1,0 +1,1480 @@
+{
+  "_catatan": "Kontrak tutorial bertahap (structure_version 2) — CONTOH RANCANGAN, bukan hasil pipeline. Dibuat dari contoh v1 (potongan lukisan Kamasan, karya datar) dengan 14 dari 35 region. Karya datar: tanpa langkah 'value' dan 'accents'; karya bergradasi (use_shading) mendapat langkah 'value' setelah campuran terakhir dan 'accents' sebelum 'compare'. Lesson lama tetap structure_version 1 (lihat lesson_detail.json). URL dipalsukan.",
+  "structure_version": 2,
+  "id": "e4cfabb9-24a3-4317-8cc6-f453cfb90b7c",
+  "origin": "free_mode",
+  "artwork_id": null,
+  "image_width": 605,
+  "image_height": 910,
+  "use_shading": false,
+  "ai_text_status": "template",
+  "generated_automatically": true,
+  "skill_goal": "Melukis ulang karya secara bertahap dari bentuk besar ke detail.",
+  "culture_goal": null,
+  "checkpoint_count": 2,
+  "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+  "phases": [
+    {
+      "code": "sketch",
+      "title": "Sketsa",
+      "stage_codes": [
+        "step_1",
+        "step_2",
+        "step_3",
+        "step_4",
+        "step_5",
+        "step_6",
+        "step_7"
+      ]
+    },
+    {
+      "code": "color",
+      "title": "Warna",
+      "stage_codes": [
+        "step_8",
+        "step_9",
+        "step_10",
+        "step_11",
+        "step_12",
+        "step_13",
+        "step_14"
+      ]
+    },
+    {
+      "code": "finishing",
+      "title": "Finishing",
+      "stage_codes": [
+        "step_15",
+        "step_16"
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "kind": "grid",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/grid.svg?token=…",
+      "meta": {
+        "cols": 4,
+        "rows": 6,
+        "cell_names": "kolom A–D (kiri→kanan), baris 1–6 (atas→bawah)"
+      },
+      "purged": false
+    },
+    {
+      "kind": "landmarks",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/landmarks.svg?token=…",
+      "meta": {
+        "count": 5
+      },
+      "purged": false
+    },
+    {
+      "kind": "block_in",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/block_in.svg?token=…",
+      "meta": {
+        "line_level": 1,
+        "line_count": 9
+      },
+      "purged": false
+    },
+    {
+      "kind": "background_lines",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/background_lines.svg?token=…",
+      "meta": {
+        "line_level": 1,
+        "line_count": 6
+      },
+      "purged": false
+    },
+    {
+      "kind": "sketch",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/sketch.svg?token=…",
+      "meta": {
+        "line_level": 2
+      },
+      "purged": false
+    },
+    {
+      "kind": "main_object",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/main_object.svg?token=…",
+      "meta": {},
+      "purged": false
+    },
+    {
+      "kind": "regions",
+      "format": "svg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/regions.svg?token=…",
+      "meta": {},
+      "purged": false
+    },
+    {
+      "kind": "lineart",
+      "format": "png",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/lineart.png?token=…",
+      "meta": {
+        "line_level": 3,
+        "method": "teed",
+        "selected": true
+      },
+      "purged": false
+    },
+    {
+      "kind": "original_photo",
+      "format": "jpeg",
+      "url": "https://<project>.supabase.co/storage/v1/object/sign/derived/<session>/<lesson>/original.jpg?token=…",
+      "meta": {},
+      "purged": false
+    }
+  ],
+  "landmarks": [
+    {
+      "no": 1,
+      "x": 302,
+      "y": 18,
+      "grid_cell": "B1",
+      "kind": "top",
+      "label": null
+    },
+    {
+      "no": 2,
+      "x": 14,
+      "y": 330,
+      "grid_cell": "A3",
+      "kind": "left",
+      "label": null
+    },
+    {
+      "no": 3,
+      "x": 590,
+      "y": 300,
+      "grid_cell": "D2",
+      "kind": "right",
+      "label": null
+    },
+    {
+      "no": 4,
+      "x": 300,
+      "y": 640,
+      "grid_cell": "B5",
+      "kind": "corner",
+      "label": null
+    },
+    {
+      "no": 5,
+      "x": 230,
+      "y": 900,
+      "grid_cell": "B6",
+      "kind": "bottom",
+      "label": null
+    }
+  ],
+  "regions": [
+    {
+      "code": "r01",
+      "hex": "#938A8C",
+      "area_pct": 8.89,
+      "bbox": [
+        13,
+        0,
+        592,
+        368
+      ],
+      "centroid": [
+        302,
+        184
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m3",
+      "grid_cells": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3"
+      ]
+    },
+    {
+      "code": "r02",
+      "hex": "#9899A1",
+      "area_pct": 8.07,
+      "bbox": [
+        0,
+        0,
+        605,
+        260
+      ],
+      "centroid": [
+        302,
+        130
+      ],
+      "is_main_object": false,
+      "is_background": true,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m1",
+      "grid_cells": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "A2",
+        "B2",
+        "C2",
+        "D2"
+      ]
+    },
+    {
+      "code": "r03",
+      "hex": "#927D72",
+      "area_pct": 6.69,
+      "bbox": [
+        180,
+        300,
+        470,
+        640
+      ],
+      "centroid": [
+        325,
+        470
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m4",
+      "grid_cells": [
+        "B2",
+        "C2",
+        "D2",
+        "B3",
+        "C3",
+        "D3",
+        "B4",
+        "C4",
+        "D4",
+        "B5",
+        "C5",
+        "D5"
+      ]
+    },
+    {
+      "code": "r04",
+      "hex": "#A1A1A7",
+      "area_pct": 6.47,
+      "bbox": [
+        0,
+        520,
+        200,
+        910
+      ],
+      "centroid": [
+        100,
+        715
+      ],
+      "is_main_object": false,
+      "is_background": true,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m1",
+      "grid_cells": [
+        "A4",
+        "B4",
+        "A5",
+        "B5",
+        "A6",
+        "B6"
+      ]
+    },
+    {
+      "code": "r05",
+      "hex": "#886A74",
+      "area_pct": 5.71,
+      "bbox": [
+        220,
+        120,
+        430,
+        330
+      ],
+      "centroid": [
+        325,
+        225
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m5",
+      "grid_cells": [
+        "B1",
+        "C1",
+        "B2",
+        "C2",
+        "B3",
+        "C3"
+      ]
+    },
+    {
+      "code": "r06",
+      "hex": "#867980",
+      "area_pct": 5.49,
+      "bbox": [
+        400,
+        560,
+        605,
+        910
+      ],
+      "centroid": [
+        502,
+        735
+      ],
+      "is_main_object": false,
+      "is_background": true,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m2",
+      "grid_cells": [
+        "C4",
+        "D4",
+        "C5",
+        "D5",
+        "C6",
+        "D6"
+      ]
+    },
+    {
+      "code": "r07",
+      "hex": "#B9A48F",
+      "area_pct": 4.8,
+      "bbox": [
+        250,
+        140,
+        380,
+        260
+      ],
+      "centroid": [
+        315,
+        200
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m6",
+      "grid_cells": [
+        "B1",
+        "C1",
+        "B2",
+        "C2"
+      ]
+    },
+    {
+      "code": "r08",
+      "hex": "#7E6F70",
+      "area_pct": 4.1,
+      "bbox": [
+        150,
+        640,
+        450,
+        910
+      ],
+      "centroid": [
+        300,
+        775
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m4",
+      "grid_cells": [
+        "A5",
+        "B5",
+        "C5",
+        "A6",
+        "B6",
+        "C6"
+      ]
+    },
+    {
+      "code": "r09",
+      "hex": "#A3958D",
+      "area_pct": 3.7,
+      "bbox": [
+        0,
+        260,
+        160,
+        520
+      ],
+      "centroid": [
+        80,
+        390
+      ],
+      "is_main_object": false,
+      "is_background": true,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m2",
+      "grid_cells": [
+        "A2",
+        "B2",
+        "A3",
+        "B3",
+        "A4",
+        "B4"
+      ]
+    },
+    {
+      "code": "r10",
+      "hex": "#6B5A60",
+      "area_pct": 3.2,
+      "bbox": [
+        300,
+        330,
+        460,
+        520
+      ],
+      "centroid": [
+        380,
+        425
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m5",
+      "grid_cells": [
+        "B3",
+        "C3",
+        "D3",
+        "B4",
+        "C4",
+        "D4"
+      ]
+    },
+    {
+      "code": "r11",
+      "hex": "#C2B19C",
+      "area_pct": 2.6,
+      "bbox": [
+        270,
+        170,
+        360,
+        240
+      ],
+      "centroid": [
+        315,
+        205
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m6",
+      "grid_cells": [
+        "B2",
+        "C2"
+      ]
+    },
+    {
+      "code": "r12",
+      "hex": "#5E5157",
+      "area_pct": 2.1,
+      "bbox": [
+        190,
+        700,
+        300,
+        860
+      ],
+      "centroid": [
+        245,
+        780
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m5",
+      "grid_cells": [
+        "B5",
+        "B6"
+      ]
+    },
+    {
+      "code": "r13",
+      "hex": "#9A8C86",
+      "area_pct": 1.9,
+      "bbox": [
+        470,
+        260,
+        605,
+        540
+      ],
+      "centroid": [
+        537,
+        400
+      ],
+      "is_main_object": false,
+      "is_background": true,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m2",
+      "grid_cells": [
+        "D2",
+        "D3",
+        "D4"
+      ]
+    },
+    {
+      "code": "r14",
+      "hex": "#8F7F7A",
+      "area_pct": 1.4,
+      "bbox": [
+        330,
+        640,
+        420,
+        760
+      ],
+      "centroid": [
+        375,
+        700
+      ],
+      "is_main_object": true,
+      "is_background": false,
+      "value_level": null,
+      "label": null,
+      "mix_id": "m4",
+      "grid_cells": [
+        "C5",
+        "C6"
+      ]
+    }
+  ],
+  "mixes": [
+    {
+      "mix_id": "m1",
+      "order_no": 1,
+      "name": "Abu-abu kebiruan (langit & latar)",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "target_hex": "#9C9DA4",
+      "mixed_hex": "#9FA0A6",
+      "delta_e": 1.9,
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "components": [
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 4
+        },
+        {
+          "paint_code": "ultramarine_blue",
+          "name": "Biru Ultramarin (Ultramarine Blue)",
+          "hex": "#1B2B8A",
+          "parts": 1
+        },
+        {
+          "paint_code": "burnt_umber",
+          "name": "Umber Bakar (Burnt Umber)",
+          "hex": "#4A2E1D",
+          "parts": 1
+        }
+      ],
+      "region_codes": [
+        "r02",
+        "r04"
+      ],
+      "explanation": "Campur 4 bagian Putih Titanium + 1 bagian Biru Ultramarin + 1 bagian Umber Bakar. Uji di kertas, tunggu kering, bandingkan dengan kotak warna.",
+      "max_region_delta_e": 4.0
+    },
+    {
+      "mix_id": "m2",
+      "order_no": 2,
+      "name": "Abu-abu hangat (latar bawah)",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "target_hex": "#968884",
+      "mixed_hex": "#998A86",
+      "delta_e": 2.4,
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "components": [
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 3
+        },
+        {
+          "paint_code": "burnt_sienna",
+          "name": "Sienna Bakar (Burnt Sienna)",
+          "hex": "#7B4800",
+          "parts": 1
+        },
+        {
+          "paint_code": "ultramarine_blue",
+          "name": "Biru Ultramarin (Ultramarine Blue)",
+          "hex": "#1B2B8A",
+          "parts": 1
+        }
+      ],
+      "region_codes": [
+        "r06",
+        "r09",
+        "r13"
+      ],
+      "explanation": "Campur 3 bagian Putih Titanium + 1 bagian Sienna Bakar + 1 bagian Biru Ultramarin. Uji di kertas, tunggu kering, bandingkan dengan kotak warna.",
+      "max_region_delta_e": 4.5
+    },
+    {
+      "mix_id": "m3",
+      "order_no": 3,
+      "name": "Abu-abu ungu (kain besar)",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "target_hex": "#938A8C",
+      "mixed_hex": "#9D9193",
+      "delta_e": 2.9,
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "components": [
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 3
+        },
+        {
+          "paint_code": "burnt_sienna",
+          "name": "Sienna Bakar (Burnt Sienna)",
+          "hex": "#7B4800",
+          "parts": 2
+        },
+        {
+          "paint_code": "cobalt_blue",
+          "name": "Biru Kobalt (Cobalt Blue)",
+          "hex": "#002185",
+          "parts": 1
+        }
+      ],
+      "region_codes": [
+        "r01"
+      ],
+      "explanation": "Campur 3 bagian Putih Titanium + 2 bagian Sienna Bakar + 1 bagian Biru Kobalt. Uji di kertas, tunggu kering, bandingkan dengan kotak warna.",
+      "max_region_delta_e": 5.0
+    },
+    {
+      "mix_id": "m4",
+      "order_no": 4,
+      "name": "Cokelat keabuan (badan & kaki)",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "target_hex": "#89786F",
+      "mixed_hex": "#8B7A71",
+      "delta_e": 3.1,
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "components": [
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 2
+        },
+        {
+          "paint_code": "burnt_sienna",
+          "name": "Sienna Bakar (Burnt Sienna)",
+          "hex": "#7B4800",
+          "parts": 2
+        },
+        {
+          "paint_code": "ultramarine_blue",
+          "name": "Biru Ultramarin (Ultramarine Blue)",
+          "hex": "#1B2B8A",
+          "parts": 1
+        }
+      ],
+      "region_codes": [
+        "r03",
+        "r08",
+        "r14"
+      ],
+      "explanation": "Campur 2 bagian Putih Titanium + 2 bagian Sienna Bakar + 1 bagian Biru Ultramarin. Uji di kertas, tunggu kering, bandingkan dengan kotak warna.",
+      "max_region_delta_e": 5.2
+    },
+    {
+      "mix_id": "m5",
+      "order_no": 5,
+      "name": "Cokelat gelap (bayangan kain)",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "target_hex": "#6F5F66",
+      "mixed_hex": "#715F66",
+      "delta_e": 3.6,
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "components": [
+        {
+          "paint_code": "burnt_umber",
+          "name": "Umber Bakar (Burnt Umber)",
+          "hex": "#4A2E1D",
+          "parts": 2
+        },
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 2
+        },
+        {
+          "paint_code": "cobalt_blue",
+          "name": "Biru Kobalt (Cobalt Blue)",
+          "hex": "#002185",
+          "parts": 1
+        }
+      ],
+      "region_codes": [
+        "r05",
+        "r10",
+        "r12"
+      ],
+      "explanation": "Campur 2 bagian Umber Bakar + 2 bagian Putih Titanium + 1 bagian Biru Kobalt. Uji di kertas, tunggu kering, bandingkan dengan kotak warna.",
+      "max_region_delta_e": 5.7
+    },
+    {
+      "mix_id": "m6",
+      "order_no": 6,
+      "name": "Krem (wajah & tangan)",
+      "palette_id": "956ed8c3-f059-4a6c-a9dd-e05002d479c8",
+      "target_hex": "#BEAB96",
+      "mixed_hex": "#C0AD97",
+      "delta_e": 2.2,
+      "reachability": "estimate",
+      "label": "Perkiraan, uji sedikit dulu",
+      "components": [
+        {
+          "paint_code": "titanium_white",
+          "name": "Putih Titanium (Titanium White)",
+          "hex": "#FFFFFF",
+          "parts": 4
+        },
+        {
+          "paint_code": "yellow_ochre",
+          "name": "Oker Kuning (Yellow Ochre)",
+          "hex": "#C8962E",
+          "parts": 1
+        },
+        {
+          "paint_code": "burnt_sienna",
+          "name": "Sienna Bakar (Burnt Sienna)",
+          "hex": "#7B4800",
+          "parts": 1
+        }
+      ],
+      "region_codes": [
+        "r07",
+        "r11"
+      ],
+      "explanation": "Campur 4 bagian Putih Titanium + 1 bagian Oker Kuning + 1 bagian Sienna Bakar. Uji di kertas, tunggu kering, bandingkan dengan kotak warna.",
+      "max_region_delta_e": 4.3
+    }
+  ],
+  "stages": [
+    {
+      "code": "step_1",
+      "order_no": 1,
+      "phase": "sketch",
+      "kind": "preparation",
+      "is_checkpoint": false,
+      "layers": [],
+      "new_lines": null,
+      "grid_cells": [],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Siapkan alat dan bidang",
+      "action": "Siapkan pensil 2B, penggaris, penghapus, dan bidang A4. Letakkan foto karya di dekatmu.",
+      "tools": [
+        "pensil 2B",
+        "penggaris",
+        "penghapus"
+      ],
+      "done_when": "Semua alat ada di meja.",
+      "common_mistakes": [],
+      "focus_bbox": null,
+      "text_source": "template"
+    },
+    {
+      "code": "step_2",
+      "order_no": 2,
+      "phase": "sketch",
+      "kind": "grid",
+      "is_checkpoint": false,
+      "layers": [
+        "grid"
+      ],
+      "new_lines": "grid",
+      "grid_cells": [],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Buat grid tipis",
+      "action": "Bagi bidang jadi 4 kolom dan 6 baris dengan garis pensil sangat tipis. Beri nama kolom A–D dan baris 1–6 di tepi.",
+      "tools": [
+        "pensil 2B",
+        "penggaris"
+      ],
+      "done_when": "Ada 24 kotak sama besar dan garisnya samar.",
+      "common_mistakes": [
+        "Garis grid terlalu tebal sehingga masih terlihat setelah dicat."
+      ],
+      "focus_bbox": null,
+      "text_source": "template"
+    },
+    {
+      "code": "step_3",
+      "order_no": 3,
+      "phase": "sketch",
+      "kind": "landmarks",
+      "is_checkpoint": false,
+      "layers": [
+        "grid",
+        "landmarks"
+      ],
+      "new_lines": "landmarks",
+      "grid_cells": [
+        "A3",
+        "B1",
+        "B5",
+        "B6",
+        "D2"
+      ],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Titik patokan",
+      "action": "Beri titik kecil di 5 tempat ini. Mulai dari titik 1 di kotak B1, lihat posisinya di dalam kotak.",
+      "tools": [],
+      "done_when": "Kelima titik ada di kotak yang sama dengan contoh.",
+      "common_mistakes": [
+        "Menghitung kotak dari kanan, bukan dari kiri."
+      ],
+      "focus_bbox": null,
+      "text_source": "template"
+    },
+    {
+      "code": "step_4",
+      "order_no": 4,
+      "phase": "sketch",
+      "kind": "block_in",
+      "is_checkpoint": false,
+      "layers": [
+        "grid",
+        "landmarks",
+        "block_in"
+      ],
+      "new_lines": "block_in",
+      "grid_cells": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3",
+        "A4",
+        "B4",
+        "C4",
+        "D4",
+        "A5",
+        "B5",
+        "C5",
+        "D5",
+        "A6",
+        "B6",
+        "C6",
+        "D6"
+      ],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Bentuk kasar tokoh",
+      "action": "Hubungkan titik patokan dengan garis panjang yang tipis. Cukup bentuk besarnya; belum perlu rapi.",
+      "tools": [],
+      "done_when": "Bentuk besar tokoh sudah terlihat dari jauh.",
+      "common_mistakes": [
+        "Langsung menggambar wajah atau motif."
+      ],
+      "focus_bbox": [
+        13,
+        0,
+        592,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_5",
+      "order_no": 5,
+      "phase": "sketch",
+      "kind": "background_lines",
+      "is_checkpoint": false,
+      "layers": [
+        "grid",
+        "block_in",
+        "background_lines"
+      ],
+      "new_lines": "background_lines",
+      "grid_cells": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3",
+        "A4",
+        "B4",
+        "C4",
+        "D4",
+        "A5",
+        "B5",
+        "C5",
+        "D5",
+        "A6",
+        "B6",
+        "C6",
+        "D6"
+      ],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Garis besar latar",
+      "action": "Tambahkan garis batas bidang latar di kiri dan kanan tokoh.",
+      "tools": [],
+      "done_when": "Batas latar dan tokoh sudah jelas.",
+      "common_mistakes": [],
+      "focus_bbox": [
+        0,
+        0,
+        605,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_6",
+      "order_no": 6,
+      "phase": "sketch",
+      "kind": "contour",
+      "is_checkpoint": false,
+      "layers": [
+        "grid",
+        "block_in",
+        "background_lines",
+        "sketch",
+        "main_object"
+      ],
+      "new_lines": "sketch",
+      "grid_cells": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3",
+        "A4",
+        "B4",
+        "C4",
+        "D4",
+        "A5",
+        "B5",
+        "C5",
+        "D5",
+        "A6",
+        "B6",
+        "C6",
+        "D6"
+      ],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Perhalus kontur",
+      "action": "Pertegas garis luar satu kotak demi satu kotak, mulai dari kotak B1. Garis abu-abu sudah kamu gambar; ikuti garis hitam yang baru.",
+      "tools": [],
+      "done_when": "Kontur tokoh lengkap dan garis bentuk kasar yang salah sudah dihapus.",
+      "common_mistakes": [
+        "Menekan pensil terlalu keras."
+      ],
+      "focus_bbox": [
+        13,
+        0,
+        592,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_7",
+      "order_no": 7,
+      "phase": "sketch",
+      "kind": "sketch_check",
+      "is_checkpoint": true,
+      "layers": [
+        "grid",
+        "sketch",
+        "main_object"
+      ],
+      "new_lines": null,
+      "grid_cells": [],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Cek sketsa",
+      "action": "Foto sketsamu lurus dari atas. Rerupa akan membandingkannya dengan contoh.",
+      "tools": [],
+      "done_when": "Feedback sketsa sudah dibaca, atau langkah ini dilewati.",
+      "common_mistakes": [],
+      "focus_bbox": null,
+      "text_source": "template"
+    },
+    {
+      "code": "step_8",
+      "order_no": 8,
+      "phase": "color",
+      "kind": "color_prep",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_lines": null,
+      "grid_cells": [],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Siapkan palet dan kertas uji",
+      "action": "Siapkan cat, air, kain lap, dan selembar kertas uji. Lihat keenam campuran yang akan dipakai.",
+      "tools": [
+        "palet",
+        "kuas pipih 12 mm",
+        "kertas uji",
+        "air",
+        "kain lap"
+      ],
+      "done_when": "Palet dan kertas uji siap.",
+      "common_mistakes": [],
+      "focus_bbox": null,
+      "text_source": "template"
+    },
+    {
+      "code": "step_9",
+      "order_no": 9,
+      "phase": "color",
+      "kind": "paint_mix",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_lines": null,
+      "grid_cells": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3",
+        "A4",
+        "B4",
+        "C4",
+        "D4",
+        "A5",
+        "B5",
+        "C5",
+        "D5",
+        "A6",
+        "B6",
+        "C6",
+        "D6"
+      ],
+      "new_region_codes": [
+        "r02",
+        "r04"
+      ],
+      "mix_id": "m1",
+      "title": "Campuran 1: abu-abu kebiruan",
+      "action": "Buat campuran 1, uji di kertas, lalu warnai 2 bidang bertanda. Mulai dari kotak A1.",
+      "tools": [
+        "kuas pipih 12 mm"
+      ],
+      "done_when": "Semua bidang campuran ini tertutup rata.",
+      "common_mistakes": [
+        "Mencampur terlalu sedikit sehingga warna berubah di tengah bidang."
+      ],
+      "focus_bbox": [
+        0,
+        0,
+        605,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_10",
+      "order_no": 10,
+      "phase": "color",
+      "kind": "paint_mix",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_lines": null,
+      "grid_cells": [
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3",
+        "A4",
+        "B4",
+        "C4",
+        "D4",
+        "A5",
+        "B5",
+        "C5",
+        "D5",
+        "A6",
+        "B6",
+        "C6",
+        "D6"
+      ],
+      "new_region_codes": [
+        "r06",
+        "r09",
+        "r13"
+      ],
+      "mix_id": "m2",
+      "title": "Campuran 2: abu-abu hangat",
+      "action": "Buat campuran 2, uji di kertas, lalu warnai 3 bidang bertanda. Mulai dari kotak A2.",
+      "tools": [
+        "kuas pipih 12 mm"
+      ],
+      "done_when": "Semua bidang campuran ini tertutup rata.",
+      "common_mistakes": [
+        "Mencampur terlalu sedikit sehingga warna berubah di tengah bidang."
+      ],
+      "focus_bbox": [
+        0,
+        260,
+        605,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_11",
+      "order_no": 11,
+      "phase": "color",
+      "kind": "paint_mix",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_lines": null,
+      "grid_cells": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3"
+      ],
+      "new_region_codes": [
+        "r01"
+      ],
+      "mix_id": "m3",
+      "title": "Campuran 3: abu-abu ungu",
+      "action": "Buat campuran 3, uji di kertas, lalu warnai 1 bidang bertanda. Mulai dari kotak A1.",
+      "tools": [
+        "kuas pipih 12 mm"
+      ],
+      "done_when": "Semua bidang campuran ini tertutup rata.",
+      "common_mistakes": [
+        "Mencampur terlalu sedikit sehingga warna berubah di tengah bidang."
+      ],
+      "focus_bbox": [
+        13,
+        0,
+        592,
+        368
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_12",
+      "order_no": 12,
+      "phase": "color",
+      "kind": "paint_mix",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_lines": null,
+      "grid_cells": [
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3",
+        "A4",
+        "B4",
+        "C4",
+        "D4",
+        "A5",
+        "B5",
+        "C5",
+        "D5",
+        "A6",
+        "B6",
+        "C6",
+        "D6"
+      ],
+      "new_region_codes": [
+        "r03",
+        "r08",
+        "r14"
+      ],
+      "mix_id": "m4",
+      "title": "Campuran 4: cokelat keabuan",
+      "action": "Buat campuran 4, uji di kertas, lalu warnai 3 bidang bertanda. Mulai dari kotak A2.",
+      "tools": [
+        "kuas pipih 12 mm"
+      ],
+      "done_when": "Semua bidang campuran ini tertutup rata.",
+      "common_mistakes": [
+        "Mencampur terlalu sedikit sehingga warna berubah di tengah bidang."
+      ],
+      "focus_bbox": [
+        150,
+        300,
+        470,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_13",
+      "order_no": 13,
+      "phase": "color",
+      "kind": "paint_mix",
+      "is_checkpoint": false,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_lines": null,
+      "grid_cells": [
+        "B1",
+        "C1",
+        "D1",
+        "B2",
+        "C2",
+        "D2",
+        "B3",
+        "C3",
+        "D3",
+        "B4",
+        "C4",
+        "D4",
+        "B5",
+        "C5",
+        "D5",
+        "B6",
+        "C6",
+        "D6"
+      ],
+      "new_region_codes": [
+        "r05",
+        "r10",
+        "r12"
+      ],
+      "mix_id": "m5",
+      "title": "Campuran 5: cokelat gelap",
+      "action": "Buat campuran 5, uji di kertas, lalu warnai 3 bidang bertanda. Mulai dari kotak B1.",
+      "tools": [
+        "kuas pipih 12 mm"
+      ],
+      "done_when": "Semua bidang campuran ini tertutup rata.",
+      "common_mistakes": [
+        "Mencampur terlalu sedikit sehingga warna berubah di tengah bidang."
+      ],
+      "focus_bbox": [
+        190,
+        120,
+        460,
+        860
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_14",
+      "order_no": 14,
+      "phase": "color",
+      "kind": "paint_mix",
+      "is_checkpoint": true,
+      "layers": [
+        "sketch",
+        "regions"
+      ],
+      "new_lines": null,
+      "grid_cells": [
+        "B1",
+        "C1",
+        "B2",
+        "C2"
+      ],
+      "new_region_codes": [
+        "r07",
+        "r11"
+      ],
+      "mix_id": "m6",
+      "title": "Campuran 6: krem",
+      "action": "Buat campuran 6, uji di kertas, lalu warnai 2 bidang bertanda. Mulai dari kotak B1.",
+      "tools": [
+        "kuas pipih 12 mm"
+      ],
+      "done_when": "Semua bidang campuran ini tertutup rata.",
+      "common_mistakes": [
+        "Mencampur terlalu sedikit sehingga warna berubah di tengah bidang."
+      ],
+      "focus_bbox": [
+        250,
+        140,
+        380,
+        260
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_15",
+      "order_no": 15,
+      "phase": "finishing",
+      "kind": "small_and_detail",
+      "is_checkpoint": false,
+      "layers": [
+        "regions",
+        "lineart"
+      ],
+      "new_lines": "lineart",
+      "grid_cells": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "A2",
+        "B2",
+        "C2",
+        "D2",
+        "A3",
+        "B3",
+        "C3",
+        "D3",
+        "A4",
+        "B4",
+        "C4",
+        "D4",
+        "A5",
+        "B5",
+        "C5",
+        "D5",
+        "A6",
+        "B6",
+        "C6",
+        "D6"
+      ],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Garis detail",
+      "action": "Goreskan garis detail hitam: mata, alis, dan garis motif kain. Pakai kuas bulat kecil.",
+      "tools": [
+        "kuas bulat no. 2"
+      ],
+      "done_when": "Garis detail di wajah dan kain sudah ada.",
+      "common_mistakes": [],
+      "focus_bbox": [
+        13,
+        0,
+        592,
+        910
+      ],
+      "text_source": "template"
+    },
+    {
+      "code": "step_16",
+      "order_no": 16,
+      "phase": "finishing",
+      "kind": "compare",
+      "is_checkpoint": false,
+      "layers": [
+        "regions",
+        "lineart",
+        "original_photo"
+      ],
+      "new_lines": null,
+      "grid_cells": [],
+      "new_region_codes": [],
+      "mix_id": null,
+      "title": "Bandingkan dan rapikan",
+      "action": "Letakkan lukisanmu di samping foto asli. Rapikan tepi bidang yang belepotan.",
+      "tools": [],
+      "done_when": "Tidak ada bidang putih yang tertinggal.",
+      "common_mistakes": [],
+      "focus_bbox": null,
+      "text_source": "template"
+    }
+  ],
+  "culture_claims": [],
+  "reflection": null
+}

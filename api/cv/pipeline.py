@@ -94,6 +94,12 @@ def run(
             edges = lineart_mod.edge_map(img, method)
     with _timer(t, "lines_clean"):
         lines = lineart_mod.clean_lines(edges, thin=thin_lines)
+        del edges
+    # Kontur untuk tahap sketsa: garis luar objek dulu, lipatan & motif menyusul di tahap detail.
+    with _timer(t, "outline"):
+        outline_edges = lineart_mod.edge_map(img, method, resolution=lineart_mod.OUTLINE_RES[method])
+        outline = lineart_mod.outline_lines(outline_edges)
+        del outline_edges
 
     with _timer(t, "regions"):
         seg = segment(img, mask, canvas_size=canvas_size, max_colors=max_colors)
@@ -111,7 +117,7 @@ def run(
 
     with _timer(t, "render"):
         regions_svg = render.regions_svg(seg, w, h)
-        sketch = render.sketch_svg(seg, mask, w, h)
+        sketch = render.sketch_svg(outline, mask, w, h)
         obj_svg = render.main_object_svg(mask, w, h)
         numbered = norm.encode_png(render.numbered_image(seg))
         lines_png = norm.encode_png(lineart_mod.lines_png(lines))

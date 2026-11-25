@@ -7,7 +7,12 @@ Metode (dipilih lewat LINEART_METHOD, dibandingkan di eval/):
 - canny : Canny setelah filter penjaga tepi — paling sederhana
 
 Semua metode menghasilkan peta garis float 0–1 (1 = garis) berukuran sama dengan gambar,
-lalu dibersihkan: ambang → buang komponen pendek (tekstur kanvas/serat) → PNG transparan.
+lalu dibersihkan: ambang histeresis → buang komponen pendek (tekstur kanvas/serat) → PNG transparan.
+
+Dua tingkat garis:
+- kontur (outline_lines): peta tepi dari gambar resolusi rendah (OUTLINE_RES) → hanya garis luar
+  objek dan bentuk besar. Dipakai tahap sketsa (lapisan `sketch`).
+- detail (clean_lines): peta tepi resolusi penuh → lipatan, motif, rincian. Dipakai tahap detail.
 """
 
 import cv2
@@ -20,33 +25,37 @@ METHODS = ("model", "teed", "xdog", "canny")
 LINE_RGB = (30, 30, 30)
 
 
-def edge_map(img: np.ndarray, method: str) -> np.ndarray:
+def edge_map(img: np.ndarray, method: str, resolution: int | None = None) -> np.ndarray:
+    """Peta tepi float 0–1 seukuran `img`. `resolution` = sisi pendek tempat model bekerja
+    (None = penuh, maks 1024); nilai kecil (OUTLINE_RES) menghilangkan tekstur dan rincian."""
     if method not in METHODS:
         raise ValueError(f"metode garis tidak dikenal: {method}")
     h, w = img.shape[:2]
+    res = min(1024, max(h, w)) if resolution is None else resolution
     if method == "teed" and teed_onnx() is not None:
-        return _model_edge_map(img, method, h, w)  # onnxruntime, tanpa torch (worker RAM 1 GB)
+        return _model_edge_map(img, method, h, w, res)  # onnxruntime, tanpa torch (worker RAM 1 GB)
     if method in ("model", "teed"):
         import torch
 
         # Tanpa gradien: hemat ±500 MB aktivasi di CPU.
         with torch.inference_mode():
-            return _model_edge_map(img, method, h, w)
+            return _model_edge_map(img, method, h, w, res)
+    if resolution is not None:
+        # Metode klasik: kerjakan di gambar kecil lalu besarkan lagi, efeknya sama (rincian hilang).
+        small = _resize_short_side(img, resolution)
+        e = xdog(small) if method == "xdog" else canny(small)
+        return cv2.resize(e, (w, h), interpolation=cv2.INTER_LINEAR)
     if method == "xdog":
         return xdog(img)
     return canny(img)
 
 
-def _model_edge_map(img: np.ndarray, method: str, h: int, w: int) -> np.ndarray:
+def _model_edge_map(img: np.ndarray, method: str, h: int, w: int, res: int) -> np.ndarray:
     if method == "model":
-        res = min(1024, max(h, w))
         out = lineart_detector()(Image.fromarray(img), coarse=False, detect_resolution=res, image_resolution=res)
-        edges = _to_float_map(out, (w, h))
-    elif method == "teed":
-        res = min(1024, max(h, w))
+    else:
         out = Image.fromarray(_teed_tiled(img, res))
-        edges = _to_float_map(out, (w, h))
-    return edges
+    return _to_float_map(out, (w, h))
 
 
 TEED_TILE = 512
@@ -143,8 +152,14 @@ def canny(img: np.ndarray) -> np.ndarray:
     return (cv2.Canny(gray, lo, hi) > 0).astype(np.float32)
 
 
-TARGET_DENSITY_PCT = 4.0  # % piksel garis yang dituju; dikalibrasi dari evaluasi foto nyata
+TARGET_DENSITY_PCT = 4.0  # % piksel garis "kuat" (benih); dikalibrasi dari evaluasi foto nyata
+WEAK_DENSITY_PCT = 12.0  # % piksel yang boleh ikut sebagai garis bila tersambung ke garis kuat
 MIN_THRESHOLD = 0.08
+# Kontur: model bekerja di sisi pendek kecil → garis luar tokoh/objek tanpa motif kain dan lipatan.
+# Uji 3 materi koleksi (23 Nov): Informative Drawings paling bersih di 320 px (384–512 mulai memuat
+# motif); TEED di 320 px bergelombang seperti sel, baru membentuk siluet tokoh di 448 px.
+OUTLINE_RES = {"model": 320, "teed": 448, "xdog": 320, "canny": 320}
+OUTLINE_MIN_LENGTH = 0.04  # pecahan sisi terpanjang; kontur lebih pendek dari ini dibuang
 
 
 def adaptive_threshold(edges: np.ndarray, target_density_pct: float = TARGET_DENSITY_PCT) -> float:
@@ -157,25 +172,79 @@ def adaptive_threshold(edges: np.ndarray, target_density_pct: float = TARGET_DEN
     return max(MIN_THRESHOLD, float(np.percentile(edges, 100 - target_density_pct)))
 
 
+def hysteresis(edges: np.ndarray, strong: float, weak: float) -> np.ndarray:
+    """Biner 0/1: piksel ≥ weak yang tersambung (8-tetangga) ke piksel ≥ strong.
+
+    Ambang tunggal hanya menyisakan inti garis tergelap → kontur putus-putus jadi coretan pendek
+    (terlihat jelas di materi koleksi, model Informative Drawings menghasilkan garis abu-abu lembut).
+    Histeresis menyambung garis lemah ke garis kuat seperti Canny, tanpa menambah bintik tekstur.
+    """
+    weak_bin = (edges >= weak).astype(np.uint8)
+    count, labels = cv2.connectedComponents(weak_bin, connectivity=8)
+    keep = np.zeros(count, dtype=bool)
+    keep[np.unique(labels[edges >= strong])] = True
+    keep[0] = False
+    return keep[labels].astype(np.uint8)
+
+
+def _drop_short(binary: np.ndarray, min_length_px: int) -> np.ndarray:
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    keep = np.zeros(count, dtype=bool)
+    keep[1:] = np.maximum(stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT]) >= min_length_px
+    return keep[labels].astype(np.uint8)
+
+
 def clean_lines(edges: np.ndarray, threshold: float | None = None, min_length_px: int | None = None, thin: bool = True) -> np.ndarray:
-    """Ambang (adaptif bila None), buang komponen garis kecil (bintik tekstur), lalu tipiskan.
-    Return biner uint8 0/255."""
+    """Garis detail: ambang histeresis (adaptif bila threshold None), buang komponen pendek
+    (bintik tekstur), lalu tipiskan. Return biner uint8 0/255."""
     h, w = edges.shape
     if min_length_px is None:
         min_length_px = max(12, round(max(h, w) * 0.012))  # ±20 px pada 1600 px
     if threshold is None:
-        threshold = adaptive_threshold(edges)
-    binary = (edges >= threshold).astype(np.uint8)
-    count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
-    keep = np.zeros(count, dtype=bool)
-    for i in range(1, count):
-        bw, bh = stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-        if max(bw, bh) >= min_length_px:
-            keep[i] = True
-    binary = keep[labels].astype(np.uint8)
+        strong = adaptive_threshold(edges)
+        weak = max(MIN_THRESHOLD * 0.6, min(strong, float(np.percentile(edges, 100 - WEAK_DENSITY_PCT))))
+        binary = hysteresis(edges, strong, weak)
+    else:
+        binary = (edges >= threshold).astype(np.uint8)
+    binary = _drop_short(binary, min_length_px)
     if thin:
         binary = thin_lines(binary)
     return binary * 255
+
+
+def outline_lines(edges: np.ndarray) -> np.ndarray:
+    """Garis kontur dari peta tepi resolusi rendah (edge_map(..., resolution=OUTLINE_RES[method])):
+    histeresis, buang garis pendek, tutup celah kecil, tipiskan. Return biner uint8 0/255."""
+    h, w = edges.shape
+    strong = adaptive_threshold(edges)
+    weak = max(MIN_THRESHOLD * 0.6, min(strong, float(np.percentile(edges, 100 - WEAK_DENSITY_PCT))))
+    binary = _drop_short(hysteresis(edges, strong, weak), max(12, round(max(h, w) * OUTLINE_MIN_LENGTH)))
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+    return thin_lines(binary) * 255
+
+
+def lines_svg_body(binary: np.ndarray, stroke: str = "#1E1E1E", width: int | None = None, epsilon: float = 1.2) -> str:
+    """Garis biner → <path> SVG (M/L/Z saja, dibaca ulang cv/svgpath.py untuk checkpoint).
+    Tiap garis dilacak sebagai kontur tertutup di sekeliling kerangka 1 px, jadi bila digoreskan
+    hasilnya tetap satu garis."""
+    from skimage.morphology import skeletonize
+
+    skeleton = skeletonize(binary > 0).astype(np.uint8)
+    contours, _ = cv2.findContours(skeleton, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    parts = []
+    for c in contours:
+        c = cv2.approxPolyDP(c, epsilon, True)
+        pts = c.reshape(-1, 2)
+        if len(pts) < 2:
+            continue
+        if len(pts) == 2:  # garis lurus: tulis bolak-balik (svgpath butuh ≥3 titik)
+            pts = np.vstack([pts, pts[:1]])
+        parts.append("M" + " L".join(f"{x} {y}" for x, y in pts) + " Z")
+    if not parts:
+        return ""
+    width = width or stroke_width(*binary.shape)
+    return (f'<path fill="none" stroke="{stroke}" stroke-width="{width}" stroke-linejoin="round" '
+            f'd="{" ".join(parts)}"/>')
 
 
 def stroke_width(h: int, w: int) -> int:

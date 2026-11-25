@@ -41,7 +41,7 @@ class CvResult:
     # Lapisan: SVG (string) atau PNG (bytes) — semuanya ukuran width × height
     lineart_png: bytes  # garis gelap, latar transparan
     regions_svg: str
-    sketch_svg: str  # garis bentuk besar: kontur objek utama + batas region besar
+    sketch_svg: str  # garis kontur objek (tanpa lipatan/motif) + siluet objek utama
     main_object_svg: str | None
     value_svg: str | None
     numbered_png: bytes  # region berwarna + nomor, ≤1024 px, untuk AI

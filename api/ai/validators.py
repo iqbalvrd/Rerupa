@@ -21,12 +21,25 @@ MAX_CLAIMS = 5
 SHADING_WORDS = re.compile(r"\b(shading|bayangan|gradasi|volume|volumetrik|bervolume|gelap[- ]terang|terang[- ]gelap)\b", re.I)
 
 
+# Nama kotak grid yang disebut teks ("kotak B3"). Hanya boleh kotak dari data langkah itu (atau patokan),
+# supaya AI tidak mengarang posisi. "A4" (ukuran kertas) tidak ikut karena tidak didahului "kotak".
+CELL_MENTION = re.compile(r"\bkotak\s+([A-Z]{1,2}[0-9]{1,2})\b")
+ACTION_MAX_V2 = 220  # instruksi langkah v2 harus pendek
+
+
+def _bad_cells(t: StageText, stage: PlannedStage, landmark_cells: set[str]) -> set[str]:
+    allowed = set(stage.grid_cells) | landmark_cells
+    text = " ".join([t.title, t.action, t.done_when, *t.common_mistakes])
+    return {c for c in CELL_MENTION.findall(text) if c not in allowed}
+
+
 def find_errors(
     out: LessonText,
     stages: list[PlannedStage],
     region_codes: set[str],
     source_codes: set[str],
     use_shading: bool,
+    landmark_cells: set[str] | None = None,
 ) -> list[str]:
     errors: list[str] = []
     expected = [s.code for s in stages]
@@ -34,9 +47,17 @@ def find_errors(
     if sorted(got) != sorted(expected) or len(got) != len(set(got)):
         errors.append(f"stages harus berisi tepat satu teks untuk tiap kode: {expected}; diterima: {got}")
 
+    stage_by_code = {s.code: s for s in stages}
     for t in out.stages:
         if not t.title.strip() or not t.action.strip() or not t.done_when.strip():
             errors.append(f"{t.stage_code}: title, action, dan done_when wajib diisi")
+        st = stage_by_code.get(t.stage_code)
+        if st is not None and st.phase is not None:
+            bad = _bad_cells(t, st, landmark_cells or set())
+            if bad:
+                errors.append(f"{t.stage_code}: kotak {sorted(bad)} tidak ada di grid_cells langkah ini; sebut hanya kotak dari grid_cells")
+            if len(t.action) > ACTION_MAX_V2:
+                errors.append(f"{t.stage_code}: action terlalu panjang ({len(t.action)} karakter); maksimal 2 kalimat pendek")
         if not use_shading:
             text = " ".join([t.title, t.action, t.done_when, *t.common_mistakes])
             if SHADING_WORDS.search(text):
@@ -71,6 +92,8 @@ def sanitize(
     region_codes: set[str],
     source_codes: set[str],
     use_shading: bool,
+    mixes: dict[str, dict] | None = None,
+    landmark_cells: list[str] | None = None,
 ) -> tuple[LessonText, list[str]]:
     """Perbaikan paksa yang aman. Return (hasil, daftar perbaikan yang dilakukan)."""
     fixes: list[str] = []
@@ -81,9 +104,11 @@ def sanitize(
         bad = t is None or not t.title.strip() or not t.action.strip() or not t.done_when.strip()
         if not bad and not use_shading and SHADING_WORDS.search(" ".join([t.title, t.action, t.done_when, *t.common_mistakes])):
             bad = True
+        if not bad and s.phase is not None and _bad_cells(t, s, set(landmark_cells or [])):
+            bad = True  # posisi karangan AI lebih berbahaya daripada teks templat
         if bad:
             fixes.append(f"{s.code}: teks diganti templat")
-            texts.append(stage_text_for(s))
+            texts.append(stage_text_for(s, mixes, landmark_cells))
             continue
         texts.append(
             StageText(

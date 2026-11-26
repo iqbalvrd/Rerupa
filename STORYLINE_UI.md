@@ -1,6 +1,6 @@
 # Storyline cerita: handoff frontend (P1)
 
-Per 22 Nov 2026. Untuk sesi yang mengerjakan UI storyline di `web/`. Baca ini dulu, lalu `api/API.md` bagian **"Storyline cerita"** di `origin/main` (kontrak resminya).
+Per 22 Nov 2026, diperbarui 26 Nov 2026. Untuk sesi yang mengerjakan UI storyline di `web/`. Baca ini dulu, lalu `api/API.md` bagian **"Storyline cerita"** di `origin/main` (kontrak resminya).
 
 ## Apa ini
 
@@ -13,14 +13,13 @@ Aturan yang tidak boleh dilanggar (PRD, `CLAUDERerupa.md`):
 - Foto unggahan hanya dikirim ke AI bila pengguna setuju (`consent_ai_photo`).
 - Teks UI Bahasa Indonesia, hangat, pendek.
 
-## Status backend: ada dua versi alur
+## Status backend (26 Nov 2026)
 
-| Versi | Di mana | Alur foto unggahan |
-| --- | --- | --- |
-| **A. Konfirmasi** | `origin/main` (sudah merge) | Setelah tutorial jadi, cek `GET /jobs/{generate}.result.recognition`. Ada → tanya "Apakah ini <judul> karya <seniman>?" → ya → `POST …/story {confirm_artwork_id}` → 200. Hasil job bisa `story`, `needs_identity` (tampilkan `result.candidate`), atau `unknown` (minta isian atau `interpretation_only`) |
-| **B. Agen riset** | branch `origin/feat/story-agen-riset` (**belum merge**, commit `c74d334`) | **Tidak ada** pertanyaan "Apakah ini …?". Isian judul/seniman/asal opsional (boleh dilewati) → `POST …/story` → 202 job. Worker: kenali dari foto → cari sumber web → skor keyakinan. Hasil job hanya `kind: "story"`. `identity` dapat `source` (`user` / `ai_research`), `confidence` (`high` / `medium` / `low`), `reason`; tampilkan keyakinan sebagai badge bila `source = ai_research` |
-
-**Saran:** `git fetch`, cek apakah B sudah masuk `main`. Kalau belum, tanya Xavier atau Iqbal mau pakai yang mana. B lebih sederhana di UI. Buat schema yang menerima keduanya: `kind` sebagai enum longgar, field `identity.*` opsional.
+- **Alur yang dipakai: B (agen riset)**, sudah di `main`. Tidak ada pertanyaan "Apakah ini …?". Isian judul/seniman/asal opsional (boleh dilewati) → `POST …/story` → 202 job. Worker: kenali dari foto → cari sumber web → skor keyakinan. Hasil job hanya `kind: "story"`. `identity` dapat `source` (`user` / `ai_research`), `confidence` (`high` / `medium` / `low`), `reason`; tampilkan keyakinan sebagai badge bila `source = ai_research`.
+- **Produksi: `FEATURE_STORY=true` dan `FEATURE_RECOGNITION=true` sudah aktif** (API + worker di Railway). Endpoint cerita tidak lagi mengembalikan `feature_disabled`.
+- **Materi koleksi belum punya cerita terbit** untuk versi lesson yang sekarang (v3, impor ulang 25 Nov). Sampai Iqbal menjalankan `scripts/generate_story.py <slug>` lalu `--publish`, materi koleksi menjawab 404 `story_not_available`: UI harus menyembunyikan tombol cerita dengan rapi.
+- Alur A (`confirm_artwork_id`, `result.recognition`) masih diterima backend demi kompatibilitas, tetapi **UI tidak perlu membuatnya**.
+- Biaya: ±$0,26–0,30 per cerita foto unggahan (±85% dari gambar panel). Batas harian AI `DAILY_AI_BUDGET_USD=5`.
 
 ## Kontrak singkat
 
@@ -60,7 +59,7 @@ StoryOut {
 
 **Error** (`lib/api-error.ts` sudah memetakan `code`): `feature_disabled` 404 → sembunyikan tombol cerita; `story_not_available` 404 → sembunyikan atau tampilkan "Kisah karya ini belum tersedia"; `story_quota_exceeded` 429.
 
-**Event** (`api.trackEvent`, `lib/api.ts`; tambahkan nama baru ke tipe `EventName`): `story_opened`, `recognition_confirmed` (versi A saja). Props yang diterima hanya `stage_order`, `origin`, `lesson_version_id`, `correct`.
+**Event** (`api.trackEvent`, `lib/api.ts`; tambahkan nama baru ke tipe `EventName`): `story_opened`. (`recognition_confirmed` hanya untuk alur A, tidak dipakai.) Props yang diterima hanya `stage_order`, `origin`, `lesson_version_id`, `correct`.
 
 ## Peta kode `web/` yang relevan
 
@@ -103,12 +102,12 @@ cd ~/Desktop/xav/Rerupa/api && uv run python worker.py
 cd ~/Desktop/xav/Rerupa/web && npm run dev
 ```
 
-Fitur cerita butuh `FEATURE_STORY=true` (dan `FEATURE_RECOGNITION=true` untuk pencocokan foto) di `api/.env`; minta Iqbal kalau belum ada. Tanpa backend: `NEXT_PUBLIC_API_MOCK=1` di `web/.env.local`, lalu `npm run fixtures`.
+Fitur cerita butuh `FEATURE_STORY=true` dan `FEATURE_RECOGNITION=true` di `api/.env` (produksi sudah aktif sejak 26 Nov); minta Iqbal kalau belum ada di lokal. Tanpa backend: `NEXT_PUBLIC_API_MOCK=1` di `web/.env.local`, lalu `npm run fixtures`.
 
 ## Selesai berarti
 
 - Materi koleksi: tombol cerita di detail karya (dan Selesai) → cerita tampil dengan `basis_label`, klaim + sumber, panel berlabel.
-- Foto unggahan: alur versi yang dipilih (A atau B) jalan dari isian/izin sampai cerita tampil, termasuk kasus `text_only` dan `purged`.
+- Foto unggahan: alur B jalan dari isian/izin sampai cerita tampil, termasuk kasus `text_only` dan `purged`.
 - Tombol tersembunyi rapi saat `feature_disabled` / `story_not_available`.
 - Ketuk tokoh membuka tahap yang tepat.
 - Mock dev mencakup semua kasus di atas; `npm run check` lulus; dicek di browser (mock, dan API asli bila fitur aktif).

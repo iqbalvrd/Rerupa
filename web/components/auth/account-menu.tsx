@@ -24,7 +24,8 @@ export function AccountMenu({ pillClassName }: { pillClassName?: string }) {
   if (auth.status === "loading") return pillClassName ? null : <span className="h-9 w-16" aria-hidden="true" />;
 
   if (auth.status === "signedOut") {
-    const back = pathname && pathname !== "/" && pathname !== "/masuk" && pathname !== "/daftar";
+    if (pathname === "/masuk" || pathname === "/daftar") return null; // the page itself is the form
+    const back = pathname && pathname !== "/";
     const href = `/masuk${back ? `?next=${encodeURIComponent(pathname)}` : ""}`;
     if (pillClassName) {
       return (

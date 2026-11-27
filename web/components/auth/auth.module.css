@@ -1,0 +1,211 @@
+/* Sign-in / sign-up: kawung batik on the gallery wall, a cream card with the frame's gold carving.
+   Palette shared with the gallery (wall, plaque, ink) and its gilded frames (GILDING). */
+.root {
+  --wall: #f4f0e8;
+  --plaque: #fffdf8;
+  --ink: #2b2723;
+  --ink-soft: #5f5850;
+  --soga: #6e4421; /* batik soga brown: pattern, button, links */
+  --soga-hover: #84542b;
+  --gold: #c99a52;
+  --gold-soft: #e8d3a6;
+  --field: #d9ccb7;
+
+  color: var(--ink);
+}
+
+/* ── Background ─────────────────────────────────────────────────────────── */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--wall);
+  pointer-events: none;
+}
+.pattern {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%; /* an SVG ignores inset stretching and would stay 150px tall */
+  color: var(--soga);
+  opacity: 0.075;
+}
+.kawung {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+}
+.petalCore {
+  fill: currentColor;
+  stroke: none;
+}
+/* Warm light behind the card so the pattern fades where people read and type. */
+.glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 46rem 36rem at 50% 42%, rgb(244 240 232 / 0.94) 30%, rgb(244 240 232 / 0) 72%);
+}
+
+/* ── Card ───────────────────────────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  margin-block: clamp(1.75rem, 6vh, 3.5rem);
+  margin-inline: auto;
+  max-inline-size: 26rem;
+  padding: 3.25rem clamp(1.25rem, 5vw, 2.25rem) 2rem;
+  border: 1px solid var(--gold-soft);
+  border-radius: 14px;
+  background: var(--plaque);
+  /* inner hairline like a mat inside the frame */
+  box-shadow:
+    inset 0 0 0 6px var(--plaque),
+    inset 0 0 0 7px rgb(201 154 82 / 0.35),
+    0 1px 2px rgb(60 37 12 / 0.06),
+    0 14px 36px -12px rgb(60 37 12 / 0.22);
+}
+
+.corner {
+  position: absolute;
+  inline-size: 46px;
+  block-size: 46px;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0.5px 1px 0.5px rgb(60 37 12 / 0.35));
+}
+.cornerTL { inset-block-start: -7px; inset-inline-start: -7px; }
+.cornerTR { inset-block-start: -7px; inset-inline-end: -7px; transform: rotate(90deg); }
+.cornerBR { inset-block-end: -7px; inset-inline-end: -7px; transform: rotate(180deg); }
+.cornerBL { inset-block-end: -7px; inset-inline-start: -7px; transform: rotate(270deg); }
+
+.crest {
+  position: absolute;
+  inset-block-start: -15px;
+  inset-inline-start: 50%;
+  inline-size: 92px;
+  block-size: 38px;
+  overflow: visible;
+  transform: translateX(-50%);
+  filter: drop-shadow(0.5px 1px 0.5px rgb(60 37 12 / 0.35));
+}
+
+/* ── Content ────────────────────────────────────────────────────────────── */
+
+.title {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--ink);
+}
+.lead {
+  margin-block-start: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-block: 1.25rem 0.25rem;
+  color: var(--gold);
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-block-start: 1px solid rgb(201 154 82 / 0.45);
+}
+.diamond {
+  inline-size: 7px;
+  block-size: 7px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.input {
+  inline-size: 100%;
+  min-block-size: 46px;
+  padding-inline: 0.85rem;
+  border: 1px solid var(--field);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus-visible {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgb(201 154 82 / 0.28);
+}
+.input[aria-invalid="true"] {
+  border-color: #b4412d;
+}
+
+.submit {
+  min-block-size: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--soga);
+  color: #fdf6e8;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px rgb(60 37 12 / 0.25);
+  transition: background 0.15s;
+}
+.submit:hover:not(:disabled) {
+  background: var(--soga-hover);
+}
+.submit:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+.submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  font-size: 0.875rem;
+  color: #a3361f;
+}
+.note {
+  margin-block-start: 1rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: #f6eedf;
+  font-size: 0.875rem;
+}
+.footer {
+  margin-block-start: 1.5rem;
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.link {
+  font-weight: 600;
+  color: var(--soga);
+  text-decoration: underline;
+  text-decoration-color: rgb(110 68 33 / 0.35);
+  text-underline-offset: 3px;
+}
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .submit {
+    transition: none;
+  }
+}

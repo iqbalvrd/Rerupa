@@ -4,14 +4,34 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/button";
 import { authErrorMessage, safeNext, signIn, signUp, useAuth } from "@/lib/auth";
 import { AUTH_CONFIGURED } from "@/lib/supabase";
+import { AuthBackdrop, OrnateCard } from "./auth-backdrop";
+import styles from "./auth.module.css";
 
 const MIN_PASSWORD = 8;
 
 /** Sign-in (`/masuk`) and sign-up (`/daftar`) form. `?next=` brings the learner back where they were. */
 export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
+  return (
+    <div className={styles.root}>
+      <AuthBackdrop />
+      <OrnateCard>
+        <FormBody mode={mode} />
+      </OrnateCard>
+    </div>
+  );
+}
+
+function Divider() {
+  return (
+    <div className={styles.divider} aria-hidden="true">
+      <span className={styles.diamond} />
+    </div>
+  );
+}
+
+function FormBody({ mode }: { mode: "masuk" | "daftar" }) {
   const router = useRouter();
   const params = useSearchParams();
   const queryClient = useQueryClient();
@@ -63,41 +83,43 @@ export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
 
   if (sentTo) {
     return (
-      <section className="mx-auto max-w-sm py-10" aria-live="polite">
-        <h1 className="font-heading text-2xl">Cek emailmu</h1>
-        <p className="text-muted-foreground mt-3">
-          Kami mengirim tautan konfirmasi ke <strong className="text-foreground">{sentTo}</strong>. Buka tautan itu, lalu
+      <section aria-live="polite">
+        <h1 className={styles.title}>Cek emailmu</h1>
+        <Divider />
+        <p className={styles.lead}>
+          Kami mengirim tautan konfirmasi ke <strong className="text-(--ink)">{sentTo}</strong>. Buka tautan itu, lalu
           masuk dengan email dan kata sandimu.
         </p>
-        <Button asChild className="mt-6 h-11 w-full">
-          <Link href={`/masuk${nextQuery}`}>Ke halaman masuk</Link>
-        </Button>
+        <Link href={`/masuk${nextQuery}`} className={`${styles.submit} mt-6 flex w-full items-center justify-center`}>
+          Ke halaman masuk
+        </Link>
       </section>
     );
   }
 
   const title = mode === "masuk" ? "Masuk" : "Buat akun";
-  const inputClass =
-    "border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-11 w-full rounded-lg border px-3 text-base outline-none focus-visible:ring-3 aria-invalid:border-destructive";
+  const invalid = error ? true : undefined;
+  const describedBy = error ? ids.error : undefined;
 
   return (
-    <section className="mx-auto max-w-sm py-10">
-      <h1 className="font-heading text-2xl">{title}</h1>
-      <p className="text-muted-foreground mt-2 text-sm">
+    <section>
+      <h1 className={styles.title}>{title}</h1>
+      <p className={styles.lead}>
         {mode === "masuk"
           ? "Masuk untuk mulai latihan, mengunggah foto, dan menyimpan progresmu."
           : "Galeri dan tutorial bisa dilihat tanpa akun. Akun dibutuhkan untuk latihan dan unggah foto."}
       </p>
+      <Divider />
 
       {!AUTH_CONFIGURED && (
-        <p className="bg-muted mt-4 rounded-lg p-3 text-sm" role="status">
+        <p className={styles.note} role="status">
           Akun belum aktif di lingkungan ini (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY kosong).
         </p>
       )}
 
-      <form className="mt-6 flex flex-col gap-4" onSubmit={onSubmit} noValidate={false}>
+      <form className="mt-4 flex flex-col gap-4" onSubmit={onSubmit}>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor={ids.email} className="text-sm font-medium">
+          <label htmlFor={ids.email} className={styles.label}>
             Email
           </label>
           <input
@@ -108,13 +130,13 @@ export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={inputClass}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? ids.error : undefined}
+            className={styles.input}
+            aria-invalid={invalid}
+            aria-describedby={describedBy}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor={ids.password} className="text-sm font-medium">
+          <label htmlFor={ids.password} className={styles.label}>
             Kata sandi
           </label>
           <input
@@ -125,14 +147,14 @@ export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
             minLength={mode === "daftar" ? MIN_PASSWORD : undefined}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? ids.error : undefined}
+            className={styles.input}
+            aria-invalid={invalid}
+            aria-describedby={describedBy}
           />
         </div>
         {mode === "daftar" && (
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={ids.confirm} className="text-sm font-medium">
+            <label htmlFor={ids.confirm} className={styles.label}>
               Ulangi kata sandi
             </label>
             <input
@@ -142,34 +164,34 @@ export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className={inputClass}
+              className={styles.input}
             />
           </div>
         )}
 
         {error && (
-          <p id={ids.error} className="text-destructive text-sm" role="alert">
+          <p id={ids.error} className={styles.error} role="alert">
             {error}
           </p>
         )}
 
-        <Button type="submit" className="h-11 w-full text-base" disabled={busy || !AUTH_CONFIGURED}>
+        <button type="submit" className={`${styles.submit} mt-1 w-full`} disabled={busy || !AUTH_CONFIGURED}>
           {busy ? "Sebentar…" : title}
-        </Button>
+        </button>
       </form>
 
-      <p className="text-muted-foreground mt-6 text-center text-sm">
+      <p className={styles.footer}>
         {mode === "masuk" ? (
           <>
             Belum punya akun?{" "}
-            <Link href={`/daftar${nextQuery}`} className="text-primary font-medium underline-offset-4 hover:underline">
+            <Link href={`/daftar${nextQuery}`} className={styles.link}>
               Daftar
             </Link>
           </>
         ) : (
           <>
             Sudah punya akun?{" "}
-            <Link href={`/masuk${nextQuery}`} className="text-primary font-medium underline-offset-4 hover:underline">
+            <Link href={`/masuk${nextQuery}`} className={styles.link}>
               Masuk
             </Link>
           </>

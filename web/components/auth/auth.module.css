@@ -1,0 +1,307 @@
+/* Sign-in / sign-up: kawung batik on the gallery wall, a cream card with the frame's gold carving.
+   Palette shared with the gallery (wall, plaque, ink) and its gilded frames (GILDING). */
+.root {
+  --wall: #f4f0e8;
+  --plaque: #fffdf8;
+  --ink: #2b2723;
+  --ink-soft: #5f5850;
+  --soga: #6e4421; /* batik soga brown: pattern, button, links */
+  --soga-hover: #84542b;
+  --gold: #c99a52;
+  --gold-soft: #e8d3a6;
+  --field: #d9ccb7;
+
+  color: var(--ink);
+  display: grid;
+  min-block-size: 100dvh;
+  background: var(--wall);
+}
+@media (min-width: 1024px) {
+  .root {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* ── Painting half ──────────────────────────────────────────────────────── */
+
+.art {
+  position: relative;
+  min-block-size: 38vh;
+  margin: 0;
+  overflow: hidden;
+  background: #3b2a1a;
+}
+@media (min-width: 1024px) {
+  .art {
+    position: sticky;
+    inset-block-start: 0;
+    block-size: 100dvh;
+    /* gold rail where the painting meets the batik wall, like a frame edge */
+    box-shadow: inset -3px 0 0 #c99a52, inset -4px 0 0 #6e4421;
+  }
+}
+.artImage {
+  object-fit: cover;
+  /* keep the house, the villagers and the volcano in view on narrow crops */
+  object-position: 32% 62%;
+}
+/* The way home, top-left corner of the page, on a cream plate so the logo reads over the sky. */
+.artHome {
+  position: absolute;
+  inset-block-start: max(1rem, env(safe-area-inset-top, 0px));
+  inset-inline-start: max(1rem, env(safe-area-inset-left, 0px));
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 0.85rem;
+  border-radius: 999px;
+  background: rgb(255 253 248 / 0.9);
+  box-shadow: 0 1px 3px rgb(30 20 12 / 0.25);
+}
+.art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(30 20 12 / 0.72), rgb(30 20 12 / 0) 38%);
+  pointer-events: none;
+}
+.artLabel {
+  position: absolute;
+  inset-inline: max(1.25rem, env(safe-area-inset-left, 0px)) 1.25rem;
+  inset-block-end: 1.1rem;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  color: rgb(253 246 232 / 0.85);
+}
+.artTitle {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  color: #fdf6e8;
+}
+@media (max-width: 1023.98px) {
+  /* phones: leave room for the card that overlaps the painting's bottom edge */
+  .artLabel {
+    inset-block-end: 2.75rem;
+  }
+}
+
+/* ── Form half ──────────────────────────────────────────────────────────── */
+
+.formSide {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 max(1rem, env(safe-area-inset-right, 0px)) max(1.5rem, env(safe-area-inset-bottom, 0px))
+    max(1rem, env(safe-area-inset-left, 0px));
+}
+@media (max-width: 1023.98px) {
+  .formSide {
+    justify-content: flex-start;
+  }
+  .formSide .card {
+    margin-block-start: -1.75rem;
+  }
+}
+
+/* ── Background ─────────────────────────────────────────────────────────── */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--wall);
+  pointer-events: none;
+}
+.pattern {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%; /* an SVG ignores inset stretching and would stay 150px tall */
+  color: var(--soga);
+  opacity: 0.075;
+}
+.kawung {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+}
+.petalCore {
+  fill: currentColor;
+  stroke: none;
+}
+/* Warm light behind the card so the pattern fades where people read and type. */
+.glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 34rem 30rem at 50% 50%, rgb(244 240 232 / 0.94) 30%, rgb(244 240 232 / 0) 72%);
+}
+
+/* ── Card ───────────────────────────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  margin-block: clamp(1.75rem, 6vh, 3.5rem);
+  margin-inline: auto;
+  inline-size: 100%;
+  max-inline-size: 26rem;
+  padding: 3.25rem clamp(1.25rem, 5vw, 2.25rem) 2rem;
+  border: 1px solid var(--gold-soft);
+  border-radius: 14px;
+  background: var(--plaque);
+  /* inner hairline like a mat inside the frame */
+  box-shadow:
+    inset 0 0 0 6px var(--plaque),
+    inset 0 0 0 7px rgb(201 154 82 / 0.35),
+    0 1px 2px rgb(60 37 12 / 0.06),
+    0 14px 36px -12px rgb(60 37 12 / 0.22);
+}
+
+.corner {
+  position: absolute;
+  inline-size: 46px;
+  block-size: 46px;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0.5px 1px 0.5px rgb(60 37 12 / 0.35));
+}
+.cornerTL { inset-block-start: -7px; inset-inline-start: -7px; }
+.cornerTR { inset-block-start: -7px; inset-inline-end: -7px; transform: rotate(90deg); }
+.cornerBR { inset-block-end: -7px; inset-inline-end: -7px; transform: rotate(180deg); }
+.cornerBL { inset-block-end: -7px; inset-inline-start: -7px; transform: rotate(270deg); }
+
+.crest {
+  position: absolute;
+  inset-block-start: -15px;
+  inset-inline-start: 50%;
+  inline-size: 92px;
+  block-size: 38px;
+  overflow: visible;
+  transform: translateX(-50%);
+  filter: drop-shadow(0.5px 1px 0.5px rgb(60 37 12 / 0.35));
+}
+
+/* ── Content ────────────────────────────────────────────────────────────── */
+
+.title {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--ink);
+}
+.lead {
+  margin-block-start: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-block: 1.25rem 0.25rem;
+  color: var(--gold);
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-block-start: 1px solid rgb(201 154 82 / 0.45);
+}
+.diamond {
+  inline-size: 7px;
+  block-size: 7px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.input {
+  inline-size: 100%;
+  min-block-size: 46px;
+  padding-inline: 0.85rem;
+  border: 1px solid var(--field);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus-visible {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgb(201 154 82 / 0.28);
+}
+.input[aria-invalid="true"] {
+  border-color: #b4412d;
+}
+
+.submit {
+  min-block-size: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--soga);
+  color: #fdf6e8;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px rgb(60 37 12 / 0.25);
+  transition: background 0.15s;
+}
+.submit:hover:not(:disabled) {
+  background: var(--soga-hover);
+}
+.submit:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+.submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  font-size: 0.875rem;
+  color: #a3361f;
+}
+.note {
+  margin-block-start: 1rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: #f6eedf;
+  font-size: 0.875rem;
+}
+.footer {
+  margin-block-start: 1.5rem;
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.link {
+  font-weight: 600;
+  color: var(--soga);
+  text-decoration: underline;
+  text-decoration-color: rgb(110 68 33 / 0.35);
+  text-underline-offset: 3px;
+}
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .submit {
+    transition: none;
+  }
+}

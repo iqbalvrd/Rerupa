@@ -27,7 +27,6 @@ export type Slot = {
   center: Vec3;
   wall: "back" | "left" | "right";
   rotation: number;
-  upper?: boolean;
 };
 
 export type RoomPlan = {
@@ -98,27 +97,12 @@ export function planRoom(count: number, aspect = 16 / 9): RoomPlan {
   return { cols, rows, arcadeW, arcadeH, width, depth, springY, slots };
 }
 
-/** Reserve upper-wall frames without redistributing the live collection below. */
-export function withUpperShowcases(base: RoomPlan): RoomPlan {
-  const springY = base.springY + 1.2;
-  const y = 4.85 + (base.rows - 1) * HALL.levelH + 2.25;
-  const sides = base.slots.filter(s => s.wall !== "back");
-  const upper = sides.map(s => ({ ...s, index: 0, upper: true, center: [s.center[0], y, s.center[2]] as Vec3 }));
-  const windowR = Math.min(3.3, base.width * 0.3);
-  for (const sign of [-1, 1]) upper.push({
-    index: 0, row: 0, col: sign < 0 ? 0 : 1, wall: "back", rotation: 0, upper: true,
-    center: [sign * (base.width / 2 + windowR) / 2, y - 0.45, -base.depth / 2 + 0.04],
-  });
-  upper.forEach((slot, i) => { slot.index = base.slots.length + i; });
-  return { ...base, springY, slots: [...base.slots, ...upper] };
-}
-
 /** Follow the perimeter from the entrance's left side to its right side. */
 export function galleryNavigationOrder(plan: RoomPlan): number[] {
   const left = plan.slots.filter(slot => slot.wall === "left").sort((a, b) => b.center[2] - a.center[2]);
   const back = plan.slots.filter(slot => slot.wall === "back").sort((a, b) => a.row - b.row || a.center[0] - b.center[0]);
   const right = plan.slots.filter(slot => slot.wall === "right").sort((a, b) => a.center[2] - b.center[2]);
-  return [false, true].flatMap(upper => [...left, ...back, ...right].filter(slot => !!slot.upper === upper).map(slot => slot.index));
+  return [...left, ...back, ...right].map(slot => slot.index);
 }
 
 /** Resolve from the most recently requested target, including during an interrupted walk. */
@@ -146,7 +130,7 @@ export function overviewPose(plan: RoomPlan, aspect: number): Pose {
   const d = Math.max(overviewDistance(plan.arcadeW, plan.arcadeH, aspect), plan.depth * 0.9);
   // Look at a point a little above the arcade's middle, from standing height, so
   // the view takes in the floor, the arcade and the start of the vault.
-  const cy = Math.min(plan.springY * 0.52, 4.4 + (plan.rows - 1) * 1.5 + (plan.slots.some(s => s.upper) ? 0.65 : 0));
+  const cy = Math.min(plan.springY * 0.52, 4.4 + (plan.rows - 1) * 1.5);
   const y = HALL.eye + 0.25;
   const pitch = Math.atan2(cy - y, d);
   return { pos: [0, y, -plan.depth / 2 + d], yaw: 0, pitch };

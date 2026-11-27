@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HALL, adjacentGalleryIndex, galleryNavigationOrder, angleDelta, lerpPose, overviewPose, paintingSize, planRoom, slotPose, withUpperShowcases } from "./plan";
+import { HALL, adjacentGalleryIndex, galleryNavigationOrder, angleDelta, lerpPose, overviewPose, paintingSize, planRoom, slotPose } from "./plan";
 
 describe("three-wall plan", () => {
   it("distributes every exhibit once across the back, left and right walls", () => {
@@ -85,27 +85,5 @@ describe("left and right navigation", () => {
       expect(adjacentGalleryIndex(order, next, -1)).toBe(order[i]);
     }
     expect(adjacentGalleryIndex([], 0, 1)).toBe(0);
-  });
-});
-
-
-describe("upper showcases", () => {
-  it("preserves live artwork slots and keeps upper frames below the ceiling", () => {
-    for (const count of [1, 6, 24]) for (const aspect of [16 / 9, 390 / 844]) {
-      const base = planRoom(count, aspect), plan = withUpperShowcases(base);
-      expect(plan.slots.slice(0, count)).toEqual(base.slots);
-      const upper = plan.slots.filter(s => s.upper);
-      expect(upper.length).toBeGreaterThanOrEqual(2);
-      for (const slot of upper) {
-        expect(slot.center[1] - HALL.maxH / 2).toBeGreaterThan(4.85);
-        expect(slot.center[1] + HALL.maxH / 2 + 0.8).toBeLessThan(plan.springY);
-        const pose = slotPose(plan, slot, paintingSize(slot.wall === "back" ? 0.65 : 1.35), aspect);
-        expect(pose.pos[1]).toBeGreaterThan(HALL.eye);
-        expect(Math.abs(pose.pos[0])).toBeLessThan(plan.width / 2);
-      }
-      const order = galleryNavigationOrder(plan);
-      expect(order.slice(0, count)).toEqual(galleryNavigationOrder(base));
-      expect(new Set(order).size).toBe(plan.slots.length);
-    }
   });
 });

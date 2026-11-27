@@ -23,9 +23,6 @@ export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
       <ArtPanel />
       <div className={styles.formSide}>
         <AuthBackdrop />
-        <Link href="/" className={styles.home} aria-label="Rerupa, ke beranda">
-          <Logo className="h-7 w-auto" priority />
-        </Link>
         <OrnateCard>
           <FormBody mode={mode} />
         </OrnateCard>
@@ -47,7 +44,7 @@ function ArtPanel() {
         className={styles.artImage}
       />
       <Link href="/" className={styles.artHome} aria-label="Rerupa, ke beranda">
-        <Logo className="h-5 w-auto" />
+        <Logo className="h-6 w-auto" priority />
       </Link>
       <figcaption className={styles.artLabel}>
         <span className={styles.artTitle}>Bentang Alam Indonesia dengan Kampung</span>

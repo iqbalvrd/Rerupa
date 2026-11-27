@@ -45,11 +45,11 @@
   /* keep the house, the villagers and the volcano in view on narrow crops */
   object-position: 32% 62%;
 }
-/* Phones only: the way home, on a cream plate so the logo reads over the sky. */
+/* The way home, top-left corner of the page, on a cream plate so the logo reads over the sky. */
 .artHome {
   position: absolute;
-  inset-block-start: max(0.75rem, env(safe-area-inset-top, 0px));
-  inset-inline-start: max(0.75rem, env(safe-area-inset-left, 0px));
+  inset-block-start: max(1rem, env(safe-area-inset-top, 0px));
+  inset-inline-start: max(1rem, env(safe-area-inset-left, 0px));
   z-index: 1;
   display: inline-flex;
   align-items: center;
@@ -58,11 +58,6 @@
   border-radius: 999px;
   background: rgb(255 253 248 / 0.9);
   box-shadow: 0 1px 3px rgb(30 20 12 / 0.25);
-}
-@media (min-width: 1024px) {
-  .artHome {
-    display: none;
-  }
 }
 .art::after {
   content: "";
@@ -105,18 +100,7 @@
   padding: 0 max(1rem, env(safe-area-inset-right, 0px)) max(1.5rem, env(safe-area-inset-bottom, 0px))
     max(1rem, env(safe-area-inset-left, 0px));
 }
-.home {
-  position: absolute;
-  inset-block-start: max(1.25rem, env(safe-area-inset-top, 0px));
-  inset-inline-start: 1.5rem;
-  display: inline-flex;
-  align-items: center;
-  min-block-size: 44px;
-}
 @media (max-width: 1023.98px) {
-  .home {
-    display: none; /* the painting sits on top on phones; the card keeps the page short */
-  }
   .formSide {
     justify-content: flex-start;
   }

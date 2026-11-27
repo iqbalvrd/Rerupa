@@ -122,6 +122,19 @@ def test_artwork_crop_panel_uses_original_without_ai(monkeypatch):
     assert (res.kind, res.status) == ("artwork_crop", "ready") and res.jpeg and calls["img"] == 0
 
 
+def test_repeated_artwork_crop_widens_then_uses_whole_artwork():
+    from PIL import Image as _I
+
+    sb = board(4)
+    p = sb.panels[0]  # use_artwork_crop, fokus r01
+    original = jpeg()
+    bbox = {"r01": [150, 110, 100, 80]}
+    seen: dict = {}
+    sizes = [_I.open(io.BytesIO(pm.make_panel(sb, p, original_jpeg=original, region_bbox=bbox, previous_png=None, image_model="m", quality="medium", safety_id="s", job_id=None, crop_repeats=seen).jpeg)).size for _ in range(3)]
+    area = [w * h for w, h in sizes]
+    assert area[0] < area[1] < area[2] and sizes[2] == _I.open(io.BytesIO(original)).size
+
+
 def test_inconsistent_panel_regenerated_once_then_text(monkeypatch):
     calls = _panel_env(monkeypatch, [PanelCheck(consistent=False, issues=["ada keris"]), PanelCheck(consistent=False, issues=["masih ada keris"])])
     sb = board()

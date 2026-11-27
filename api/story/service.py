@@ -68,7 +68,8 @@ def decide_basis(lesson: dict, params: dict, *, safety_id: str, job_id: str | No
     settings = get_settings()
     if lesson["origin"] == "collection":
         a = lesson.get("artworks") or {}
-        identity = {"title": a.get("title"), "artist": a.get("artist"), "origin": a.get("tradition") or a.get("region_origin"), "confirmed_by_user": None}
+        identity = {"title": a.get("title"), "artist": a.get("artist"), "origin": a.get("tradition") or a.get("region_origin"), "confirmed_by_user": None,
+                    "source": "curated", "confidence": "high"}  # identitas koleksi sudah dikurasi: bukan dugaan
         claims, srcs = curated_claims(lesson["id"])
         return "curated", identity, claims, srcs
 
@@ -130,13 +131,14 @@ def build_story(lesson_id: str, session_id: str | None, params: dict, *, safety_
         bucket, prefix = "derived", f"{session_id}/{lesson_id}/story"
     region_bbox = {r["code"]: r["bbox"] for r in lesson["regions"]}
     previous_png = None
+    crop_repeats: dict = {}
     images = 0
     for p in sb.panels:
         progress(f"panel_{p.order_no}")
         if not lesson["original_jpeg"]:
             res = panel_mod.PanelResult(p.order_no, "text", "text_only", check={"error": "original_missing"})
         else:
-            res = panel_mod.make_panel(sb, p, original_jpeg=lesson["original_jpeg"], region_bbox=region_bbox, previous_png=previous_png,
+            res = panel_mod.make_panel(sb, p, original_jpeg=lesson["original_jpeg"], region_bbox=region_bbox, previous_png=previous_png, crop_repeats=crop_repeats,
                                        image_model=image_model, quality="high" if final else "medium", safety_id=safety_id, job_id=job_id)
         row = {"kind": res.kind, "status": res.status, "check_result": res.check}
         if res.jpeg:

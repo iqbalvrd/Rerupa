@@ -30,7 +30,7 @@ Tulis:
 
 Aturan wajib:
 - Inspirasi: tulis sebagai kepastian HANYA bila ada klaim fakta tentang alasan/ilham pembuatan. Bila tidak ada, tulis jujur sebagai tafsiran ("Banyak yang menduga …", "Mungkin …") atau ceritakan konteks zamannya — jangan mengarang alasan pribadi seniman.
-- Bila identity.confidence bukan "high", sebut identitas karya sebagai dugaan ("karya ini kemungkinan …"), jangan sebagai kepastian.
+- Bila identity.confidence ada dan bukan "high", sebut identitas karya sebagai dugaan ("karya ini kemungkinan …"). Materi koleksi (story_basis curated) identitasnya PASTI: sebut judul dan seniman apa adanya, tanpa "kemungkinan".
 - Jangan menambah fakta di luar claims. Jangan menyebut tahun/nama yang tidak ada di claims atau identity.
 - Jangan menggambar tokoh/adegan dalam daftar restricted; bila kisah bergantung padanya, ceritakan tanpa menampilkan tokoh itu.
 - Hindari kekerasan grafis; adegan konflik digambarkan tidak eksplisit.

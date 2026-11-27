@@ -94,10 +94,17 @@ def check_panel(sb: Storyboard, panel: Panel, panel_jpeg: bytes, original_jpeg: 
     return oc.parse(task="panel_check", instructions=(PROMPTS / "panel_check.v1.md").read_text(encoding="utf-8"), content=content, schema=PanelCheck, safety_id=safety_id, job_id=job_id, max_output_tokens=600).parsed
 
 
-def make_panel(sb: Storyboard, panel: Panel, *, original_jpeg: bytes, region_bbox: dict[str, list[int]], previous_png: bytes | None, image_model: str, quality: str, safety_id: str, job_id: str | None) -> PanelResult:
+def make_panel(sb: Storyboard, panel: Panel, *, original_jpeg: bytes, region_bbox: dict[str, list[int]], previous_png: bytes | None, image_model: str, quality: str, safety_id: str, job_id: str | None, crop_repeats: dict | None = None) -> PanelResult:
     if panel.use_artwork_crop:
         boxes = [region_bbox[c] for c in panel.focus_region_codes if c in region_bbox]
-        return PanelResult(panel.order_no, "artwork_crop", "ready", crop_regions(original_jpeg, boxes))
+        # Bidang fokus yang sama dengan panel potongan sebelumnya → bingkai lebih lebar, lalu karya utuh,
+        # supaya dua panel berurutan tidak menampilkan gambar yang hampir sama.
+        repeat = crop_repeats.get(tuple(sorted(panel.focus_region_codes)), 0) if crop_repeats is not None else 0
+        if crop_repeats is not None:
+            crop_repeats[tuple(sorted(panel.focus_region_codes))] = repeat + 1
+        if repeat >= 2:
+            boxes = []
+        return PanelResult(panel.order_no, "artwork_crop", "ready", crop_regions(original_jpeg, boxes, pad=0.12 if repeat == 0 else 0.8))
 
     refs = [to_png(original_jpeg)] + ([previous_png] if previous_png else [])
     fix: list[str] | None = None

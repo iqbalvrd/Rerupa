@@ -1,25 +1,59 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { authErrorMessage, safeNext, signIn, signUp, useAuth } from "@/lib/auth";
+import { Logo } from "@/components/brand/logo";
 import { AUTH_CONFIGURED } from "@/lib/supabase";
 import { AuthBackdrop, OrnateCard } from "./auth-backdrop";
 import styles from "./auth.module.css";
 
 const MIN_PASSWORD = 8;
 
-/** Sign-in (`/masuk`) and sign-up (`/daftar`) form. `?next=` brings the learner back where they were. */
+/**
+ * Sign-in (`/masuk`) and sign-up (`/daftar`): a Raden Saleh landscape on one half, the form on a
+ * kawung-batik wall on the other (stacked on phones). `?next=` brings the learner back where they were.
+ */
 export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
   return (
     <div className={styles.root}>
-      <AuthBackdrop />
-      <OrnateCard>
-        <FormBody mode={mode} />
-      </OrnateCard>
+      <ArtPanel />
+      <div className={styles.formSide}>
+        <AuthBackdrop />
+        <Link href="/" className={styles.home} aria-label="Rerupa, ke beranda">
+          <Logo className="h-7 w-auto" priority />
+        </Link>
+        <OrnateCard>
+          <FormBody mode={mode} />
+        </OrnateCard>
+      </div>
     </div>
+  );
+}
+
+/** Public-domain painting (public/auth/ASSETS_LICENSE.txt) with a museum-style label. */
+function ArtPanel() {
+  return (
+    <figure className={styles.art}>
+      <Image
+        src="/auth/raden-saleh-kampung-1863.webp"
+        alt="Lukisan pemandangan Jawa: rumah beratap ilalang di bawah pohon besar, warga di halaman, lembah dan gunung di kejauhan."
+        fill
+        priority
+        sizes="(min-width: 1024px) 50vw, 100vw"
+        className={styles.artImage}
+      />
+      <Link href="/" className={styles.artHome} aria-label="Rerupa, ke beranda">
+        <Logo className="h-5 w-auto" />
+      </Link>
+      <figcaption className={styles.artLabel}>
+        <span className={styles.artTitle}>Bentang Alam Indonesia dengan Kampung</span>
+        <span>Raden Saleh, 1863 · domain publik</span>
+      </figcaption>
+    </figure>
   );
 }
 

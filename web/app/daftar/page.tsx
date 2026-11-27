@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { AppShell } from "@/components/app-shell";
 import { AuthForm } from "@/components/auth/auth-form";
 
 export const metadata: Metadata = {
@@ -10,11 +9,9 @@ export const metadata: Metadata = {
 
 export default function SignUpPage() {
   return (
-    <AppShell>
-      {/* useSearchParams needs a Suspense boundary for static rendering. */}
-      <Suspense>
-        <AuthForm mode="daftar" />
-      </Suspense>
-    </AppShell>
+    // useSearchParams needs a Suspense boundary for static rendering.
+    <Suspense>
+      <AuthForm mode="daftar" />
+    </Suspense>
   );
 }

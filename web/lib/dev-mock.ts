@@ -16,6 +16,18 @@ export const DEV_LESSON_ID = "e4cfabb9-24a3-4317-8cc6-f453cfb90b7c";
 
 const SESSION_KEY = "rerupa:dev-mock-session";
 
+/**
+ * Which example lesson the mock serves: the 8-stage v1 lesson, or the v2
+ * "tutorial bertahap" lesson when `localStorage["rerupa:dev-mock-lesson"] = "v2"`.
+ */
+function mockLessonName(): "lesson_mock" | "lesson_mock_v2" {
+  try {
+    return localStorage.getItem("rerupa:dev-mock-lesson") === "v2" ? "lesson_mock_v2" : "lesson_mock";
+  } catch {
+    return "lesson_mock";
+  }
+}
+
 async function example(name: string): Promise<unknown> {
   const res = await fetch(`/_dev/api/${name}.json`);
   if (!res.ok) throw new ApiError("internal_error", "Data contoh API belum dibuat. Jalankan `npm run fixtures`.");
@@ -220,7 +232,7 @@ export async function mockRequest(method: string, path: string, body: unknown, f
   // Synthetic lesson: the example lesson with shape layers that actually load.
   // The session remembers whether its lesson came from the gallery or a photo.
   if (method === "GET" && path.startsWith("/lessons/")) {
-    const lesson = (await example("lesson_mock")) as Record<string, unknown>;
+    const lesson = (await example(mockLessonName())) as Record<string, unknown>;
     const origin = loadSession()?.lesson_origin;
     return typeof origin === "string" ? { ...lesson, origin } : lesson;
   }
@@ -229,7 +241,7 @@ export async function mockRequest(method: string, path: string, body: unknown, f
   if (progressMatch) {
     const session = loadSession();
     if (!session || session.id !== progressMatch[1]) sessionRequired();
-    const lesson = (await example("lesson_mock")) as {
+    const lesson = (await example(mockLessonName())) as {
       stages: { code: string; order_no: number; is_checkpoint: boolean }[];
     };
     const state = (session.progress ?? {}) as Record<string, { status: string; viewed_at: string | null; completed_at: string | null }>;

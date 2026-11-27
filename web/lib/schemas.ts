@@ -120,6 +120,10 @@ export const LayerKind = z.enum([
   "value",
   "lineart",
   "original_photo",
+  // Tutorial v2 (API.md "Tutorial bertahap")
+  "landmarks",
+  "block_in",
+  "background_lines",
 ]);
 export type LayerKind = z.infer<typeof LayerKind>;
 
@@ -144,6 +148,9 @@ export const Region = z.object({
   is_background: z.boolean(),
   value_level: z.number().int().nullable(),
   label: z.string().nullable(),
+  /** v2: the mix this region is painted with, and the grid cells it touches. */
+  mix_id: z.string().nullish(),
+  grid_cells: z.array(z.string()).optional(),
 });
 export type Region = z.infer<typeof Region>;
 
@@ -161,8 +168,36 @@ export const Stage = z.object({
   common_mistakes: z.array(z.string()),
   focus_bbox: BBox.nullable(),
   text_source: z.string(),
+  // ── Tutorial v2 only ──
+  /** sketch | color | finishing */
+  phase: z.string().nullish(),
+  /** Line layer drawn for the first time in this step: shown black and animated; other line layers grey. */
+  new_lines: z.string().nullish(),
+  /** Grid cells this step works in ("B3"), for zooming. */
+  grid_cells: z.array(z.string()).optional(),
+  /** paint_mix steps: the one mix to show. */
+  mix_id: z.string().nullish(),
 });
 export type Stage = z.infer<typeof Stage>;
+
+export const Phase = z.object({
+  /** sketch | color | finishing */
+  code: z.string(),
+  title: z.string(),
+  stage_codes: z.array(z.string()),
+});
+export type Phase = z.infer<typeof Phase>;
+
+export const Landmark = z.object({
+  no: z.number().int(),
+  x: z.number(),
+  y: z.number(),
+  grid_cell: z.string(),
+  /** top | bottom | left | right | corner | horizon */
+  kind: z.string(),
+  label: z.string().nullable(),
+});
+export type Landmark = z.infer<typeof Landmark>;
 
 export const SourceRef = z.object({
   code: z.string(),
@@ -211,6 +246,26 @@ export const RegionColor = z.object({
 });
 export type RegionColor = z.infer<typeof RegionColor>;
 
+/** v2: one paint mix, used by every region with this `mix_id` (replaces per-region recipes). */
+export const Mix = z.object({
+  mix_id: z.string(),
+  order_no: z.number().int(),
+  name: z.string(),
+  target_hex: z.string(),
+  mixed_hex: z.string().nullable(),
+  delta_e: z.number().nullable(),
+  /** recipe | estimate | hard */
+  reachability: z.string(),
+  label: z.string(),
+  components: z.array(ColorComponent),
+  explanation: z.string().nullable(),
+  region_codes: z.array(z.string()),
+  /** Largest difference between a region's own colour and this mix. */
+  max_region_delta_e: z.number().nullish(),
+  tips: z.array(z.string()).default([]),
+});
+export type Mix = z.infer<typeof Mix>;
+
 export const Lesson = z.object({
   id: z.uuid(),
   origin: z.string(),
@@ -230,7 +285,13 @@ export const Lesson = z.object({
   culture_claims: z.array(CultureClaim),
   reflection: Reflection.nullable(),
   palette_id: z.uuid().nullable(),
-  region_colors: z.array(RegionColor),
+  /** v1 only; v2 sends `mixes` instead. */
+  region_colors: z.array(RegionColor).default([]),
+  // ── Tutorial v2 (structure_version 2): 3 phases, ±16 small steps ──
+  structure_version: z.number().int().nullish(),
+  phases: z.array(Phase).optional(),
+  landmarks: z.array(Landmark).optional(),
+  mixes: z.array(Mix).optional(),
 });
 export type Lesson = z.infer<typeof Lesson>;
 

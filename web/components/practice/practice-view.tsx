@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize,
+  PenLine,
   Sparkles,
   ZoomIn,
 } from "lucide-react";
@@ -19,7 +20,7 @@ import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { api, isApiError } from "@/lib/api";
 import { DEV_MOCK_API } from "@/lib/dev-mock";
-import type { Lesson, Progress, RegionColor, Stage } from "@/lib/schemas";
+import type { Lesson, Mix, Progress, RegionColor, Stage } from "@/lib/schemas";
 import { ensureSession } from "@/lib/session-store";
 import {
   LAYER_LABELS,
@@ -27,13 +28,17 @@ import {
   defaultVisibility,
   initialStageIndex,
   isGeneratedText,
+  isStepped,
+  mixFor,
+  mixPosition,
+  phaseView,
   regionColorsFor,
   regionNumber,
   regionsUpTo,
   stageIndexByCode,
   type LayerKey,
 } from "@/lib/stages";
-import { StageCanvas, type StageCanvasHandle } from "./stage-canvas";
+import { StageCanvas, stageFocus, type StageCanvasHandle } from "./stage-canvas";
 import styles from "./practice.module.css";
 
 /**
@@ -163,6 +168,12 @@ function Practice({
   const done = statusOf(stage.code) === "completed";
   const isLast = index === stages.length - 1;
   const purged = lesson.layers.some((l) => l.purged);
+  // Tutorial v2: 3 phases of small steps ("langkah"); v1 lessons keep 8 "tahap".
+  const stepped = isStepped(lesson);
+  const unit = stepped ? "Langkah" : "Tahap";
+  const phases = phaseView(lesson, index, (code) => statusOf(code) === "completed");
+  const phaseStarts = new Set((lesson.phases ?? []).slice(1).map((p) => p.stage_codes[0]));
+  const focus = stageFocus(lesson, stage);
 
   // Opening a stage marks it viewed. Viewing never completes it (FR08).
   useEffect(() => {
@@ -218,7 +229,13 @@ function Practice({
   } as CSSProperties;
 
   return (
-    <Shell stageLabel={`Tahap ${index + 1} dari ${stages.length}`}>
+    <Shell
+      stageLabel={
+        phases.phase
+          ? `${phases.phase.title} · langkah ${phases.phase.step} dari ${phases.phase.count}`
+          : `Tahap ${index + 1} dari ${stages.length}`
+      }
+    >
       <div className={styles.layout}>
         <div className={styles.boardArea}>
           <div className={styles.board}>
@@ -233,7 +250,12 @@ function Practice({
               onLayerError={onLayerError}
             />
             <div className={styles.zoomBar}>
-              {stage.focus_bbox && (
+              {stepped && stage.new_lines && (
+                <button type="button" className={styles.zoomButton} onClick={() => canvas.current?.replayLines()}>
+                  <PenLine aria-hidden="true" className="size-4" /> Ulangi garis
+                </button>
+              )}
+              {focus && (
                 <button type="button" className={styles.zoomButton} onClick={() => canvas.current?.zoomToFocus()}>
                   <ZoomIn aria-hidden="true" className="size-4" /> Zoom ke area ini
                 </button>
@@ -247,7 +269,9 @@ function Practice({
           <ul className={styles.toggles} aria-label="Lapisan panduan">
             {available.map((key) => {
               const layer = lesson.layers.find((l) => l.kind === key);
-              const gone = Boolean(layer?.purged || !layer?.url);
+              // Landmarks are drawn from the lesson's data, so they need no layer file.
+              const fromData = key === "landmarks" && (lesson.landmarks?.length ?? 0) > 0;
+              const gone = !fromData && Boolean(layer?.purged || !layer?.url);
               return (
                 <li key={key}>
                   <button
@@ -268,9 +292,37 @@ function Practice({
         </div>
 
         <main className={styles.panel}>
+          {phases.phases.length > 0 && (
+            <ol className={styles.phases} style={{ "--phase-count": phases.phases.length } as CSSProperties} aria-label="Fase latihan">
+              {phases.phases.map((p) => {
+                const first = lesson.phases!.find((x) => x.code === p.code)!.stage_codes;
+                const target = first.find((c) => statusOf(c) !== "completed") ?? first[0];
+                return (
+                  <li key={p.code}>
+                    <button
+                      type="button"
+                      className={styles.phase}
+                      aria-current={p.current ? "step" : undefined}
+                      onClick={() => go(stages.findIndex((s) => s.code === target))}
+                    >
+                      <span className={styles.phaseName}>
+                        <span>{p.title}</span>
+                        <span className={styles.phaseCount}>
+                          {p.done}/{p.count}
+                        </span>
+                      </span>
+                      <span className={styles.phaseBar} aria-hidden="true">
+                        <span style={{ "--phase-done": `${(p.done / p.count) * 100}%` } as CSSProperties} />
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
           <div className={styles.sliderRow}>
             <label htmlFor="stage-slider" className={styles.sliderLabel}>
-              <span>Tahap</span>
+              <span>{unit}</span>
               <span aria-hidden="true">
                 {index + 1} / {stages.length}
               </span>
@@ -284,22 +336,27 @@ function Practice({
               max={stages.length}
               step={1}
               value={index + 1}
-              aria-valuetext={`Tahap ${index + 1} dari ${stages.length}: ${stage.title}`}
+              aria-valuetext={`${unit} ${index + 1} dari ${stages.length}: ${stage.title}`}
               onChange={(e) => go(Number(e.target.value) - 1)}
             />
             <ol className={styles.ticks} aria-hidden="true">
               {stages.map((s) => (
-                <li key={s.code} className={styles.tick} data-status={statusOf(s.code)} />
+                <li
+                  key={s.code}
+                  className={styles.tick}
+                  data-status={statusOf(s.code)}
+                  data-phase-start={phaseStarts.has(s.code) ? "" : undefined}
+                />
               ))}
             </ol>
           </div>
 
-          <StagePanel lesson={lesson} stage={stage} titleRef={titleRef} done={done} />
+          <StagePanel lesson={lesson} stage={stage} titleRef={titleRef} done={done} phaseLabel={phases.phase?.title} />
         </main>
       </div>
 
       <div className={styles.bottomBar}>
-        <button type="button" className={styles.navButton} onClick={() => go(index - 1)} disabled={index === 0} aria-label="Tahap sebelumnya">
+        <button type="button" className={styles.navButton} onClick={() => go(index - 1)} disabled={index === 0} aria-label={`${unit} sebelumnya`}>
           <ChevronLeft aria-hidden="true" />
         </button>
         <div className={styles.actions}>
@@ -323,7 +380,7 @@ function Practice({
             </p>
           ) : (
             <p className={styles.barNote}>
-              {progress.completed_count} dari {progress.stage_count} tahap selesai
+              {progress.completed_count} dari {progress.stage_count} {unit.toLowerCase()} selesai
             </p>
           )}
         </div>
@@ -332,7 +389,7 @@ function Practice({
           className={styles.navButton}
           onClick={() => go(index + 1)}
           disabled={isLast}
-          aria-label="Tahap berikutnya (tanpa menandai selesai)"
+          aria-label={`${unit} berikutnya (tanpa menandai selesai)`}
         >
           <ChevronRight aria-hidden="true" />
         </button>
@@ -346,12 +403,16 @@ function StagePanel({
   stage,
   titleRef,
   done,
+  phaseLabel,
 }: {
   lesson: Lesson;
   stage: Stage;
   titleRef: React.RefObject<HTMLHeadingElement | null>;
   done: boolean;
+  phaseLabel?: string;
 }) {
+  const stepped = isStepped(lesson);
+  const mix = stepped ? mixFor(lesson, stage) : null;
   const recipes = regionColorsFor(stage, lesson.region_colors);
   const claims = lesson.culture_claims.filter((c) => c.stage_code === stage.code);
   const missing = stage.new_region_codes.filter((code) => !recipes.some((r) => r.region_code === code));
@@ -360,7 +421,7 @@ function StagePanel({
     <>
       <section className={styles.card} aria-labelledby="stage-title">
         <p className={styles.kicker}>
-          Tahap {stage.order_no}
+          {phaseLabel ? `${phaseLabel} · langkah ${stage.order_no}` : `Tahap ${stage.order_no}`}
           {stage.is_checkpoint ? " · checkpoint" : ""}
           {done ? " · selesai" : ""}
         </p>
@@ -396,7 +457,9 @@ function StagePanel({
         {isGeneratedText(lesson, stage) && <span className={styles.autoLabel}>Teks dibuat otomatis</span>}
       </section>
 
-      {stage.new_region_codes.length > 0 && (
+      {mix && <MixCard lesson={lesson} mix={mix} stage={stage} />}
+
+      {!stepped && stage.new_region_codes.length > 0 && (
         <section className={styles.card} aria-labelledby="recipes-title">
           <h2 id="recipes-title" className={styles.sectionTitle}>
             Warna di tahap ini
@@ -437,6 +500,65 @@ function StagePanel({
         </section>
       )}
     </>
+  );
+}
+
+/**
+ * v2 paint step: one mix, painted on every region of this step. Target colour
+ * beside the expected result, the paints and parts, and an honest note when
+ * some regions differ noticeably from the mix.
+ */
+function MixCard({ lesson, mix, stage }: { lesson: Lesson; mix: Mix; stage: Stage }) {
+  const { n, of } = mixPosition(lesson, mix);
+  const numbers = stage.new_region_codes.map(regionNumber);
+  const reported = useRef(false);
+  useEffect(() => {
+    if (reported.current) return;
+    reported.current = true;
+    void api.trackEvent("recipe_opened", { stage_order: stage.order_no });
+  }, [stage.order_no]);
+  return (
+    <section className={styles.card} aria-labelledby="mix-title">
+      <h2 id="mix-title" className={styles.sectionTitle}>
+        Campuran {n} dari {of}
+      </h2>
+      <div className={styles.mixHead}>
+        <span className={styles.mixSwatch} aria-hidden="true">
+          <span style={{ background: mix.target_hex }} />
+          <span style={{ background: mix.mixed_hex ?? mix.target_hex }} />
+        </span>
+        <div>
+          <p className={styles.mixName}>{mix.name}</p>
+          <p className={styles.mixLegend}>
+            <span>Kiri: warna di karya</span>
+            <span>Kanan: perkiraan hasil campuran</span>
+          </p>
+        </div>
+      </div>
+      {mix.components.length > 0 && (
+        <ul className={`${styles.components} mt-3`} aria-label="Campuran">
+          {mix.components.map((c) => (
+            <li key={c.paint_code}>
+              <span className={styles.paintDot} style={{ background: c.hex }} aria-hidden="true" />
+              <span className={styles.parts}>{c.parts} bagian</span>
+              <span>{c.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {mix.explanation && <p className="mt-2">{mix.explanation}</p>}
+      <p className={`${styles.muted} mt-2`}>
+        <span className={styles.reach} data-reach={mix.reachability}>
+          {mix.label}
+        </span>{" "}
+        {numbers.length > 0 && <>Warnai bidang nomor {numbers.join(", ")}.</>}
+      </p>
+      {mix.max_region_delta_e != null && mix.max_region_delta_e > 8 && (
+        <p className={`${styles.muted} mt-1`}>
+          Beberapa bidang sedikit berbeda dari campuran ini. Sesuaikan sedikit sambil melihat foto asli.
+        </p>
+      )}
+    </section>
   );
 }
 

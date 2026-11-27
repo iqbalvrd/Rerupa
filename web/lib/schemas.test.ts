@@ -19,6 +19,7 @@ const SCHEMA_FOR: Record<string, z.ZodType> = {
   "job_queued.json": s.Job,
   "job_succeeded.json": s.Job,
   "lesson_detail.json": s.Lesson,
+  "lesson_detail_v2.json": s.Lesson,
   "palettes.json": z.array(s.Palette),
   "progress.json": s.Progress,
   "session.json": s.Session,

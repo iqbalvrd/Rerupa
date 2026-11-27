@@ -68,7 +68,11 @@ export function Landing() {
   const [ready, setReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [seen, setSeen] = useState(false);
-  const [settings, setSettings] = useState<{ grass: number; dpr: number }>({ grass: GRASS.count, dpr: RENDERER.maxDpr });
+  const [settings, setSettings] = useState<{ grass: number; dpr: number; antialias: boolean }>({
+    grass: GRASS.count,
+    dpr: RENDERER.maxDpr,
+    antialias: true,
+  });
   // Mutable per-frame state shared with the scene; never triggers a render.
   const [travel] = useState<TravelState>(() => createTravelState(false));
   const whiteRef = useRef<HTMLDivElement>(null);
@@ -79,7 +83,12 @@ export function Landing() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     travel.reduceMotion = reduce;
     const { veryWeak, lowEnd } = deviceTier();
-    setSettings({ grass: lowEnd ? GRASS.countLowEnd : GRASS.count, dpr: lowEnd ? 1 : RENDERER.maxDpr });
+    setSettings({
+      grass: lowEnd ? GRASS.countLowEnd : GRASS.count,
+      dpr: lowEnd ? 1 : RENDERER.maxDpr,
+      // On dense screens the extra pixels already smooth edges; MSAA there costs ~70 MB for no visible gain.
+      antialias: window.devicePixelRatio < RENDERER.msaaBelowDpr,
+    });
     setSeen(readSeen());
     setMode(hasWebGL() && !veryWeak ? "3d" : "static");
     router.prefetch(GALLERY);
@@ -163,6 +172,7 @@ export function Landing() {
           travel={travel}
           grassCount={settings.grass}
           maxDpr={settings.dpr}
+          antialias={settings.antialias}
           whiteRef={whiteRef}
           onLoaded={onLoaded}
           onEnter={enter}

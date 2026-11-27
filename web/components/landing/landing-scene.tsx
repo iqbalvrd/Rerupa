@@ -28,13 +28,15 @@ type Props = {
   grassCount: number;
   /** Max device pixel ratio (1 on weak phones, 1.5 otherwise). */
   maxDpr: number;
+  /** MSAA on the default framebuffer; off on high-DPR screens (RENDERER.msaaBelowDpr). */
+  antialias: boolean;
   whiteRef: RefObject<HTMLDivElement | null>;
   onLoaded: () => void;
   onEnter: () => void;
   onArrive: () => void;
 };
 
-export default function LandingScene({ travel, grassCount, maxDpr, whiteRef, onLoaded, onEnter, onArrive }: Props) {
+export default function LandingScene({ travel, grassCount, maxDpr, antialias, whiteRef, onLoaded, onEnter, onArrive }: Props) {
   const settled = useRef({ statue: false, plants: false });
   const onStatueSettled = useCallback(() => {
     settled.current.statue = true;
@@ -53,7 +55,7 @@ export default function LandingScene({ travel, grassCount, maxDpr, whiteRef, onL
       shadows={{ type: THREE.PCFShadowMap }}
       frameloop={travel.reduceMotion ? "demand" : "always"}
       camera={{ fov: CAMERA.fov.landscape, near: CAMERA.near, far: CAMERA.far, position: CAMERA.path[0] }}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
+      gl={{ antialias, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = RENDERER.exposure;
